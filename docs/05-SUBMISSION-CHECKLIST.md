@@ -111,9 +111,19 @@ Penutup:
 - **Rekam suara terpisah dari layar**, lalu gabungkan. Merekam keduanya sekaligus
   sambil gugup adalah cara tercepat menghabiskan 3 jam.
 - Latihan sekali, rekam maksimal dua kali. Jangan mengejar sempurna.
-- Bahasa Inggris untuk narasi (juri internasional), tapi **UI dan draft pesan
-  boleh tetap bahasa Indonesia** — justru menunjukkan produknya nyata untuk pasar
-  tertentu. Sebutkan sekilas kalau perlu.
+- **SALAH — sudah dikoreksi, lihat [`09`](09-KEPUTUSAN-DAN-VERIFIKASI.md) V-1.**
+  ~~UI dan draft pesan boleh tetap bahasa Indonesia.~~ Aturan resmi: *"The
+  Application must, at a minimum, support English language use."* **UI dan
+  seluruh alur kerja wajib bisa dipakai dalam bahasa Inggris.** Lokalisasi
+  Indonesia ditampilkan sebagai selector bahasa output, bukan sebagai
+  satu-satunya mode.
+- Narasi bahasa Inggris, dan **video wajib punya subtitle English** meski
+  narasinya sudah English (V-4).
+- **Video wajib publik di YouTube atau Vimeo** (V-3), dan wajib menampilkan
+  eksekusi **live yang tidak diedit** (V-5) — potong waktu mati di sekeliling,
+  tapi pertahankan alur inti sebagai satu take utuh.
+- **Jangan tampilkan percakapan WhatsApp pribadi yang asli.** Pakai data sintetis
+  atau yang sudah diredaksi, dan hindari logo pihak ketiga.
 - Zoom teks kecil. Trace yang tidak terbaca sama saja tidak ditampilkan.
 
 ---

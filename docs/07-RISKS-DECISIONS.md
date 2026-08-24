@@ -12,7 +12,9 @@ pekerjaan yang harus diulang.
 
 ## D-1 — Nama project & repo
 
-**Status: belum diputuskan.**
+**Status: SELESAI 25 Agustus 2026.** Nama final **DealReady**; repo
+`github.com/rifqiahmadpratama/dealready` (private, folder dokumen ini jadi root,
+commit pertama 25 Agustus). Sisa bagian di bawah disimpan sebagai catatan alasan.
 
 "DealReady" adalah nama kerja yang saya pakai supaya dokumen ini bisa ditulis —
 bukan pilihan final. Yang penting bukan namanya, tapi ini:
@@ -32,7 +34,7 @@ bukan pilihan final. Yang penting bukan namanya, tapi ini:
 | | Solo | Berdua |
 |---|---|---|
 | Jam tersedia | ~35 jam | ~55–65 jam |
-| Berhak hadiah Individual/Hobbyist ($10K, 2 pemenang) | Ya | `[verifikasi]` aturan panitia soal ini untuk tim |
+| Berhak hadiah Individual/Hobbyist ($10K, 2 pemenang) | Ya | **Ya juga** — sudah diverifikasi: aturan menyebut *"All eligible individuals and/or team participants"*. Alasan hadiah ini **gugur** sebagai argumen memilih solo |
 | Biaya koordinasi | Nol | Nyata — kontrak data harus disepakati di awal |
 | Risiko | Selisih ~15 jam harus ditutup dengan pemangkasan | Rendah, kalau pembagiannya jelas |
 

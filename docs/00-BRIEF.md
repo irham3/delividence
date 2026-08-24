@@ -30,8 +30,10 @@ diambil 24 Agustus 2026. **Kalau ada perbedaan, halaman resmi yang menang.**
 ## 3. Syarat teknis — WAJIB ketiganya
 
 1. **Gemini 3.5 atau lebih baru** — via Gemini API atau Vertex AI.
-   `[verifikasi]` ID model persis yang tersedia saat lomba. **Jangan tebak dari
-   dokumen ini**; cek dokumentasi resmi sebelum menulis ke env var.
+   **Sudah diverifikasi 25 Agu 2026:** default kita `gemini-3.7-flash`
+   (stabil/GA, Flash terbaru). `gemini-3.5-flash` juga sah tapi kini
+   dideskripsikan Google sebagai *legacy*. Rinciannya di
+   [`09`](09-KEPUTUSAN-DAN-VERIFIKASI.md) §3.
 2. **Minimal satu Google Agent Framework** — Google ADK, GenAI SDK,
    Antigravity SDK, atau GenKit.
 3. **Minimal satu layanan infrastruktur Google Cloud** — Cloud Run, Cloud SQL,
@@ -58,7 +60,7 @@ Alasan memilih Collaborative Partner: [`01-PRD.md`](01-PRD.md) bagian 2.
 | Collaborative Partner | $20.000 | 1 | $2K credit + promo |
 | Fortified Enterprise Fleet | $20.000 | 1 | $2K credit + promo |
 | Startup Excellence | $20.000 | 1 | $5K credit + promo |
-| **Individual / Hobbyist** | $10.000 | **2** | $1K credit + promo |
+| **Individual / Hobbyist** | $10.000 | **2** | $1K credit + promo — **terbuka untuk tim juga**, bukan solo saja (V-10) |
 | Best Architectural Design | $5.000 | 2 | $1K credit |
 | Best Multimodal UX | $5.000 | 2 | $1K credit |
 | Honorable Mention | $2.000 | 5 | $500 credit |
@@ -86,7 +88,16 @@ jumlah fitur. Jangan tambah fitur. Perdalam agent-nya dan rapikan buktinya.
 - [ ] `README.md` berisi setup instruction yang reproducible
 - [ ] **Diagram arsitektur** — komponen sistem + integrasi Google Cloud
 - [ ] **Video demo ~4 menit** — masalah, value proposition, aplikasi berjalan,
-      bukti deploy Google Cloud
+      bukti deploy Google Cloud. **Wajib publik di YouTube/Vimeo**, wajib
+      English atau bersubtitle English, dan wajib menampilkan eksekusi live
+      yang tidak diedit
+- [ ] **Aplikasi wajib mendukung bahasa Inggris** — bukan cuma video & README.
+      Blocker eligibility, lihat [`09`](09-KEPUTUSAN-DAN-VERIFIKASI.md) V-1
+- [ ] **Akses juri tanpa restriksi sampai judging selesai** — kalau app di balik
+      Google Sign-In, sediakan kredensial testing di form submission (V-7)
+- [ ] Form submission: SDK/framework yang dipakai + tanggal mulai project
+- [ ] Kalau tim: semua anggota **menerima undangan** di Devpost
+- [ ] **Klaim $150 credit sebelum 28 Agustus 12:00 PT** (V-6)
 
 Bonus opsional (menambah nilai):
 - [ ] Blog post / podcast / video di Medium, YouTube, dsb.
@@ -100,9 +111,12 @@ Project **tidak wajib live** saat submit — bukti deploy lewat video/repo cukup
 - **"Projects must be newly created during the Submission Period."**
   DealReady lahir **24 Agustus 2026**, di dalam periode 3–31 Agustus.
   Terpenuhi tanpa perdebatan — dan git history repo baru jadi buktinya.
-- Kode pre-existing yang dipakai **wajib di-disclose**. Karena itu **jangan
-  menyalin kode dari Baseline** — supaya tidak ada yang perlu didisclose dan
-  tidak ada pertanyaan kepemilikan.
+- Aturan resmi menyebut *"any other pre-existing code **or work**"* — bukan
+  kode saja. Karena itu: (a) **jangan menyalin kode dari Baseline**, dan (b)
+  tetap **disclose secara eksplisit** di README bahwa konsepnya diinformasikan
+  oleh eksplorasi domain sebelumnya, sementara tidak ada kode, aset, atau
+  implementasi yang dipakai ulang. Menyatakan "tidak ada yang perlu didisclose"
+  adalah pembacaan aturan yang terlalu sempit.
 - Boleh ikut sebagai individu, tim, atau atas nama organisasi. Tidak ada batas
   maksimum anggota tim yang disebutkan.
 - Peserta harus di atas usia dewasa menurut hukum negaranya.

@@ -34,12 +34,12 @@ menyalin-tempel kode dari sana, dan dilarang mengubah apa pun di sana.**
 
 | Item | Nilai |
 |---|---|
-| Nama kerja | **DealReady** (sementara — lihat [`07-RISKS-DECISIONS.md`](07-RISKS-DECISIONS.md) D-1) |
+| Nama | **DealReady** — **final** per 25 Agu 2026 |
 | Disusun | 24 Agustus 2026 |
 | Deadline submission | **31 Agustus 2026, 17:00 PT** = 1 September 2026, 07:00 WIB |
-| Sisa waktu | ~7 hari |
+| Sisa waktu | ~6 hari (~32 jam kerja realistis — lihat [`09`](09-KEPUTUSAN-DAN-VERIFIKASI.md) §4) |
 | Kategori | **The Collaborative Partner** |
-| Repo | **Belum dibuat** |
+| Repo | <https://github.com/rifqiahmadpratama/dealready> — private, commit pertama 25 Agu 2026 |
 | Status kode | **Nol baris.** Belum ada apa pun yang dibangun |
 
 > Dokumen ini rencana, bukan laporan. Belum ada kode, belum ada deploy, belum ada
@@ -61,6 +61,8 @@ Partner yang baru masuk: baca berurutan, sekitar 25 menit.
 | 05 | [`05-SUBMISSION-CHECKLIST.md`](05-SUBMISSION-CHECKLIST.md) | Checklist Devpost + kerangka video 4 menit | Semua |
 | 06 | [`06-SETUP.md`](06-SETUP.md) | Menyiapkan dan menjalankan dari nol di komputer mana pun | Engineer |
 | 07 | [`07-RISKS-DECISIONS.md`](07-RISKS-DECISIONS.md) | Risiko + keputusan yang **masih menunggu Rifqi/partner** | Semua |
+| 08 | `08-CRITIQUE-AND-REVISED-PLAN.md` | Kritik & rencana revisi dari partner — **belum ada di folder ini**, masih di mesin partner | Semua |
+| 09 | [`09-KEPUTUSAN-DAN-VERIFIKASI.md`](09-KEPUTUSAN-DAN-VERIFIKASI.md) | **Baca ini setelah 00.** Keputusan terkunci, fakta aturan yang sudah diverifikasi, rekonsiliasi scope | Semua |
 
 ---
 
@@ -79,15 +81,18 @@ deterministik yang menghitung.**
 
 ---
 
-## Empat hal yang harus diputuskan sebelum menulis kode
+## Yang masih harus diputuskan sebelum menulis kode
 
-Blocker, bukan detail. Lengkapnya di [`07-RISKS-DECISIONS.md`](07-RISKS-DECISIONS.md).
+Blocker, bukan detail. Status terbaru di
+[`09-KEPUTUSAN-DAN-VERIFIKASI.md`](09-KEPUTUSAN-DAN-VERIFIKASI.md) §1 & §5.
 
-1. **Solo atau berdua partner?** Menentukan pembagian kerja di rencana 7 hari,
-   dan menentukan apakah mengejar hadiah Individual/Hobbyist ($10K, 2 pemenang).
-2. **Nama project & repo baru.** "DealReady" masih nama kerja. Repo harus dibuat
-   di akun Rifqi sendiri.
-3. **Akun Google Cloud + billing.** Belum ada. Ini pekerjaan pertama Hari 1
-   karena verifikasi billing bisa memakan waktu di luar kendali kita.
+1. ~~**Nama project & repo baru.**~~ **Selesai** — DealReady,
+   `github.com/rifqiahmadpratama/dealready`.
+2. **Akun Google Cloud + billing.** Belum ada. Paling mendesak: klaim $150 credit
+   punya cutoff **28 Agustus 12:00 PT**, dan verifikasi billing di luar kendali kita.
+3. **Solo atau berdua partner?** Menentukan pembagian kerja. Catatan: alasan
+   hadiah Individual/Hobbyist **sudah gugur** — aturan menyebut tim juga eligible.
 4. **Konfirmasi tidak ada benturan aturan** dengan kontes yang sedang diikuti
-   Baseline, mengingat domain masalahnya mirip.
+   Baseline, mengingat domain masalahnya mirip. Selama ini belum dicek, repo
+   ditahan private.
+5. **Cara menutup selisih jam.** Kebutuhan jauh di atas ~32 jam yang tersedia.
