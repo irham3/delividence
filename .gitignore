@@ -1,0 +1,32 @@
+# Secrets — jangan pernah di-commit
+.env
+.env.*
+!.env.example
+*-key.json
+service-account*.json
+credentials.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+.turbo/
+
+# OS / editor
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
+
+# Arsip
+*.zip
