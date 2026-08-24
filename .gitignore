@@ -30,3 +30,6 @@ Thumbs.db
 
 # Arsip
 *.zip
+
+# State lokal
+.localdata/
