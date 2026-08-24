@@ -2,11 +2,35 @@
 
 Untuk menyiapkan project di komputer lain atau di mesin partner.
 
-> **Status: belum diverifikasi.** Belum ada kode, jadi belum ada satu perintah
-> pun di dokumen ini yang pernah dijalankan. Ini rencana setup, bukan panduan
-> teruji. **Saat kode benar-benar ada, dokumen ini harus diuji ulang dari mesin
-> bersih dan dikoreksi** — lalu isinya disalin ke README repo, karena juri
-> menilai reproducibility.
+> **Status per 25 Agustus 2026 — sebagian sudah diverifikasi.**
+>
+> | Bagian | Status |
+> |---|---|
+> | Backend lokal (§5, §8) | **Terverifikasi.** 10 test hijau, dua service nyata jalan di 8080/8081. Langkah persisnya ada di [`backend/README.md`](../backend/README.md) |
+> | Setup & deploy Google Cloud (§3, §7) | **Digantikan skrip**, lihat kotak di bawah. Belum pernah dijalankan — menunggu billing aktif |
+> | Frontend (§6) | Belum ada kodenya |
+
+> ### §3 dan §7 sekarang dijalankan lewat skrip, bukan disalin manual
+>
+> - [`deploy/01-setup-gcp.ps1`](../deploy/01-setup-gcp.ps1) — aktifkan API
+>   (**termasuk Cloud Build**, yang wajib untuk `gcloud run deploy --source` dan
+>   tidak ada di §3), Firestore, Artifact Registry, tiga service account dengan
+>   hak minimum, topic + **dead-letter topic**, dan binding untuk service agent
+>   Pub/Sub yang tanpa itu membuat dead-letter gagal diam-diam.
+> - [`deploy/02-deploy.ps1`](../deploy/02-deploy.ps1) — deploy worker dulu (URL-nya
+>   dibutuhkan subscription), binding `roles/run.invoker`, push subscription
+>   dengan **OIDC + ack deadline 60 detik + retry policy + dead-letter**, baru
+>   deploy API.
+>
+> **Bug di §7 sudah diperbaiki di kode, bukan cuma dicatat:** di sana
+> `dealready-api` dan `dealready-worker` sama-sama di-deploy dari
+> `--source ./backend` tanpa pemilih entrypoint, jadi kedua service akan boot app
+> yang sama. Sekarang ada env `ROLE=api|worker` yang menentukannya, plus
+> `Dockerfile` supaya build-nya deterministik.
+>
+> API di-deploy `--allow-unauthenticated`: aturan mewajibkan juri bisa mengakses
+> project tanpa restriksi ([`09`](09-KEPUTUSAN-DAN-VERIFIKASI.md) V-7). Worker
+> tertutup, hanya identitas push Pub/Sub yang boleh memanggilnya.
 
 ---
 
@@ -14,7 +38,7 @@ Untuk menyiapkan project di komputer lain atau di mesin partner.
 
 | Kebutuhan | Versi | Cek |
 |---|---|---|
-| Python | 3.12+ | `python --version` |
+| Python | 3.11 (dipakai & diuji; image `python:3.11-slim`) | `python --version` |
 | Node.js | 20+ | `node --version` |
 | pnpm | terbaru | `pnpm --version` |
 | Google Cloud SDK | terbaru | `gcloud --version` |

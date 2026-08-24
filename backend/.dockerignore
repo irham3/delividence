@@ -1,0 +1,6 @@
+.localdata/
+tests/
+__pycache__/
+*.pyc
+requirements-dev.txt
+README.md
