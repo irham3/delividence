@@ -16,7 +16,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Histori commit | 25 Agu 2026 malam: partner menghapus & membuat ulang repo `irham3/delividence` dari kosong. Seluruh histori (main + rifqi) sudah di-push ulang ke repo baru itu — **bersih dari trailer/atribusi tooling apa pun di commit message** (lomba disponsori Google, wajib Gemini). Commit berikutnya juga MUST tetap begitu. |
 | Repo cadangan (tidak dipush lagi) | <https://github.com/rifqiahmadpratama/dealready> (masih ada di GitHub, tapi remote `origin` sudah dilepas dari git lokal 25 Agu — fokus ke `delividence` saja) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **165 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **189 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 Tidak ada proses yang ditinggal jalan. Aman dimatikan.
 
@@ -231,10 +231,44 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
     ada field-nya — tidak ada yang benar-benar dijalankan di MVP ini.
     Diverifikasi end-to-end lewat `uvicorn` sungguhan sampai keluar Markdown
     yang benar. `tests/test_proof.py` (5) + `tests/test_proof_endpoint.py`
-    (6). Total **165 test hijau**.
-12. Baru setelah itu: new request/Guardrail (scope comparison, classification
-    IN_SCOPE/AMBIGUOUS/CHANGE_REQUEST) — bagian ini butuh Gemini untuk
-    proposal, jadi diblokir billing/gcloud (item 6).
+    (6).
+12. ~~**Guardrail — klasifikasi request baru** (scope comparison, IN_SCOPE/
+    AMBIGUOUS/CHANGE_REQUEST).~~ **Selesai sebagian, sengaja** — bagian yang
+    tidak butuh Gemini sudah jadi, bagian yang butuh Gemini (model
+    mengusulkan classification+citation otomatis) belum, sama polanya dengan
+    ekstraksi (item 3): model diusulkan lewat `agent.py` nanti, tapi validasi
+    & keputusan akhir selalu deterministik di sini.
+    - `app/domain/guardrail.py`: `citable_text(baseline)` (kumpulkan teks
+      yang boleh dikutip dari criteria + out_of_scope + deliverables) dan
+      `classify(proposed, citations, text_by_ref)` — tiap citation
+      divalidasi tanpa syarat lewat `validate_quote` (pola sama persis
+      seperti `extraction.py`); `IN_SCOPE`/`CHANGE_REQUEST` **tanpa kutipan
+      valid otomatis turun jadi `AMBIGUOUS`** (02 §4.5, cegah model
+      menyimpulkan tanpa dasar). Satu kutipan buruk di antara beberapa tidak
+      menggagalkan yang lain.
+    - `app/scope_requests.py` — store `deals/{deal_id}/requests/{request_id}`
+      (sengaja dinamai `scope_requests`, bukan `requests`, supaya tidak
+      tabrakan nama dengan paket HTTP `requests`). `change_draft_id` dari
+      bentuk data 02 §6 sengaja tidak ada — CHANGE_REQUEST yang bikin
+      baseline v2 belum dibangun (lihat catatan `introduced_in_version` di
+      `app/domain/baseline.py`, masih PR yang sama).
+    - Endpoint: `POST /runs/{run_id}/requests` (freelancer/klien mencatat
+      request baru, 409 tanpa baseline aktif), `GET /runs/{run_id}/requests`,
+      `POST /runs/{run_id}/requests/{request_id}/classify` (freelancer
+      mengonfirmasi klasifikasi — 09 §8: hanya freelancer yang berwenang,
+      bukan klien, bukan model; audit event `SCOPE_CLASSIFICATION_DECIDED`
+      selalu actor `"freelancer"`).
+    - Diverifikasi end-to-end lewat `uvicorn` sungguhan: request dengan
+      kutipan valid tetap `IN_SCOPE`; request `CHANGE_REQUEST` tanpa kutipan
+      otomatis turun `AMBIGUOUS`.
+    - `tests/test_guardrail.py` (9) + `tests/test_scope_requests.py` (7) +
+      `tests/test_guardrail_endpoint.py` (8). Total **189 test hijau**.
+    - **Sengaja belum**: model benar-benar mengusulkan classification+citation
+      (butuh Gemini, sama seperti item 6), dan CHANGE_REQUEST yang disetujui
+      membuat baseline v2 (butuh perbaikan `introduced_in_version` dulu).
+13. Baru setelah ini semua: wiring Gemini sungguhan (item 6, diblokir billing)
+    — begitu itu jalan, `agent.py`/`extraction_agent` bisa diperluas untuk
+    juga mengusulkan classification Guardrail, bukan cuma ekstraksi ledger.
 
 ---
 

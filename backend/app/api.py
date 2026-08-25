@@ -7,15 +7,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
-from app import audit, baselines, client_links, config, evidence, queue, store
-from app.domain import client_link, criteria, proof, readiness, schemas
+from app import audit, baselines, client_links, config, evidence, queue, scope_requests, store
+from app.domain import client_link, criteria, guardrail, proof, readiness, schemas
 from app.domain.baseline import build_canonical_payload
 from app.domain.canonical import payload_hash as compute_payload_hash
 from app.domain.enums import ACCEPTED, CHANGES_REQUESTED
 from app.domain.ledger import apply_client_answer
 
-# Action yang diizinkan tiap purpose client link -- portal new-request/
-# Guardrail belum dibangun, lihat CATATAN-LANJUTAN.md.
+# Action yang diizinkan tiap purpose client link -- portal new-request lewat
+# client link belum dibangun (submit request lewat client link, bukan cuma
+# lewat freelancer), lihat CATATAN-LANJUTAN.md.
 _ACTIONS_BY_PURPOSE = {
     "CLARIFICATION": ["view", "answer", "confirm"],
     "DELIVERY_REVIEW": ["view", "submit_review"],
@@ -454,3 +455,93 @@ def get_proof(run_id: str, format: str = "json"):
     if format == "md":
         return PlainTextResponse(proof.to_markdown(manifest), media_type="text/markdown")
     return manifest
+
+
+class SubmitScopeRequestRequest(BaseModel):
+    raw_text: str = Field(min_length=1)
+    submitted_by: str = "freelancer"
+
+    @field_validator("submitted_by")
+    @classmethod
+    def _known_submitter(cls, v):
+        if v not in ("freelancer", "client"):
+            raise ValueError("submitted_by must be 'freelancer' or 'client'")
+        return v
+
+
+@app.post("/runs/{run_id}/requests", status_code=201)
+def submit_scope_request(run_id: str, req: SubmitScopeRequestRequest):
+    """Freelancer mencatat request baru dari kanal lain, atau klien
+    mengirimkannya (01-PRD §5 langkah 7). Guardrail baru bermakna kalau
+    sudah ada baseline untuk dibandingkan."""
+    run = store.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run not found")
+    active_version, _ = _active_baseline_or_409(run_id, run)
+
+    record = scope_requests.submit(run_id, req.raw_text, req.submitted_by)
+    audit.append_event(
+        run_id, "REQUEST_SUBMITTED", req.submitted_by, active_version,
+        {"request_id": record["request_id"], "raw_text": req.raw_text},
+    )
+    return record
+
+
+@app.get("/runs/{run_id}/requests")
+def list_scope_requests(run_id: str):
+    if store.get_run(run_id) is None:
+        raise HTTPException(status_code=404, detail="run not found")
+    return scope_requests.list_for_deal(run_id)
+
+
+class CitationItem(BaseModel):
+    ref: str = Field(min_length=1)
+    quote: str = Field(min_length=1)
+
+
+class ClassifyScopeRequestRequest(BaseModel):
+    classification: str
+    citations: list[CitationItem] = Field(default_factory=list)
+
+    @field_validator("classification")
+    @classmethod
+    def _known_classification(cls, v):
+        if v not in guardrail.CLASSIFICATIONS:
+            raise ValueError(
+                "classification must be one of %s" % (", ".join(sorted(guardrail.CLASSIFICATIONS)),)
+            )
+        return v
+
+
+@app.post("/runs/{run_id}/requests/{request_id}/classify")
+def classify_scope_request(run_id: str, request_id: str, req: ClassifyScopeRequestRequest):
+    """Freelancer mengonfirmasi klasifikasi (09-DOMAIN-RULES §8: hanya
+    freelancer yang berwenang memutuskan klasifikasi scope -- bukan klien,
+    bukan model). Setiap citation divalidasi tanpa syarat lewat
+    app.domain.guardrail; IN_SCOPE/CHANGE_REQUEST tanpa kutipan valid
+    otomatis turun ke AMBIGUOUS (02 §4.5), classification yang dikirim
+    tidak pernah dipercaya langsung."""
+    run = store.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run not found")
+    active_version, active_baseline = _active_baseline_or_409(run_id, run)
+
+    if scope_requests.get(run_id, request_id) is None:
+        raise HTTPException(status_code=404, detail="request not found")
+
+    text_by_ref = guardrail.citable_text(active_baseline)
+    final_classification, valid_citations = guardrail.classify(
+        req.classification, [c.model_dump() for c in req.citations], text_by_ref
+    )
+
+    updated = scope_requests.mark_classified(run_id, request_id, final_classification, valid_citations)
+    audit.append_event(
+        run_id, "SCOPE_CLASSIFICATION_DECIDED", "freelancer", active_version,
+        {
+            "request_id": request_id,
+            "classification": final_classification,
+            "proposed_classification": req.classification,
+            "citations": valid_citations,
+        },
+    )
+    return updated
