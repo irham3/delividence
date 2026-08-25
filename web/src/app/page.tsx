@@ -456,14 +456,20 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
           Attach evidence to an acceptance criterion (needs a confirmed plan).
         </p>
         <form onSubmit={addEvidence} className="mt-2 flex flex-wrap items-center gap-2">
-          <input
+          <select
             value={criterionKey}
             onChange={(e) => setCriterionKey(e.target.value)}
             required
             disabled={!hasBaseline}
-            placeholder="criterion key"
             className="w-40 rounded border border-neutral-300 px-2 py-1 text-sm disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"
-          />
+          >
+            <option value="">criterion key</option>
+            {(run?.ledger?.acceptance_criteria?.value ?? []).map((c) => (
+              <option key={c.criterion_key} value={c.criterion_key}>
+                {c.criterion_key}
+              </option>
+            ))}
+          </select>
           <select
             value={evidenceType}
             onChange={(e) => setEvidenceType(e.target.value as "url" | "text")}
