@@ -14,7 +14,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Repo submission | <https://github.com/irham3/delividence> (public, akun partner, remote `delividence`) |
 | Repo cadangan | <https://github.com/rifqiahmadpratama/dealready> (private, remote `origin`) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **88 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **106 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 Tidak ada proses yang ditinggal jalan. Aman dimatikan.
 
@@ -121,7 +121,27 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
    sama seperti yang ditulis `api.py`), jalankan `agent.extraction_agent` lewat
    ADK `Runner`, ambil `ledger_draft` dari state, lalu tulis `LEDGER_DRAFT_SAVED`
    ke `app/audit.py` dan rank pertanyaan lewat `questions.rank_questions()`.
-7. Baru setelah itu: portal klien, baseline approval, Guardrail, Proof.
+7. ~~**Client link** — opaque, scoped, expiring, tanpa akun (02 §8).~~
+   **Selesai (mekanisme-nya saja)** — `backend/app/domain/client_link.py`:
+   `check(link, now, purpose, action)`, murni, `now` selalu parameter (tidak
+   ada mocking waktu). `backend/app/client_links.py`: `issue()` (token 128 bit
+   lewat `secrets.token_urlsafe`, hanya HASH-nya yang disimpan — ada test
+   khusus yang membaca file mentah dan memastikan raw token tidak pernah
+   muncul di situ), `resolve()`, `revoke()`, `mark_completed()`,
+   `actor_ref_for()` (potongan hash buat `actor_ref` di audit event, bukan
+   token mentah — dipakai nanti pas endpoint client beneran menulis
+   `CLIENT_ANSWERED` dll). 18 test baru (`test_client_link.py` +
+   `test_client_links.py`). Total 106 test hijau.
+   **Sengaja belum**: endpoint HTTP buat menerbitkan/memakai link ini —
+   belum ada layar "review ledger draft" di sisi freelancer yang jadi
+   pemicu alami "kirim client link", dan belum ada endpoint clarification
+   yang benar-benar dijawab klien. `PURPOSES` (CLARIFICATION/APPROVAL/
+   DELIVERY_REVIEW/NEW_REQUEST) didefinisikan di sini karena dokumen tidak
+   menormatifkannya sebagai enum tertutup di manapun — kalau nanti nemu
+   definisi resmi yang beda, sinkronkan.
+8. Baru setelah itu: portal klien (endpoint clarification/approval/delivery
+   review beneran, pakai client_links.py di atas), baseline approval,
+   Guardrail, Proof.
 
 ---
 
