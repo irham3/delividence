@@ -1,7 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { API, apiFetch, type Citation, type ProofManifest, type ScopeRequest } from "@/lib/api";
+import type { User } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
+import {
+  apiFetch,
+  openAuthedInNewTab,
+  setAuthTokenProvider,
+  type Citation,
+  type ProofManifest,
+  type ScopeRequest,
+} from "@/lib/api";
+import { auth, signInWithGoogle, signOutOwner } from "@/lib/firebase";
+
+setAuthTokenProvider(() => (auth.currentUser ? auth.currentUser.getIdToken() : Promise.resolve(null)));
 
 type AuditStep = { at: string; step: string; detail: string };
 
@@ -30,6 +42,14 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => onAuthStateChanged(auth, (u) => {
+    setUser(u);
+    setAuthReady(true);
+  }), []);
+
   useEffect(() => {
     try {
       if (runId) localStorage.setItem(RUN_ID_STORAGE_KEY, runId);
@@ -44,14 +64,14 @@ export default function Home() {
   // change (not just after the first interval tick) so a restored runId
   // shows its state right away instead of a blank "queued" flash.
   useEffect(() => {
-    if (!runId) return;
+    if (!user || !runId) return;
     if (run && (run.status === "done" || run.status === "failed")) return;
 
     let cancelled = false;
     async function poll() {
       try {
-        const res = await fetch(`${API}/runs/${runId}`);
-        if (res.ok && !cancelled) setRun(await res.json());
+        const data = await apiFetch<Run>(`/runs/${runId}`);
+        if (!cancelled) setRun(data);
       } catch {
         // Transient; the next tick retries.
       }
@@ -62,7 +82,7 @@ export default function Home() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [runId, run]);
+  }, [user, runId, run]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -70,13 +90,11 @@ export default function Home() {
     setRun(null);
     setSubmitting(true);
     try {
-      const res = await fetch(`${API}/runs`, {
+      const { run_id } = await apiFetch<{ run_id: string }>("/runs", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ brief, output_language: language }),
       });
-      if (!res.ok) throw new Error(`API returned ${res.status}`);
-      setRunId((await res.json()).run_id);
+      setRunId(run_id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Request failed");
     } finally {
@@ -84,9 +102,45 @@ export default function Home() {
     }
   }
 
+  if (!authReady) {
+    return (
+      <main className="mx-auto max-w-2xl px-6 py-16">
+        <p className="text-sm text-neutral-500">Loading…</p>
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="mx-auto max-w-2xl px-6 py-16">
+        <h1 className="text-3xl font-semibold tracking-tight">Delividence</h1>
+        <p className="mt-2 text-sm text-neutral-500">
+          Sign in to create and manage your deals.
+        </p>
+        <button
+          onClick={() => signInWithGoogle().catch((e) => setError(e instanceof Error ? e.message : "Sign-in failed"))}
+          className="mt-6 rounded-md bg-neutral-900 px-4 py-2 text-sm text-white dark:bg-white dark:text-neutral-900"
+        >
+          Sign in with Google
+        </button>
+        {error && (
+          <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>
+        )}
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
-      <h1 className="text-3xl font-semibold tracking-tight">Delividence</h1>
+      <div className="flex items-baseline justify-between gap-4">
+        <h1 className="text-3xl font-semibold tracking-tight">Delividence</h1>
+        <div className="flex items-center gap-2 text-xs text-neutral-500">
+          <span>{user.email}</span>
+          <button onClick={() => signOutOwner()} className="underline">
+            Sign out
+          </button>
+        </div>
+      </div>
       <p className="mt-2 text-sm text-neutral-500">
         Paste a client brief. The agent works on it in the background and records
         every step it takes.
@@ -341,22 +395,20 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
             : "Proof export is available once a baseline is confirmed."}
         </p>
         <div className="mt-2 flex items-center gap-3 text-sm">
-          <a
-            href={`${API}/runs/${runId}/proof?format=json`}
-            target="_blank"
-            rel="noreferrer"
-            className={`underline ${!hasBaseline ? "pointer-events-none opacity-40" : ""}`}
+          <button
+            onClick={() => openAuthedInNewTab(`/runs/${runId}/proof?format=json`)}
+            disabled={!hasBaseline}
+            className="underline disabled:pointer-events-none disabled:opacity-40"
           >
             View JSON
-          </a>
-          <a
-            href={`${API}/runs/${runId}/proof?format=md`}
-            target="_blank"
-            rel="noreferrer"
-            className={`underline ${!hasBaseline ? "pointer-events-none opacity-40" : ""}`}
+          </button>
+          <button
+            onClick={() => openAuthedInNewTab(`/runs/${runId}/proof?format=md`)}
+            disabled={!hasBaseline}
+            className="underline disabled:pointer-events-none disabled:opacity-40"
           >
             View Markdown
-          </a>
+          </button>
         </div>
       </div>
 

@@ -2,12 +2,12 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
-from app import audit, baselines, client_links, config, evidence, queue, scope_requests, store
+from app import audit, auth, baselines, client_links, config, evidence, queue, scope_requests, store
 from app.domain import client_link, criteria, guardrail, proof, readiness, schemas
 from app.domain.baseline import build_canonical_payload
 from app.domain.canonical import payload_hash as compute_payload_hash
@@ -30,8 +30,17 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=config.ALLOWED_ORIGINS,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "Authorization"],
 )
+
+
+def _owned_run_or_404(run_id: str, owner_id: str):
+    """Run yang dimiliki `owner_id`, atau 404 -- juga kalau run ada tapi
+    milik owner lain (02 §8: owner A tidak boleh tahu deal B ada)."""
+    run = store.get_run(run_id)
+    if run is None or run.get("owner_id") != owner_id:
+        raise HTTPException(status_code=404, detail="run not found")
+    return run
 
 
 class CreateRunRequest(BaseModel):
@@ -58,12 +67,12 @@ def health():
 
 
 @app.post("/runs", status_code=202)
-def create_run(req: CreateRunRequest):
+def create_run(req: CreateRunRequest, owner_id: str = Depends(auth.require_owner)):
     # deal_id == run_id (satu-satu, lihat CATATAN-LANJUTAN.md): satu brief
     # yang disubmit menciptakan tepat satu deal, jadi id run pemrosesannya
     # dipakai ulang sebagai deal_id untuk audit log 09-DOMAIN-RULES §7.
     run_id = uuid.uuid4().hex
-    store.create_run(run_id, req.brief, req.output_language)
+    store.create_run(run_id, owner_id, req.brief, req.output_language)
     audit.append_event(
         run_id, "DEAL_CREATED", "freelancer", 0,
         {"output_language": req.output_language},
@@ -77,11 +86,8 @@ def create_run(req: CreateRunRequest):
 
 
 @app.get("/runs/{run_id}")
-def get_run(run_id: str):
-    run = store.get_run(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="run not found")
-    return run
+def get_run(run_id: str, owner_id: str = Depends(auth.require_owner)):
+    return _owned_run_or_404(run_id, owner_id)
 
 
 class CreateClientLinkRequest(BaseModel):
@@ -96,13 +102,16 @@ class CreateClientLinkRequest(BaseModel):
 
 
 @app.post("/runs/{run_id}/client-links", status_code=201)
-def create_client_link(run_id: str, req: CreateClientLinkRequest = CreateClientLinkRequest()):
+def create_client_link(
+    run_id: str,
+    req: CreateClientLinkRequest = CreateClientLinkRequest(),
+    owner_id: str = Depends(auth.require_owner),
+):
     """Freelancer menerbitkan client link (02 §8). Token mentah HANYA muncul
     di response ini -- pemanggil bertanggung jawab mengirimkannya ke klien
     lewat kanal apa pun (chat/email), sistem tidak menyimpannya lagi setelah
     ini."""
-    if store.get_run(run_id) is None:
-        raise HTTPException(status_code=404, detail="run not found")
+    _owned_run_or_404(run_id, owner_id)
 
     token = client_links.issue(run_id, req.purpose, _ACTIONS_BY_PURPOSE[req.purpose])
     return {"token": token, "purpose": req.purpose}
@@ -271,12 +280,10 @@ def _active_baseline_or_409(run_id, run):
 
 
 @app.post("/runs/{run_id}/evidence", status_code=201)
-def add_evidence(run_id: str, req: AddEvidenceRequest):
+def add_evidence(run_id: str, req: AddEvidenceRequest, owner_id: str = Depends(auth.require_owner)):
     """Freelancer melampirkan evidence ke satu acceptance criterion (01-PRD
     §5 langkah 9). criterion_key MUST ada di baseline aktif."""
-    run = store.get_run(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="run not found")
+    run = _owned_run_or_404(run_id, owner_id)
 
     active_version, baseline = _active_baseline_or_409(run_id, run)
     if req.criterion_key not in baseline["canonical_payload"]["criteria"]:
@@ -418,16 +425,14 @@ def submit_delivery_review(token: str, req: SubmitReviewRequest):
 
 
 @app.get("/runs/{run_id}/proof")
-def get_proof(run_id: str, format: str = "json"):
+def get_proof(run_id: str, format: str = "json", owner_id: str = Depends(auth.require_owner)):
     """Proof Manifest / Acceptance Record (01-PRD §5 langkah 12) -- rangkuman
     baseline + status tiap criterion + evidence + keputusan klien, siap
     diekspor. `format=json` (default) atau `format=md`."""
     if format not in ("json", "md"):
         raise HTTPException(status_code=422, detail="format must be 'json' or 'md'")
 
-    run = store.get_run(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="run not found")
+    run = _owned_run_or_404(run_id, owner_id)
 
     active_version, active_baseline = _active_baseline_or_409(run_id, run)
     all_baselines = baselines.get_all_up_to(run_id, active_version)
@@ -470,13 +475,13 @@ class SubmitScopeRequestRequest(BaseModel):
 
 
 @app.post("/runs/{run_id}/requests", status_code=201)
-def submit_scope_request(run_id: str, req: SubmitScopeRequestRequest):
+def submit_scope_request(
+    run_id: str, req: SubmitScopeRequestRequest, owner_id: str = Depends(auth.require_owner)
+):
     """Freelancer mencatat request baru dari kanal lain, atau klien
     mengirimkannya (01-PRD §5 langkah 7). Guardrail baru bermakna kalau
     sudah ada baseline untuk dibandingkan."""
-    run = store.get_run(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="run not found")
+    run = _owned_run_or_404(run_id, owner_id)
     active_version, _ = _active_baseline_or_409(run_id, run)
 
     record = scope_requests.submit(run_id, req.raw_text, req.submitted_by)
@@ -488,9 +493,8 @@ def submit_scope_request(run_id: str, req: SubmitScopeRequestRequest):
 
 
 @app.get("/runs/{run_id}/requests")
-def list_scope_requests(run_id: str):
-    if store.get_run(run_id) is None:
-        raise HTTPException(status_code=404, detail="run not found")
+def list_scope_requests(run_id: str, owner_id: str = Depends(auth.require_owner)):
+    _owned_run_or_404(run_id, owner_id)
     return scope_requests.list_for_deal(run_id)
 
 
@@ -514,16 +518,19 @@ class ClassifyScopeRequestRequest(BaseModel):
 
 
 @app.post("/runs/{run_id}/requests/{request_id}/classify")
-def classify_scope_request(run_id: str, request_id: str, req: ClassifyScopeRequestRequest):
+def classify_scope_request(
+    run_id: str,
+    request_id: str,
+    req: ClassifyScopeRequestRequest,
+    owner_id: str = Depends(auth.require_owner),
+):
     """Freelancer mengonfirmasi klasifikasi (09-DOMAIN-RULES §8: hanya
     freelancer yang berwenang memutuskan klasifikasi scope -- bukan klien,
     bukan model). Setiap citation divalidasi tanpa syarat lewat
     app.domain.guardrail; IN_SCOPE/CHANGE_REQUEST tanpa kutipan valid
     otomatis turun ke AMBIGUOUS (02 §4.5), classification yang dikirim
     tidak pernah dipercaya langsung."""
-    run = store.get_run(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="run not found")
+    run = _owned_run_or_404(run_id, owner_id)
     active_version, active_baseline = _active_baseline_or_409(run_id, run)
 
     if scope_requests.get(run_id, request_id) is None:

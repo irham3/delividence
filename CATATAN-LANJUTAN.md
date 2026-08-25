@@ -16,7 +16,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Histori commit | 25 Agu 2026 malam: partner menghapus & membuat ulang repo `irham3/delividence` dari kosong. Seluruh histori (main + rifqi) sudah di-push ulang ke repo baru itu — **bersih dari trailer/atribusi tooling apa pun di commit message** (lomba disponsori Google, wajib Gemini). Commit berikutnya juga MUST tetap begitu. |
 | Repo cadangan (tidak dipush lagi) | <https://github.com/rifqiahmadpratama/dealready> (masih ada di GitHub, tapi remote `origin` sudah dilepas dari git lokal 25 Agu — fokus ke `delividence` saja) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **189 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **194 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 ## MILESTONE 25 Agu malam — alur inti terbukti jalan end-to-end di browser
 
@@ -106,6 +106,144 @@ pun yang gagal di jalur ini.**
   kode yang perlu diubah.
 
 Tidak ada proses yang ditinggal jalan. Aman dimatikan.
+
+---
+
+## MILESTONE 25 Agu malam (lanjutan #2) — Firebase Auth (owner login) selesai, dites end-to-end dengan token asli
+
+Instruksi Rifqi: "lanjut ke auth dan New Request UI" — bagian auth-nya.
+Sebelum ini TIDAK ADA auth sama sekali: semua endpoint owner (`POST /runs`,
+`GET /runs/{id}`, client-links, evidence, proof, requests/classify) terbuka
+tanpa proteksi apa pun, dan tidak ada konsep `owner_id`.
+
+**Setup Firebase (proyek `dudepercobaan`, sudah ada Firebase-nya, tinggal
+dilengkapi) — lewat REST API Firebase Management/Identity Toolkit, bukan
+lewat console manual:**
+- Web app baru didaftarkan (`Delividence Web`,
+  `1:809536883160:web:6d48fb0ecf49294375caad`), config-nya (public,
+  bukan secret) ditaruh langsung di `web/src/lib/firebase.ts`.
+- Provider **Google Sign-In diaktifkan** (`defaultSupportedIdpConfigs/google.com`,
+  `enabled: true`) — satu-satunya provider aktif di production, sesuai
+  06-SETUP.md §6 ("idealnya Google Sign-In"). `authorizedDomains` sudah
+  otomatis memuat `localhost` (berlaku semua port).
+
+**Backend (`backend/app/`):**
+- `app/auth.py` (baru) — `require_owner()`: dependency FastAPI yang
+  memverifikasi header `Authorization: Bearer <Firebase ID token>` lewat
+  `firebase_admin.auth.verify_id_token()`, mengembalikan `uid` sebagai
+  `owner_id`. 401 kalau header hilang/salah bentuk/token tidak valid.
+  `firebase_admin.initialize_app(credentials.ApplicationDefault(), ...)` --
+  pakai ADC yang sama dengan `gcloud auth application-default login`
+  (sudah ada dari setup sebelumnya), bukan service account key file.
+- `app/config.py`: `FIREBASE_PROJECT_ID` (env baru, `.env`/`.env.example`) --
+  sengaja terpisah dari `GOOGLE_CLOUD_PROJECT`/`LOCAL` karena Firebase Auth
+  layanan hosted, bukan Firestore -- tetap dipakai walau `LOCAL=True`.
+- `app/store.py`: `create_run()` sekarang menyimpan `owner_id`.
+- `app/api.py`: helper `_owned_run_or_404(run_id, owner_id)` -- 404 kalau
+  run tidak ada ATAU milik owner lain (bukan 403, supaya keberadaan deal
+  tidak bocor). Dipasang di SEMUA endpoint owner: `POST /runs`,
+  `GET /runs/{id}`, `POST /runs/{id}/client-links`,
+  `POST /runs/{id}/evidence`, `GET /runs/{id}/proof`,
+  `POST /runs/{id}/requests`, `GET /runs/{id}/requests`,
+  `POST /runs/{id}/requests/{id}/classify`. Endpoint `/client/{token}/...`
+  **TIDAK disentuh** -- itu tetap opaque-token-only, sesuai desain (02 §8:
+  client tidak punya akun).
+- `requirements.txt`: `firebase-admin==7.2.0`.
+
+**Test (`tests/conftest.py` + `tests/test_auth.py`, baru):**
+- Fixture `fake_owner` (autouse) -- override `auth.require_owner` jadi
+  owner tetap `"test-owner-1"` lewat `app.dependency_overrides`, supaya
+  194 test lain (yang ditulis sebelum auth ada) tidak perlu tahu soal
+  token sama sekali. Verifikasi token ASLI diuji terpisah.
+- `test_auth.py` (5 test baru): tanpa token -> 401 (semua endpoint owner
+  dicoba lewat satu skenario cross-owner), header bukan `Bearer` -> 401,
+  owner lain baca run owner lain -> 404 di SEMUA endpoint owner, owner asli
+  tetap bisa.
+
+**Frontend (`web/src/lib/firebase.ts` baru, `web/src/lib/api.ts`,
+`web/src/app/page.tsx`):**
+- `firebase.ts`: init Firebase app (config public), `signInWithGoogle()`
+  (`signInWithPopup` + `GoogleAuthProvider`), `signOutOwner()`.
+- `api.ts`: `setAuthTokenProvider(fn)` -- `apiFetch` menyisipkan
+  `Authorization: Bearer <token>` otomatis kalau provider mengembalikan
+  token, no-op kalau tidak (portal klien di `client/[token]/*` TIDAK
+  pernah memanggil `setAuthTokenProvider`, jadi tetap unauthenticated
+  seperti sebelumnya -- `api.ts` sengaja tidak import `firebase.ts`
+  langsung supaya portal klien tidak ikut menyeret dependency Firebase).
+  Tambah `openAuthedInNewTab(path)` -- View JSON/View Markdown proof dulu
+  `<a href>` polos (tidak bisa bawa header custom), sekarang fetch manual +
+  blob URL supaya tetap kebawa token.
+- `page.tsx`: `onAuthStateChanged` gate -- belum login menampilkan tombol
+  "Sign in with Google" saja (dashboard/form disembunyikan total, bukan
+  cuma dinonaktifkan); sudah login menampilkan email + "Sign out" di
+  header. Semua panggilan API (`submit`, `poll`) dipindah dari `fetch`
+  polos ke `apiFetch` supaya ikut kebawa token -- ini FIX, sebelumnya dua
+  tempat ini bypass `apiFetch` dan tidak akan pernah bawa auth header kalau
+  tidak diubah.
+- Lolos `tsc --noEmit`, `eslint`, `next build`.
+
+**Dites end-to-end dengan token Firebase ASLI (bukan mock), dua cara:**
+1. Lewat `curl` langsung: dua user REST (`accounts:signUp`, email/password
+   -- provider ini diaktifkan SEMENTARA khusus untuk tes ini, dimatikan
+   lagi + kedua akun test dihapus setelah selesai) menghasilkan ID token
+   asli. Token owner-a berhasil `POST /runs`; owner-b baca run owner-a ->
+   **404** (isolasi kebukti), owner-a baca run sendiri -> 200.
+2. Lewat browser sungguhan (Chrome): sign-in real lewat SDK Firebase yang
+   sama persis dengan yang dipakai tombol "Sign in with Google" (hanya
+   metode sign-in-nya yang beda -- popup Google diblokir oleh sandbox
+   otomasi browser ini, `window.open` mengembalikan `null`; klik tombolnya
+   sendiri sudah dicoba dan TIDAK error, cuma popup-nya yang tidak bisa
+   dibuka karena keterbatasan environment tes, bukan bug aplikasi -- lihat
+   catatan di bawah), dashboard render dengan email ter-signed-in, submit
+   brief lewat form sungguhan -> run tercipta dengan `owner_id` = uid
+   Firebase asli (dicek langsung isi file `.localdata/runs/*.json`), Sign
+   out mengembalikan ke gate. Hook debug sementara yang dipakai untuk ini
+   (`window.__authDebug`) SUDAH DIHAPUS lagi dari `firebase.ts` setelah
+   tes selesai -- tidak ada sisa kode test di commit.
+- Commit `[isi setelah commit]` (branch `rifqi`).
+- **Belum diverifikasi**: klik tombol "Sign in with Google" yang
+  sungguh-sungguh membuka popup consent Google sampai selesai -- perlu
+  dicoba manual oleh Rifqi di browser normal (bukan browser otomasi)
+  sebelum demo, karena environment tes Claude Code memblokir `window.open`
+  untuk popup.
+
+---
+
+## MILESTONE 25 Agu malam (lanjutan) — UI New Request (Guardrail) selesai, dites end-to-end di browser
+
+Instruksi Rifqi: "lanjut ke auth dan New Request UI" — New Request UI
+dikerjakan duluan (backend-nya sudah lengkap dari item 12, tinggal UI),
+Firebase auth menyusul setelah ini.
+
+- `web/src/lib/api.ts` — tambah tipe `Citation`, `ScopeRequest`,
+  `ProofManifest`.
+- `web/src/app/page.tsx` — `GuardrailPanel` (di dalam `FreelancerActions`,
+  hanya tampil kalau `hasBaseline`): textarea "What did the client ask for?"
+  + "Log request" -> `POST /runs/{id}/requests`; daftar `RequestCard` per
+  request. Request yang belum diklasifikasi tampilkan select
+  IN_SCOPE/AMBIGUOUS/CHANGE_REQUEST + daftar `citableRefs` (hint, bukan
+  input) + `CitationList` (editor ref/quote tambah-hapus, mulai kosong) +
+  "Confirm classification" -> `POST .../requests/{id}/classify`. Request
+  yang sudah diklasifikasi jadi ringkasan read-only (classification +
+  citations).
+- Lolos `tsc --noEmit`, `eslint`, `next build`.
+- **Dites lewat Chrome sungguhan** (run `c7f094744f2645949aded9b4dc2f029e`,
+  baseline v1 aktif dengan criterion `mobile-breakpoints`): (1) log request
+  tanpa citation, pilih IN_SCOPE, confirm TANPA mengisi `CitationList` ->
+  hasil **AMBIGUOUS** (02 §4.5, sesuai desain — citable-refs hint yang
+  tampil bukan citation yang otomatis terpasang, harus diisi manual lewat
+  "+ add citation"); (2) log request kedua, pilih CHANGE_REQUEST, isi
+  citation `mobile-breakpoints` dengan quote verbatim persis dari baseline,
+  confirm -> hasil **tetap CHANGE_REQUEST**, citation tampil di ringkasan.
+  Kedua jalur (tanpa kutipan valid vs dengan kutipan valid) terbukti benar
+  sesuai domain rule.
+- Commit `7facf8f` (branch `rifqi`, sudah di-push ke remote `delividence`,
+  commit message dicek dulu — bersih dari atribusi tooling).
+- Test suite backend tetap **189 hijau** (perubahan ini frontend-only, tidak
+  menyentuh backend).
+- **Belum dikerjakan**: model (Gemini) mengusulkan classification+citation
+  otomatis untuk Guardrail — masih manual/freelancer-driven, sama seperti
+  dicatat di item 12/14 di bawah.
 
 ---
 

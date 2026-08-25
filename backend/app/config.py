@@ -35,6 +35,12 @@ GOOGLE_GENAI_USE_VERTEXAI = os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "FALSE")
 # mengecek "apakah API key sudah diisi" tanpa membaca os.environ langsung.
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 
+# 02 §8 / 06 §6: owner login pakai Firebase Auth, diverifikasi di app/auth.py.
+# Firebase Auth adalah layanan hosted terpisah dari Firestore/Pub/Sub, jadi
+# proyek Firebase tetap dipakai walau LOCAL=True (client link/portal klien
+# tidak lewat sini sama sekali -- itu opaque token sendiri).
+FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "").strip()
+
 # Tanpa GOOGLE_CLOUD_PROJECT, jalan dalam mode lokal: antrean lewat HTTP langsung
 # ke worker, state ke file JSON. Bentuk envelope dan semantik klaim job dibuat
 # identik dengan produksi supaya yang diuji lokal adalah jalur yang sama.

@@ -55,9 +55,10 @@ def _local_read(kind, name):
 # --- API ------------------------------------------------------------------
 
 
-def create_run(run_id, brief, output_language):
+def create_run(run_id, owner_id, brief, output_language):
     doc = {
         "run_id": run_id,
+        "owner_id": owner_id,
         "status": "queued",
         "output_language": output_language,
         "brief": brief,
