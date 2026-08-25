@@ -16,7 +16,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Histori commit | 25 Agu 2026 malam: partner menghapus & membuat ulang repo `irham3/delividence` dari kosong. Seluruh histori (main + rifqi) sudah di-push ulang ke repo baru itu — **bersih dari trailer/atribusi tooling apa pun di commit message** (lomba disponsori Google, wajib Gemini). Commit berikutnya juga MUST tetap begitu. |
 | Repo cadangan (tidak dipush lagi) | <https://github.com/rifqiahmadpratama/dealready> (masih ada di GitHub, tapi remote `origin` sudah dilepas dari git lokal 25 Agu — fokus ke `delividence` saja) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **154 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **165 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 Tidak ada proses yang ditinggal jalan. Aman dimatikan.
 
@@ -220,12 +220,21 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
       `ACCEPTED` di GET berikutnya.
     - `tests/test_evidence.py` (6) + `tests/test_delivery_review.py` (12),
       termasuk test A-9 (`ACCEPTED` tidak bisa ditimpa `CHANGES_REQUESTED`
-      lagi lewat endpoint ini). Total **154 test hijau**.
-11. Baru setelah itu: new request/Guardrail (scope comparison, classification
-    IN_SCOPE/AMBIGUOUS/CHANGE_REQUEST — bagian ini butuh Gemini untuk
-    proposal, jadi ikut diblokir billing/gcloud) dan Proof (export
-    Markdown/JSON acceptance record — tidak butuh Gemini, bisa dikerjakan
-    duluan kalau mau).
+      lagi lewat endpoint ini).
+11. ~~**Proof Manifest / Acceptance Record**~~ **Selesai** —
+    `app/domain/proof.py`: `build_manifest()` (murni, menyatukan baseline +
+    status tiap criterion + evidence + keputusan klien terbaru — empat lapis
+    Acceptance Matrix 01 §4.3 dijaga tetap terpisah, tidak digabung jadi satu
+    badge) dan `to_markdown()`. Endpoint `GET /runs/{run_id}/proof?format=json|md`
+    (default json; 409 kalau belum ada baseline aktif). "Checks" (lapis
+    ketiga Acceptance Matrix, deterministic check sungguhan) sengaja tidak
+    ada field-nya — tidak ada yang benar-benar dijalankan di MVP ini.
+    Diverifikasi end-to-end lewat `uvicorn` sungguhan sampai keluar Markdown
+    yang benar. `tests/test_proof.py` (5) + `tests/test_proof_endpoint.py`
+    (6). Total **165 test hijau**.
+12. Baru setelah itu: new request/Guardrail (scope comparison, classification
+    IN_SCOPE/AMBIGUOUS/CHANGE_REQUEST) — bagian ini butuh Gemini untuk
+    proposal, jadi diblokir billing/gcloud (item 6).
 
 ---
 

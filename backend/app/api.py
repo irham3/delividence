@@ -4,10 +4,11 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app import audit, baselines, client_links, config, evidence, queue, store
-from app.domain import client_link, criteria, readiness, schemas
+from app.domain import client_link, criteria, proof, readiness, schemas
 from app.domain.baseline import build_canonical_payload
 from app.domain.canonical import payload_hash as compute_payload_hash
 from app.domain.enums import ACCEPTED, CHANGES_REQUESTED
@@ -290,7 +291,12 @@ def add_evidence(run_id: str, req: AddEvidenceRequest):
 
 def _decisions_for(deal_id):
     """Proyeksi event CRITERION_DECISION -> bentuk `decisions` yang
-    dikonsumsi app.domain.criteria.effective_status/can_record_decision."""
+    dikonsumsi app.domain.criteria.effective_status/can_record_decision.
+
+    Field ekstra (actor/reason/created_at) ikut disertakan -- criteria.py
+    hanya membaca lima key intinya dan mengabaikan sisanya, jadi aman
+    dipakai ulang oleh proof manifest (build_proof_manifest) tanpa proyeksi
+    kedua."""
     out = []
     for e in audit.list_events(deal_id):
         if e["type"] != "CRITERION_DECISION":
@@ -302,6 +308,9 @@ def _decisions_for(deal_id):
             "baseline_version": e["baseline_version"],
             "criterion_text_hash": p["criterion_text_hash"],
             "seq": e["seq"],
+            "actor": e["actor"],
+            "reason": p.get("reason"),
+            "created_at": e["created_at"],
         })
     return out
 
@@ -405,3 +414,43 @@ def submit_delivery_review(token: str, req: SubmitReviewRequest):
         "review_session_id": review_session_id,
         "decisions": [item.model_dump() for item, _ in prepared],
     }
+
+
+@app.get("/runs/{run_id}/proof")
+def get_proof(run_id: str, format: str = "json"):
+    """Proof Manifest / Acceptance Record (01-PRD §5 langkah 12) -- rangkuman
+    baseline + status tiap criterion + evidence + keputusan klien, siap
+    diekspor. `format=json` (default) atau `format=md`."""
+    if format not in ("json", "md"):
+        raise HTTPException(status_code=422, detail="format must be 'json' or 'md'")
+
+    run = store.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run not found")
+
+    active_version, active_baseline = _active_baseline_or_409(run_id, run)
+    all_baselines = baselines.get_all_up_to(run_id, active_version)
+    decisions = _decisions_for(run_id)
+
+    criteria_keys = active_baseline["canonical_payload"]["criteria"]
+    criteria_status = {
+        key: criteria.effective_status(key, active_version, all_baselines, decisions)
+        for key in criteria_keys
+    }
+    evidence_by_criterion = {
+        key: evidence.list_for_criterion(run_id, key) for key in criteria_keys
+    }
+    # Keputusan terakhir per criterion (seq terbesar) -- sama seperti aturan
+    # "last" di app.domain.criteria.effective_status, bukan tie-break baru.
+    latest_decision_by_criterion = {}
+    for d in sorted(decisions, key=lambda d: d["seq"]):
+        latest_decision_by_criterion[d["criterion_key"]] = d
+
+    manifest = proof.build_manifest(
+        run_id, run["brief"], run["output_language"], active_baseline,
+        criteria_status, evidence_by_criterion, latest_decision_by_criterion,
+    )
+
+    if format == "md":
+        return PlainTextResponse(proof.to_markdown(manifest), media_type="text/markdown")
+    return manifest
