@@ -3,10 +3,11 @@
 Ditulis **25 Agustus 2026**, setelah review partner (dua kritik) dan pengecekan
 langsung ke halaman aturan resmi + dokumentasi model Google.
 
-> Slot `08` disediakan untuk `08-CRITIQUE-AND-REVISED-PLAN.md` dari partner.
-> File itu **belum ada di folder ini** — partner menaruhnya di mesinnya sendiri
-> (`D:\Work\00\devpost-hacakthon\`). Minta dia kirim; isinya patch list per
-> dokumen, scope v2, dan rencana 6 hari.
+> **Struktur dokumen per 25 Agustus 2026.** Paket revisi dari partner sudah
+> masuk dan menjadi rencana kerja resmi: `00`-`07` + `09-DOMAIN-RULES.md`.
+> Paket DealReady yang lama dipindahkan ke [`arsip-dealready/`](arsip-dealready/)
+> sebagai riwayat, bukan rujukan. Dokumen ini (`10`) memuat keputusan terkunci
+> dan fakta aturan yang sudah diverifikasi ke sumber resmi.
 
 ---
 
@@ -14,14 +15,22 @@ langsung ke halaman aturan resmi + dokumentasi model Google.
 
 | Kode | Keputusan | Nilai |
 |---|---|---|
-| **D-1** | Nama produk & repo | **DealReady** — final, bukan lagi nama kerja |
-| **D-1** | Repo | `github.com/rifqiahmadpratama/dealready`, **private**, folder ini sebagai root |
+| **D-1** | Nama produk | **Delividence** — final (sempat DealReady, lalu ScopeHandshake di paket revisi) |
+| **D-1** | Repo submission | `github.com/irham3/delividence`, **public**, milik partner |
+| — | Repo cadangan | `github.com/rifqiahmadpratama/dealready`, private, mirror milik Rifqi |
 | — | Commit pertama | 25 Agustus 2026 — di dalam periode submission (3–31 Agustus) |
 | **R-4** | Model | `gemini-3.7-flash` (lihat §3) |
+| — | Rencana kerja | Paket revisi partner diadopsi; profil **Modul A saja** (§4b) |
+| — | Stack | Next.js 16 + TypeScript + Tailwind 4 (web); Python 3.11 + FastAPI (API & worker) |
 
-**Konsekuensi repo private:** aturan mewajibkan project dapat diakses juri tanpa
-restriksi. Sebelum submit, repo **wajib** di-share ke `testing@devpost.com` dan
-`cloudhackathons@google.com`, atau diubah jadi public. Masuk checklist `05`.
+**Repo submission ada di akun partner, bukan akun Rifqi.** Itu sah untuk
+submission tim — tetapi hanya kalau **keduanya benar-benar terdaftar sebagai tim
+di Devpost dan undangannya sudah diterima**. Kalau tidak, submission berjalan atas
+nama akun yang bukan milik Rifqi. Masuk checklist `05` sebagai item yang wajib
+diverifikasi sebelum submit.
+
+Repo sudah public, jadi syarat akses juri (V-7) terpenuhi tanpa perlu berbagi ke
+`testing@devpost.com`.
 
 ## 2. Fakta yang sudah DIVERIFIKASI ke aturan resmi
 
@@ -128,6 +137,35 @@ Anggaran nyata per 25 Agustus: Sel–Jum malam ~12 jam + Sabtu–Minggu ~20 jam 
 |---|---|
 | **Cloud Scheduler nudge** | ~1.5j. Satu-satunya perbaikan murah untuk klaim otonomi (bobot 40%) — run idle bangun sendiri dan menyusun follow-up. Prioritaskan di atas multimodal |
 | **Multimodal** (screenshot & voice note brief) | Best Multimodal UX punya 2 pemenang, dan brief WhatsApp asli memang datang sebagai screenshot. ~2j. **Komitmen hanya setelah alur inti hijau** |
+
+## 4b. Profil modul — diputuskan di depan, bukan saat kepepet
+
+Paket revisi mengestimasi **46–50 jam** (expected) sampai **60–70 jam**
+(pesimistis), dengan anggaran 35 jam yang sudah basi: blok "Selasa 25, 3 jam"
+adalah hari ini dan sebagian besar sudah lewat. Realistis tersisa **~29–32 jam**.
+
+Paket itu juga memuat satu kontradiksi yang harus dicatat supaya tidak menyesatkan
+saat panik: `04 §1` menyebut yang dipotong lebih dulu adalah polish, PDF, email,
+memory UI, dan evidence adapter — sementara `03 §5` menyatakan hal-hal itu
+**sudah** berada di SHOULD/WON'T dan "bukan slack dari MUST dan tidak dihitung
+sebagai cut". Artinya cadangan pemotongan yang dijanjikan `04` sebenarnya tidak ada.
+
+**Keputusan: jalankan tangga degradasi `03 §5` sejak sekarang.**
+
+| Modul | Status | Yang wajib ikut dihapus |
+|---|---|---|
+| **A** — criterion identity & baseline versioning | **DIBANGUN** | — |
+| **C** — drift ledger | **DILEPAS** | panel drift disembunyikan; beat drift dihapus dari naskah video |
+| **B** — revision rounds | **DILEPAS** | revision counter & exhausted-round routing disembunyikan |
+| **D** — conflict resolution | **DILEPAS** | fixture konflik Friday/Monday ikut dilepas — mempertahankannya tanpa D membuat golden path deadlock |
+
+Yang dihemat: seluruh WP-2b (4.5 jam), sebagian besar matriks 45 test, dan potongan
+besar WP-5/WP-6 — tanpa menyentuh pembeda utama: portal klien tanpa akun, Pub/Sub
+resume, provenance, deterministic readiness, baseline tak tertimpa, cited
+comparison, evidence-to-criterion acceptance, dan deployment.
+
+Setiap degradasi wajib masuk known limitations, dan **semua klaim, test, serta beat
+video terkait ikut dihapus** — bukan dibiarkan mengklaim fitur yang tidak ada.
 
 ## 5. Yang MASIH terbuka
 

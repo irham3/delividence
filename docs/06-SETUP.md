@@ -1,237 +1,203 @@
-# 06 — Setup dari Nol
+# 06 — Setup Lokal dan Google Cloud
 
-Untuk menyiapkan project di komputer lain atau di mesin partner.
-
-> **Status per 25 Agustus 2026 — sebagian sudah diverifikasi.**
->
-> | Bagian | Status |
-> |---|---|
-> | Backend lokal (§5, §8) | **Terverifikasi.** 10 test hijau, dua service nyata jalan di 8080/8081. Langkah persisnya ada di [`backend/README.md`](../backend/README.md) |
-> | Setup & deploy Google Cloud (§3, §7) | **Digantikan skrip**, lihat kotak di bawah. Belum pernah dijalankan — menunggu billing aktif |
-> | Frontend (§6) | Belum ada kodenya |
-
-> ### §3 dan §7 sekarang dijalankan lewat skrip, bukan disalin manual
->
-> - [`deploy/01-setup-gcp.ps1`](../deploy/01-setup-gcp.ps1) — aktifkan API
->   (**termasuk Cloud Build**, yang wajib untuk `gcloud run deploy --source` dan
->   tidak ada di §3), Firestore, Artifact Registry, tiga service account dengan
->   hak minimum, topic + **dead-letter topic**, dan binding untuk service agent
->   Pub/Sub yang tanpa itu membuat dead-letter gagal diam-diam.
-> - [`deploy/02-deploy.ps1`](../deploy/02-deploy.ps1) — deploy worker dulu (URL-nya
->   dibutuhkan subscription), binding `roles/run.invoker`, push subscription
->   dengan **OIDC + ack deadline 60 detik + retry policy + dead-letter**, baru
->   deploy API.
->
-> **Bug di §7 sudah diperbaiki di kode, bukan cuma dicatat:** di sana
-> `dealready-api` dan `dealready-worker` sama-sama di-deploy dari
-> `--source ./backend` tanpa pemilih entrypoint, jadi kedua service akan boot app
-> yang sama. Sekarang ada env `ROLE=api|worker` yang menentukannya, plus
-> `Dockerfile` supaya build-nya deterministik.
->
-> API di-deploy `--allow-unauthenticated`: aturan mewajibkan juri bisa mengakses
-> project tanpa restriksi ([`09`](09-KEPUTUSAN-DAN-VERIFIKASI.md) V-7). Worker
-> tertutup, hanya identitas push Pub/Sub yang boleh memanggilnya.
-
----
+Dokumen ini adalah target spin-up untuk codebase yang akan dibangun. Setiap command wajib diuji dan diperbaiki di README implementasi sebelum submission; jangan mengklaim setup reproducible sebelum tes dari environment bersih.
 
 ## 1. Prasyarat
 
-| Kebutuhan | Versi | Cek |
+- Node.js 20+ dan npm/pnpm.
+- Python 3.12+.
+- Docker.
+- Google Cloud CLI terbaru.
+- Google Cloud project dengan billing aktif.
+- Firebase project yang terhubung ke Google Cloud project untuk owner authentication.
+
+Rencana direktori:
+
+```text
+apps/web/             Next.js UI
+services/api/         FastAPI public API
+services/worker/      FastAPI private Pub/Sub target + Google ADK
+shared/schemas/       WAJIB: source of truth schema, enum, dan event contracts
+infra/                deploy scripts/notes
+tests/fixtures/       golden brief, screenshot, injection cases
+```
+
+## 2. Environment variables
+
+Gunakan placeholders di `.env.example`; jangan commit nilai nyata.
+
+| Variable | Service | Isi |
 |---|---|---|
-| Python | 3.11 (dipakai & diuji; image `python:3.11-slim`) | `python --version` |
-| Node.js | 20+ | `node --version` |
-| pnpm | terbaru | `pnpm --version` |
-| Google Cloud SDK | terbaru | `gcloud --version` |
-| Git | mana saja | `git --version` |
-| Akun Google Cloud | dengan billing aktif | Cek di console |
+| `GOOGLE_CLOUD_PROJECT` | API/worker | project ID |
+| `GOOGLE_CLOUD_LOCATION` | worker | region model/Vertex AI |
+| `GOOGLE_GENAI_USE_VERTEXAI` | worker | wajib `TRUE`; mencegah fallback ke Gemini Developer API/API key |
+| `GEMINI_MODEL` | worker | target `gemini-3.7-flash`, setelah diverifikasi |
+| `PUBSUB_TOPIC` | API | `scope-events` |
+| `STORAGE_BUCKET` | API/worker | bucket artifact |
+| `WEB_ORIGIN` | API | hosted web origin untuk CORS |
+| `API_BASE_URL` | web | hosted/local API URL |
+| `FIREBASE_PROJECT_ID` | web/API | Firebase project ID |
+| `NEXT_PUBLIC_FIREBASE_*` | web | public Firebase web config; bukan secret |
 
-Shell yang diasumsikan: **PowerShell di Windows 11**. Untuk macOS/Linux, ganti
-`$env:NAMA = "nilai"` menjadi `export NAMA="nilai"`.
+Cloud Run memakai Application Default Credentials melalui service account. Hindari long-lived service-account key dan jangan menaruh Gemini/API key di client.
 
-## 2. Ambil kode
+## 3. Local bootstrap
 
-```powershell
-git clone <URL-REPO>
-cd dealready
-```
-
-`[verifikasi]` URL repo diisi setelah repo dibuat (Hari 1).
-
-## 3. Setup Google Cloud
-
-Sekali per project, bukan per mesin.
+PowerShell example setelah code tersedia:
 
 ```powershell
-# Login dan pilih project
 gcloud auth login
-gcloud config set project <PROJECT_ID>
-
-# Aktifkan API yang dibutuhkan
-gcloud services enable `
-  run.googleapis.com `
-  pubsub.googleapis.com `
-  firestore.googleapis.com `
-  secretmanager.googleapis.com `
-  artifactregistry.googleapis.com
-
-# Firestore mode Native
-gcloud firestore databases create --location=asia-southeast2
-
-# Topic Pub/Sub
-gcloud pubsub topics create dealready-runs
-```
-
-Push subscription dibuat **setelah** worker ter-deploy, karena butuh URL-nya —
-lihat bagian 7.
-
-`[verifikasi]` Region `asia-southeast2` (Jakarta) dipilih karena dekat pengguna.
-Pastikan seluruh layanan memakai region yang konsisten.
-
-### Kredensial untuk pengembangan lokal
-
-```powershell
 gcloud auth application-default login
+gcloud config set project PROJECT_ID
+
+Set-Location apps/web
+npm install
+Copy-Item .env.example .env.local
+npm run dev
 ```
 
-Ini membuat kode lokal bisa mengakses Firestore dan Pub/Sub memakai identitasmu,
-tanpa perlu file service account key. **Jangan pernah men-download service
-account key ke laptop** — itu kredensial jangka panjang yang gampang bocor lewat
-commit.
-
-## 4. Secret
+Di terminal kedua:
 
 ```powershell
-# Simpan API key Gemini
-"NILAI_API_KEY_ANDA" | gcloud secrets create gemini-api-key --data-file=-
-```
-
-Untuk lokal, boleh memakai file `.env` yang **tidak** di-commit:
-
-```
-GEMINI_API_KEY=...
-GEMINI_MODEL=...          # [verifikasi] ID model Gemini 3.5+ yang benar
-GCP_PROJECT_ID=...
-PUBSUB_TOPIC=dealready-runs
-FIREBASE_PROJECT_ID=...
-ENVIRONMENT=development
-```
-
-Pastikan `.env` ada di `.gitignore` **sebelum** commit pertama, bukan sesudah.
-
-## 5. Backend lokal
-
-```powershell
-cd backend
+Set-Location services/api
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-
-# API
-uvicorn main:app --reload --port 8000
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+uvicorn app.main:app --reload --port 8081
 ```
 
-Worker dijalankan sebagai proses terpisah di terminal lain:
+Di terminal ketiga:
 
 ```powershell
-cd backend
+Set-Location services/worker
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-uvicorn worker:app --reload --port 8001
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+uvicorn app.main:app --reload --port 8082
 ```
 
-Verifikasi:
+Untuk local-only iteration, API dapat memanggil worker test endpoint yang hanya aktif saat `ENV=local`; hosted demo wajib melewati Pub/Sub.
+
+## 4. Provision Google Cloud
+
+Tetapkan satu region yang kompatibel dengan Cloud Run dan model. Contoh di bawah memakai placeholders:
 
 ```powershell
-curl http://localhost:8000/health
+$ScopeProject = "PROJECT_ID"
+$ScopeRegion = "REGION"
+$ScopeBucket = "$ScopeProject-scopehandshake"
+
+gcloud config set project $ScopeProject
+gcloud services enable run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com firestore.googleapis.com pubsub.googleapis.com storage.googleapis.com aiplatform.googleapis.com logging.googleapis.com
+
+gcloud firestore databases create --location=$ScopeRegion --type=firestore-native
+gcloud pubsub topics create scope-events
+gcloud storage buckets create "gs://$ScopeBucket" --location=$ScopeRegion --uniform-bucket-level-access
+gcloud artifacts repositories create scopehandshake --repository-format=docker --location=$ScopeRegion
 ```
 
-## 6. Frontend lokal
+Jika Firestore database/repository/bucket sudah ada, command create boleh gagal dengan “already exists”; verifikasi konfigurasi, jangan membuat resource duplikat.
+
+## 5. Service accounts dan IAM minimum
 
 ```powershell
-cd frontend
-pnpm install
-pnpm run dev
+gcloud iam service-accounts create scope-api
+gcloud iam service-accounts create scope-worker
+gcloud iam service-accounts create scope-pubsub-invoker
 ```
 
-Butuh file `.env.local`:
+Target role:
 
-```
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_FIREBASE_API_KEY=...
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
-```
-
-Buka `http://localhost:3000`.
-
-## 7. Deploy ke Google Cloud
-
-```powershell
-# Build dan deploy API
-gcloud run deploy dealready-api `
-  --source ./backend `
-  --region asia-southeast2 `
-  --allow-unauthenticated `
-  --set-secrets GEMINI_API_KEY=gemini-api-key:latest
-
-# Build dan deploy worker (TIDAK boleh publik)
-gcloud run deploy dealready-worker `
-  --source ./backend `
-  --region asia-southeast2 `
-  --no-allow-unauthenticated `
-  --set-secrets GEMINI_API_KEY=gemini-api-key:latest
-
-# Build dan deploy frontend
-gcloud run deploy dealready-web `
-  --source ./frontend `
-  --region asia-southeast2 `
-  --allow-unauthenticated
-```
-
-Setelah worker punya URL, buat push subscription dengan OIDC:
-
-```powershell
-gcloud pubsub subscriptions create dealready-runs-push `
-  --topic dealready-runs `
-  --push-endpoint "https://<URL-WORKER>/pubsub/push" `
-  --push-auth-service-account "<SERVICE_ACCOUNT_EMAIL>"
-```
-
-**Worker harus `--no-allow-unauthenticated`.** Kalau endpoint worker terbuka ke
-publik, siapa pun bisa memicu run dan membakar kuota Gemini — dan itu cacat
-security yang akan terlihat oleh juri.
-
-## 8. Test
-
-```powershell
-cd backend
-.\.venv\Scripts\Activate.ps1
-pytest -q
-```
-
-Semua harus hijau sebelum commit. Salin ringkasan hasilnya ke README.
-
-## 9. Masalah yang kemungkinan besar muncul
-
-Diisi dan dikoreksi **sambil jalan** — bagian ini justru yang paling berguna
-untuk partner dan untuk juri.
-
-| Gejala | Kemungkinan penyebab |
+| Principal | Role minimum |
 |---|---|
-| Push subscription mengembalikan 403 | Service account belum punya role `roles/run.invoker` di service worker |
-| Worker memproses satu brief dua kali | Idempotensi belum ditegakkan; Pub/Sub menjamin *at-least-once* |
-| Firestore menolak dari lokal | `gcloud auth application-default login` belum dijalankan |
-| Model menolak / nama model salah | `[verifikasi]` ID model Gemini 3.5+ belum dikonfirmasi ke dokumentasi resmi |
-| Deploy Cloud Run gagal saat build | Dockerfile atau deteksi buildpack; cek log build di console |
+| `scope-api` | Datastore User, Pub/Sub Publisher, Storage Object User |
+| `scope-worker` | Datastore User, Vertex AI User, Storage Object Viewer |
+| `scope-pubsub-invoker` | Cloud Run Invoker pada worker saja |
 
-## 10. Pembagian kerja kalau berdua
+Berikan role pada resource paling sempit yang didukung. Hindari Editor/Owner pada runtime account. Pub/Sub service agent mungkin memerlukan Service Account Token Creator untuk membuat OIDC token; ikuti documented push-auth setup dan catat command final di README.
 
-Kalau project dikerjakan berdua, ini pembagian dengan tabrakan paling sedikit:
+## 6. Firebase Auth
 
-| Orang | Wilayah |
+1. Hubungkan Firebase ke `PROJECT_ID`.
+2. Aktifkan satu provider untuk owner demo, idealnya Google Sign-In.
+3. Tambahkan localhost dan hosted web domain ke authorized domains.
+4. Web mengirim Firebase ID token sebagai Bearer token.
+5. API memverifikasi token dan mengambil `uid`; jangan percaya `owner_id` dari request body.
+
+Client tidak memakai Firebase Auth. Client memakai opaque token yang scope/expiry/purpose-nya diverifikasi oleh API.
+
+## 7. Build dan deploy
+
+Build image terpisah agar entrypoint tidak tertukar:
+
+```powershell
+$ScopeProject = "PROJECT_ID"
+$ScopeRegion = "REGION"
+$ScopeRepo = "$ScopeRegion-docker.pkg.dev/$ScopeProject/scopehandshake"
+
+gcloud builds submit services/api --tag "$ScopeRepo/api:latest"
+gcloud builds submit services/worker --tag "$ScopeRepo/worker:latest"
+gcloud builds submit apps/web --tag "$ScopeRepo/web:latest"
+
+gcloud run deploy scope-api --image "$ScopeRepo/api:latest" --region $ScopeRegion --service-account "scope-api@$ScopeProject.iam.gserviceaccount.com" --allow-unauthenticated
+gcloud run deploy scope-worker --image "$ScopeRepo/worker:latest" --region $ScopeRegion --service-account "scope-worker@$ScopeProject.iam.gserviceaccount.com" --no-allow-unauthenticated
+gcloud run deploy scope-web --image "$ScopeRepo/web:latest" --region $ScopeRegion --allow-unauthenticated
+```
+
+API perlu dapat diakses publik karena browser owner/client memanggilnya, tetapi application authorization tetap wajib pada setiap route. Worker tidak boleh public.
+
+Setelah worker URL tersedia:
+
+```powershell
+$WorkerUrl = gcloud run services describe scope-worker --region $ScopeRegion --format="value(status.url)"
+$Invoker = "scope-pubsub-invoker@$ScopeProject.iam.gserviceaccount.com"
+
+gcloud run services add-iam-policy-binding scope-worker --region $ScopeRegion --member="serviceAccount:$Invoker" --role="roles/run.invoker"
+gcloud pubsub subscriptions create scope-worker-push --topic=scope-events --push-endpoint="$WorkerUrl/events/pubsub" --push-auth-service-account=$Invoker
+```
+
+Set Cloud Run environment variables menggunakan `gcloud run services update --set-env-vars` atau deployment configuration; jangan memakai hard-coded project/URL.
+
+## 8. Verification commands
+
+```powershell
+gcloud run services list --region $ScopeRegion
+gcloud pubsub subscriptions describe scope-worker-push
+gcloud logging read 'resource.type="cloud_run_revision"' --limit=20
+npm --prefix apps/web test
+python -m pytest services/api/tests services/worker/tests
+```
+
+Manual integration checks:
+
+1. Create deal sebagai owner.
+2. Submit golden brief dan tunggu job complete.
+3. Buka client link di incognito.
+4. Submit response dan temukan job ID yang sama di Cloud Logging/Firestore.
+5. Pada client UI tekan **Confirm project plan**; verifikasi event internal `BASELINE_APPROVED` lalu `BASELINE_ACTIVATED` dan simpan hash.
+6. Create change request; pastikan hash baseline lama tetap sama.
+7. Add evidence dan lakukan client acceptance.
+
+## 9. Demo/judge environment
+
+- Seed hanya synthetic data; tidak memakai client nyata.
+- Seed command wajib memakai domain service/event writer, bukan direct Firestore mutation.
+- Untuk video drift beat, seed membuat tepat empat valid `SCOPE_CLASSIFICATION_DECIDED` berklasifikasi `IN_SCOPE` setelah baseline aktif. Request kelima tetap dilakukan live agar derived counter berubah 4 → 5.
+- Judge owner account memiliki credentials yang aman dan dibagikan hanya lewat testing instructions.
+- Dedicated client link punya expiry melewati judging, scope minimum, dan synthetic deal saja.
+- Cloud Run minimum instances 0 untuk biaya, kecuali cold start merusak demo; bila menaikkan minimum instance, pasang budget alert dan turunkan setelah judging sesuai aturan event.
+- Jangan menghapus resource atau mengubah linked materials setelah deadline sampai periode lock berakhir.
+
+## 10. Troubleshooting priority
+
+| Gejala | Cek pertama |
 |---|---|
-| A | Agent (ADK, tool, loop, trace) + aturan deterministik + test |
-| B | Infrastruktur GCP + endpoint API + frontend + video |
-
-Kontrak antar keduanya adalah **bentuk dokumen Firestore** di
-[`02-ARCHITECTURE.md`](02-ARCHITECTURE.md) bagian 5. Sepakati itu di Hari 1 dan
-jangan diubah sepihak — kalau berubah, dua-duanya harus tahu di hari yang sama.
+| Pub/Sub 401/403 | worker invoker binding, OIDC service account, token creator permission |
+| Duplicate outputs | idempotency document/transaction lease |
+| Gemini model not found | exact model ID, Vertex vs Developer API mode, region, quota |
+| Firestore permission denied | runtime service account role dan project selection |
+| Client token selalu invalid | raw token hashing/canonical encoding, expiry timezone, purpose |
+| CORS failure | exact hosted `WEB_ORIGIN`; jangan wildcard dengan credentials |
+| Image unreadable | MIME/size validation dan Storage IAM |

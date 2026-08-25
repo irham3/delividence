@@ -1,126 +1,94 @@
-# 00 — Brief Hackathon
+# 00 — Brief Hackathon dan Positioning
 
-Ringkasan aturan **All Things Agentic Hackathon: Ready, Set, Agent!** supaya tim
-tidak perlu membaca ulang seluruh halaman Devpost.
+Dokumen ini adalah source of truth untuk eligibility dan positioning Delividence. Periksa kembali Rules/FAQ Devpost sebelum submit karena materi acara dapat berubah.
 
-Sumber: <https://allthingsagentichackathon.devpost.com/> dan halaman `/rules`,
-diambil 24 Agustus 2026. **Kalau ada perbedaan, halaman resmi yang menang.**
+## 1. Identitas acara
 
----
-
-## 1. Identitas
-
-| | |
+| Item | Keputusan |
 |---|---|
-| Nama | All Things Agentic Hackathon: Ready, Set, Agent! |
-| Penyelenggara | Google (platform: Devpost) |
-| Format | Online, global |
-| Tema | AI agent yang bekerja otonom di background, memproses data besar, mengotomasi workflow kompleks secara **asinkron** |
-| Total hadiah | $180.000 |
-| Peserta terdaftar | ~7.482 (per 24 Agustus 2026) |
+| Event | All Things Agentic Hackathon |
+| Submission deadline | 31 Agustus 2026, 17:00 PT |
+| Konversi Jakarta | 1 September 2026, 07:00 WIB |
+| Kategori | **The Collaborative Partner** |
+| Project | **Delividence** |
+| Start date yang dilaporkan | Tanggal commit/implementasi pertama; jangan mengaku lebih awal |
+| Bahasa aplikasi | English wajib; Bahasa Indonesia opsional |
 
-## 2. Timeline
+## 2. Syarat teknis wajib
 
-| | |
-|---|---|
-| Submission period | 3 Agustus 2026, 09:00 PT sampai **31 Agustus 2026, 17:00 PT** |
-| Deadline dalam WIB | **1 September 2026, 07:00 WIB** |
-| Target internal | Submit **30 Agustus**, sisakan 1 hari buffer |
+Submission harus merupakan proyek baru pada submission period dan menggunakan ketiganya:
 
-## 3. Syarat teknis — WAJIB ketiganya
+- **Gemini 3.5 atau lebih baru** — target implementasi `gemini-3.7-flash`; verifikasi ID dan availability pada hari integrasi.
+- **Minimal satu Google agent framework** — Google Agent Development Kit (ADK).
+- **Minimal satu Google Cloud service** — Cloud Run, Firestore, Pub/Sub, dan Cloud Storage digunakan secara nyata.
 
-1. **Gemini 3.5 atau lebih baru** — via Gemini API atau Vertex AI.
-   **Sudah diverifikasi 25 Agu 2026:** default kita `gemini-3.7-flash`
-   (stabil/GA, Flash terbaru). `gemini-3.5-flash` juga sah tapi kini
-   dideskripsikan Google sebagai *legacy*. Rinciannya di
-   [`09`](09-KEPUTUSAN-DAN-VERIFIKASI.md) §3.
-2. **Minimal satu Google Agent Framework** — Google ADK, GenAI SDK,
-   Antigravity SDK, atau GenKit.
-3. **Minimal satu layanan infrastruktur Google Cloud** — Cloud Run, Cloud SQL,
-   Firestore, GKE, Pub/Sub, dan sejenisnya.
+Jangan hanya menuliskan layanan di diagram. Video harus memperlihatkan aplikasi bekerja dan bukti backend berjalan di Google Cloud.
 
-Disediakan panitia: trial Google Cloud tanpa biaya + **$150 credit** per peserta.
+## 3. Mengapa The Collaborative Partner
 
-## 4. Kategori — pilih satu
+Delividence mempertahankan konteks lintas giliran dan lintas sesi, menggabungkan kontribusi freelancer serta klien, lalu beradaptasi melalui preference memory yang dikonfirmasi pengguna. Nilai agentic-nya terlihat dari:
 
-| Kategori | Inti | Hadiah |
+- state Deal Ledger bertahan setelah request selesai;
+- client response memicu Pub/Sub dan melanjutkan workflow tanpa copy-paste manual;
+- agent memilih tiga pertanyaan berdampak tertinggi dari state yang belum lengkap;
+- permintaan baru dibandingkan dengan baseline yang telah disetujui;
+- preference memory digunakan pada deal berikutnya tetapi tidak pernah dianggap sebagai fakta dari klien.
+
+Event-driven orchestration tetap menjadi kekuatan teknis, tetapi kategori submission hanya satu: Collaborative Partner.
+
+Pilihan ini juga strategis: otonomi tetap diperlihatkan melalui event resume, revision routing, dan drift signals, sementara shared state dua pihak memberi diferensiasi yang lebih khas daripada agent penyelesai tugas umum. Jangan pindah kategori hanya untuk terlihat lebih otonom; tambahkan otonomi deterministik ke dalam collaborative lifecycle.
+
+## 4. Masalah yang dipilih
+
+Freelancer sering memulai pekerjaan dari brief singkat atau percakapan yang tersebar. Ambiguitas tersebut baru terlihat setelah pengerjaan, ketika klien meminta revisi berulang atau menambahkan pekerjaan yang tidak pernah disepakati. Percakapan biasa sulit dijadikan rujukan karena:
+
+- tidak ada baseline scope yang terstruktur dan dibekukan;
+- istilah seperti “responsive”, “siap”, atau “revisi minor” tidak punya acceptance criteria;
+- permintaan baru bercampur dengan scope lama;
+- hasil kerja tidak dipetakan langsung ke janji yang disepakati;
+- keputusan klien tersebar di chat dan sulit ditelusuri.
+
+Delividence tidak mencoba menyelesaikan pembayaran atau sengketa. Produk ini membuat batas kerja dan bukti penerimaan lebih jelas sebelum konflik muncul.
+
+## 5. Positioning dan pembeda
+
+| Alternatif | Yang dapat dilakukan | Yang tetap hilang |
 |---|---|---|
-| **The Taskmaster** | Otomasi workflow multi-langkah. Agent **bertindak**, bukan sekadar bercakap; merapikan proses berantakan dan me-routing informasi | $20.000 |
-| **The Collaborative Partner** ← **pilihan kita** | Agent adaptif terhadap user: mengajukan pertanyaan klarifikasi, memberi panduan bertahap, terus berkembang dari feedback | $20.000 |
-| **The Fortified Enterprise Fleet** | Jaringan agent skala institusi: Agent Registry, Agent Runtime, Memory Bank, Agent Identity (zero-trust), Agent Gateway, Model Armor, Agent Observability | $20.000 |
+| Chatbot/Codex/coworker | Menganalisis brief dan menulis proposal sekali | shared state dua pihak, approval granular, event resume, versioned baseline, proof-to-criterion mapping |
+| Google Docs/form | Mengumpulkan isi dan komentar | klasifikasi provenance, pertanyaan adaptif, scope drift detection, deterministic readiness |
+| Upwork/Fiverr | Marketplace, komunikasi, pembayaran, dispute flow | portable evidence layer untuk pekerjaan dari kanal mana pun |
+| Contract generator | Menghasilkan dokumen legal | loop klarifikasi aktif dan bukti delivery per acceptance criterion |
 
-Alasan memilih Collaborative Partner: [`01-PRD.md`](01-PRD.md) bagian 2.
+Kalimat positioning:
 
-## 5. Struktur hadiah lengkap
+> **Delividence is a two-party AI scope and acceptance protocol—not another proposal chatbot or freelance marketplace.**
 
-| Kategori hadiah | Nilai | Pemenang | Bonus |
-|---|---|---|---|
-| Grand Prize | $50.000 | 1 | $5K credit, virtual coffee, promo sosmed |
-| The Taskmaster | $20.000 | 1 | $2K credit + promo |
-| Collaborative Partner | $20.000 | 1 | $2K credit + promo |
-| Fortified Enterprise Fleet | $20.000 | 1 | $2K credit + promo |
-| Startup Excellence | $20.000 | 1 | $5K credit + promo |
-| **Individual / Hobbyist** | $10.000 | **2** | $1K credit + promo — **terbuka untuk tim juga**, bukan solo saja (V-10) |
-| Best Architectural Design | $5.000 | 2 | $1K credit |
-| Best Multimodal UX | $5.000 | 2 | $1K credit |
-| Honorable Mention | $2.000 | 5 | $500 credit |
+## 6. Demo yang membuktikan ide
 
-Startup Excellence butuh badan usaha terdaftar — tidak relevan.
+Demo tunggal harus menunjukkan rangkaian sebab-akibat, bukan daftar fitur:
 
-## 6. Kriteria penilaian
-
-| Bobot | Kriteria | Artinya buat kita |
-|---:|---|---|
-| **40%** | Innovation & Operational Utility — seberapa banyak friksi dunia nyata yang dihilangkan agent **secara mandiri** | Kata kuncinya *independently*. Tool request-response akan kalah di sini |
-| **30%** | Architectural Discipline & Tech Stack — kualitas engineering, decoupling, state management, security | Pemisahan AI/kalkulasi, isolasi data, idempotensi, test |
-| **30%** | Demo & Production Readiness — kualitas video & repo, reproducibility, bukti deploy di Google Cloud | README + diagram + video 4 menit |
-
-**Strategi:** 60% bobot ada di arsitektur dan kualitas demo/dokumentasi, bukan
-jumlah fitur. Jangan tambah fitur. Perdalam agent-nya dan rapikan buktinya.
+1. Freelancer memasukkan brief yang kabur dan screenshot chat.
+2. Agent membuat Deal Ledger dengan source evidence dan tiga pertanyaan prioritas.
+3. Klien membuka link tanpa akun, menjawab, mengedit, lalu menyetujui baseline.
+4. Respons klien memicu worker cloud; readiness berubah dan baseline v1 dibekukan.
+5. Permintaan “tambahkan juga format TikTok” dibandingkan dengan baseline dan diusulkan sebagai change request.
+6. Freelancer melampirkan URL/screenshot hasil ke acceptance criterion.
+7. Klien menerima criterion; audit timeline dan proof manifest diperlihatkan.
 
 ## 7. Deliverable submission
 
-- [ ] Pilihan kategori
-- [ ] URL project yang di-host (kalau ada)
-- [ ] Deskripsi teks: fitur, teknologi, sumber data, temuan
-- [ ] Repo kode (GitHub/GitLab/Bitbucket). Kalau private, **wajib** di-share ke
-      `testing@devpost.com` dan `cloudhackathons@google.com`
-- [ ] `README.md` berisi setup instruction yang reproducible
-- [ ] **Diagram arsitektur** — komponen sistem + integrasi Google Cloud
-- [ ] **Video demo ~4 menit** — masalah, value proposition, aplikasi berjalan,
-      bukti deploy Google Cloud. **Wajib publik di YouTube/Vimeo**, wajib
-      English atau bersubtitle English, dan wajib menampilkan eksekusi live
-      yang tidak diedit
-- [ ] **Aplikasi wajib mendukung bahasa Inggris** — bukan cuma video & README.
-      Blocker eligibility, lihat [`09`](09-KEPUTUSAN-DAN-VERIFIKASI.md) V-1
-- [ ] **Akses juri tanpa restriksi sampai judging selesai** — kalau app di balik
-      Google Sign-In, sediakan kredensial testing di form submission (V-7)
-- [ ] Form submission: SDK/framework yang dipakai + tanggal mulai project
-- [ ] Kalau tim: semua anggota **menerima undangan** di Devpost
-- [ ] **Klaim $150 credit sebelum 28 Agustus 12:00 PT** (V-6)
+- Hosted project URL yang tetap hidup selama judging.
+- Public YouTube/Vimeo video maksimal 4 menit, English atau English subtitles.
+- Link repository; jika private, beri akses ke email penguji yang ditentukan penyelenggara.
+- Diagram arsitektur dan spin-up instructions di README.
+- Deskripsi features, technologies, data sources, learning, SDK/model, serta tanggal mulai.
+- Disclosure untuk pre-existing atau third-party code.
+- Satu kategori saja.
 
-Bonus opsional (menambah nilai):
-- [ ] Blog post / podcast / video di Medium, YouTube, dsb.
-- [ ] Post sosmed di X, LinkedIn, Instagram, atau Facebook
-- [ ] Integrasi model Google lain: Gemma, Veo, atau Lyria
+## 8. Batas kejujuran
 
-Project **tidak wajib live** saat submit — bukti deploy lewat video/repo cukup.
-
-## 8. Aturan yang relevan
-
-- **"Projects must be newly created during the Submission Period."**
-  DealReady lahir **24 Agustus 2026**, di dalam periode 3–31 Agustus.
-  Terpenuhi tanpa perdebatan — dan git history repo baru jadi buktinya.
-- Aturan resmi menyebut *"any other pre-existing code **or work**"* — bukan
-  kode saja. Karena itu: (a) **jangan menyalin kode dari Baseline**, dan (b)
-  tetap **disclose secara eksplisit** di README bahwa konsepnya diinformasikan
-  oleh eksplorasi domain sebelumnya, sementara tidak ada kode, aset, atau
-  implementasi yang dipakai ulang. Menyatakan "tidak ada yang perlu didisclose"
-  adalah pembacaan aturan yang terlalu sempit.
-- Boleh ikut sebagai individu, tim, atau atas nama organisasi. Tidak ada batas
-  maksimum anggota tim yang disebutkan.
-- Peserta harus di atas usia dewasa menurut hukum negaranya.
-- **Void** untuk penduduk: Italia, Quebec, Crimea, Kuba, Iran, Suriah, Korea
-  Utara, Sudan, Belarus, Rusia, dan negara yang kena embargo/sanksi AS.
-  **Indonesia tidak termasuk — kita eligible.**
-- Karyawan penyelenggara dan keluarga intinya tidak eligible.
+- “Approval” pada MVP adalah tindakan aplikasi dengan timestamp, bukan qualified e-signature.
+- Audit trail memperkuat provenance dan chronology, bukan menjamin validitas hukum.
+- Klasifikasi scope dari AI adalah rekomendasi yang harus dikonfirmasi freelancer/klien.
+- Screenshot dapat menjadi sumber, tetapi tidak otomatis membuktikan identitas atau kebenaran isi.
+- Jangan memperlihatkan raw chain-of-thought; tampilkan structured reasons, cited evidence, tool events, dan state transitions.

@@ -1,4 +1,4 @@
-# 09-DOMAIN-RULES.md — Aturan Domain ScopeHandshake
+# 09-DOMAIN-RULES.md — Aturan Domain Delividence
 
 Versi: 1.0 · Dibuat: 25 Agustus 2026 · Status: NORMATIF
 Melengkapi: 01-PRD.md, 02-ARCHITECTURE.md

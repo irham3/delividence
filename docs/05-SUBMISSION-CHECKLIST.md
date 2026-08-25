@@ -1,182 +1,173 @@
-# 05 — Checklist Submission & Naskah Video
+# 05 — Checklist Submission dan Naskah Video
 
-Dikerjakan Hari 7 (Minggu, 30 Agustus). Jangan menunggu Hari 8.
+## 1. Eligibility gate
 
----
+- [ ] Proyek baru dibuat selama submission period; tanggal mulai sesuai commit/record nyata.
+- [ ] Gemini 3.5+ benar-benar dipanggil pada hosted flow.
+- [ ] Google ADK benar-benar mengorkestrasi workflow, bukan hanya dependency pasif.
+- [ ] Cloud Run/Firestore/Pub/Sub digunakan dan dapat dibuktikan.
+- [ ] Aplikasi mendukung English minimum.
+- [ ] Hanya kategori **The Collaborative Partner** yang dipilih.
+- [ ] Semua pre-existing/third-party code dan asset diungkapkan.
 
-## 1. Checklist deliverable Devpost
+## 2. Deliverable Devpost
 
-### Wajib
+- [ ] Nama dan tagline konsisten: Delividence.
+- [ ] Hosted URL dapat dibuka dari incognito.
+- [ ] Test credentials/instructions diberikan bila owner login wajib.
+- [ ] Client demo link tidak expired sebelum judging; gunakan dedicated judge link dengan scope minimum.
+- [ ] Repo terhubung dan spin-up instructions diuji di environment bersih.
+- [ ] Jika repo private, akses telah diberikan ke `testing@devpost.com` dan `cloudhackathons@google.com`.
+- [ ] Semua teammate sudah diundang dan accepted.
+- [ ] Architecture diagram diunggah/disertakan.
+- [ ] Video publicly visible di YouTube/Vimeo, ≤4 menit, English atau English subtitles.
+- [ ] Video menunjukkan agent bekerja dan bukti backend di Google Cloud.
+- [ ] Model/SDK/framework/cloud services dan project start date dijawab eksplisit.
+- [ ] Features, technologies, data sources, learning, challenges, dan disclosure ditulis.
+- [ ] Tidak ada secret, client data nyata, atau credential di repo/video.
 
-- [ ] **Kategori dipilih:** The Collaborative Partner
-- [ ] **URL project yang di-host** — URL Cloud Run frontend. Kalau tidak sempat,
-      boleh dikosongkan; aturan panitia menyebut project tidak wajib live
-- [ ] **Deskripsi teks** — lihat kerangka di bagian 3
-- [ ] **Repo kode** — GitHub di akun Rifqi sendiri
-- [ ] Kalau repo **private**: undang `testing@devpost.com` dan
-      `cloudhackathons@google.com` sebagai kolaborator
-- [ ] **README.md** dengan setup reproducible — lihat bagian 4
-- [ ] **Diagram arsitektur** (PNG) — ekspor dari `02-ARCHITECTURE.md` bagian 1
-- [ ] **Video demo ~4 menit** — naskah di bagian 2
+### Bonus — hanya setelah seluruh deliverable wajib hijau
 
-### Bonus (hanya kalau yang wajib sudah aman)
+- [ ] Public build write-up/blog/video menyatakan bahwa konten dibuat untuk mengikuti hackathon ini.
+- [ ] Public social post memakai hashtag `#AllThingsAgenticHackathon`.
+- [ ] Link bonus sudah dimasukkan ke submission form.
+- [ ] Model Google tambahan hanya diklaim jika benar-benar terintegrasi; jangan menambah Gemma/Veo/Lyria demi bonus sebelum core stabil.
 
-- [ ] Post LinkedIn — paling murah, dan Rifqi memang aktif di sana
-- [ ] Blog post di Medium
-- [ ] Integrasi model Google lain (Gemma / Veo / Lyria) — **lewati**, tidak
-      sepadan dengan sisa waktu
+## 3. Pre-submit smoke test
 
-### Pemeriksaan terakhir sebelum menekan submit
+- [ ] Owner login → create deal.
+- [ ] Golden text + screenshot → ledger dengan provenance.
+- [ ] Maksimal tiga pertanyaan muncul.
+- [ ] Client link dapat dibuka incognito dan salah purpose ditolak.
+- [ ] Client response memicu Pub/Sub/worker dan owner melihat update.
+- [ ] Incomplete deal tidak dapat di-approve.
+- [ ] Approved baseline v1 memiliki version/hash/timestamp.
+- [ ] New request menunjukkan classification proposal + citation.
+- [ ] Override manusia tercatat.
+- [ ] Evidence terhubung ke criterion.
+- [ ] Client dapat Accept/Request changes.
+- [ ] Request changes di luar criterion masuk ke Guardrail, bukan mengubah baseline diam-diam.
+- [ ] Baseline version baru mempertahankan acceptance untuk criterion dengan hash identik dan menandai criterion yang berubah sebagai `SUPERSEDED`.
+- [ ] Satu review session mengonsumsi maksimal satu revision round setelah konfirmasi freelancer.
+- [ ] Drift ledger menampilkan jumlah addition sejak baseline aktif.
+- [ ] Seed script menghasilkan empat decided in-scope events; request kelima live mengubah drift counter 4 → 5 tanpa edit database manual.
+- [ ] Client-answer injection hanya tersimpan sebagai data dan tidak dapat mengubah status/approval.
+- [ ] Deal kedua menunjukkan confirmed preference dengan label yang benar.
+- [ ] Cloud logs tidak mengandung raw token/brief/secret.
+- [ ] Demo dijalankan tiga kali tanpa manual database edit.
 
-- [ ] Repo bisa dibuka dari jendela penyamaran (incognito), atau kolaborator
-      sudah diundang
-- [ ] Branch default repo memuat kode final — **bukan branch kerja**
-- [ ] Tidak ada API key, `.env`, atau kredensial ikut ter-commit
-- [ ] README memuat perintah yang benar-benar sudah dijalankan, bukan yang
-      diasumsikan jalan
-- [ ] Video bisa diputar oleh orang lain (setelan berbagi benar, bukan "private")
-- [ ] Durasi video ≤ 4 menit
-- [ ] Bukti deploy Google Cloud **terlihat di layar** dalam video
-- [ ] Git history menunjukkan commit pertama di dalam periode 3–31 Agustus 2026
+## 4. Naskah video — target 3:40
 
----
+Gunakan English voice-over atau English subtitles. Jangan mulai dengan logo panjang.
 
-## 2. Naskah video 4 menit
+### 0:00–0:12 — Outcome dulu
 
-Alokasi ketat. Juri menonton banyak video; 30 detik pertama menentukan.
+**Visual:** owner Attention Inbox → conflict found → confirmed plan → accumulated drift → evidence acceptance + revision counter.
 
-### Segmen 1 — Masalah (0:00–0:40)
+**Voice-over:**
 
-Tunjukkan brief WhatsApp asli di layar:
+> “Delividence turns vague freelance briefs into a shared, versioned agreement—then detects scope drift and records delivery acceptance with evidence.”
 
-> "Bro bisa bantu edit video buat konten IG kita? Ada beberapa video, deadline
-> minggu depan ya. Budget 2 juta. Nanti dirapihin aja yang bagus."
+### 0:12–0:35 — Masalah dan pembeda
 
-Narasi (inti, jangan dibaca kaku):
+**Visual:** brief “modern, responsive, done Friday, a few revisions” dengan ambiguity markers.
 
-> Brief ini terlihat lengkap — ada budget, ada deadline. Tapi tidak ada jumlah
-> video, tidak ada batas revisi, tidak ada siapa yang menyetujui, dan "dirapihin
-> yang bagus" itu tidak punya batas. Freelancer tetap menyanggupi harganya, lalu
-> proyeknya melar tanpa tambahan bayaran. Masalahnya bukan mereka tidak tahu
-> harus bertanya — masalahnya menyusun pertanyaan yang benar untuk setiap calon
-> klien itu melelahkan, dan sebagian besar calon klien tidak jadi.
+> “A chatbot can rewrite this brief, but it cannot create shared state with the client, preserve an approved baseline, resume when the client responds, or prove which acceptance criteria were met.”
 
-### Segmen 2 — Value proposition (0:40–1:10)
+On-screen text: `Not a marketplace · Not legal e-signature · A two-party scope protocol`.
 
-> DealReady menerima brief itu sekali. Agent-nya bekerja sendiri di background:
-> membaca, menilai celahnya dengan aturan deterministik, memutuskan pertanyaan
-> mana yang benar-benar menentukan risiko, dan menyiapkan pesan siap kirim.
-> Freelancer cuma melakukan dua hal: forward brief, lalu approve.
+### 0:35–1:25 — Handshake
 
-Tampilkan diagram arsitektur ~5 detik di sini.
+**Visual:** mulai dari analysis result yang sudah siap; upload/loading dipotong.
 
-### Segmen 3 — Demo langsung (1:10–3:00) — **porsi terbesar**
+- **20 detik:** sorot konflik Friday-versus-Monday dengan dua kutipan verbatim, slot pertanyaan wajib, dan readiness yang terkunci.
+- **20 detik:** buka client portal yang langsung merangkum deliverable/timeline/out-of-scope; pilih Monday dan tekan **Confirm project plan**.
+- **10 detik:** jump cut kembali ke owner dashboard; readiness, baseline v1, dan hash tampil. Revision limit/breakpoint cukup ditampilkan sebagai on-screen text, bukan diisi live.
 
-Urutan yang harus terlihat, jangan diubah:
+> “Gemini found that the screenshot contradicts the original brief. The system refuses to resolve that conflict or freeze the plan until the client chooses. The same ADK workflow then resumes through Pub/Sub.”
 
-1. Tempel brief, klik submit. **Tunjukkan responsnya instan** dan katakan agent
-   berjalan di background — lalu **tutup tabnya**. Ini bukti asinkron.
-2. Buka lagi. Run sudah maju sendiri.
-3. Tampilkan bukti terekstrak, dan **sorot kutipan verbatim**-nya:
-   > Setiap fakta yang diklaim ada di brief membawa kutipan aslinya. Kalau model
-   > mengarang kutipan, kode menolaknya.
-4. Tampilkan pertanyaan yang disusun agent + draft pesan bahasa Indonesia.
-5. **Buka panel reasoning trace.** Ini momen terkuat:
-   > Ini yang dikerjakan agent, langkah per langkah. Perhatikan: penilaian dan
-   > angkanya keluar dari fungsi deterministik, bukan dari model bahasa. Model
-   > mengekstrak dan menyusun kalimat; kode yang menghitung. Karena itu hasilnya
-   > bisa diulang dan bisa diaudit.
-6. Tempel jawaban klien → agent jalan lagi → readiness naik → agent **berhenti
-   sendiri**.
-   > Agent memutuskan sendiri kapan cukup. Ada batas putaran, dan kalau jawaban
-   > klien tidak menambah informasi, ia berhenti dan mengatakannya — tidak
-   > bertanya berulang-ulang.
+### 1:25–2:15 — Guardrail
 
-### Segmen 4 — Bukti Google Cloud + penutup (3:00–4:00)
+**Visual:** masukkan “Please also create three vertical TikTok visuals.”
 
-Rekam layar console GCP:
+- Mulai dari seeded drift count 4; lakukan request kecil kelima live dan tunjukkan counter berubah menjadi 5.
+- Dengan jump cut, tampilkan proposed `CHANGE_REQUEST` untuk request TikTok.
+- Zoom citation ke approved deliverables/out-of-scope.
+- Tampilkan human confirm dan changed-fields list.
+- Flash counter “5 in-scope additions since baseline v1” untuk menunjukkan accumulated drift.
+- Tunjukkan v1 tetap ada setelah draft v2; acceptance dengan criterion hash identik tetap berlaku.
 
-- Cloud Run: tiga service berjalan (`web`, `api`, `worker`)
-- Pub/Sub: topic dan subscription
-- Firestore: dokumen run yang tadi dibuat, terlihat nyata
-- Sebutkan: Gemini 3.5+, Google ADK, Firebase Auth, Secret Manager
+> “The model cannot invent the boundary. Facts are verbatim baseline quotes, the classification is clearly labeled as inference, and the human records the decision. Small accepted additions also accumulate in a deterministic drift ledger.”
 
-Penutup:
+### 2:15–2:55 — Proof
 
-> Dibangun dengan Google ADK dan Gemini di atas Cloud Run, Pub/Sub, dan
-> Firestore. Semua kode dan instruksi setup ada di repo.
+**Visual:** mulai dari evidence yang sudah terpasang. Client memilih Accept dua dan Request changes satu, lalu menekan satu tombol submit yang membuat satu review session. Jump cut ke freelancer confirmation; counter menjadi `1 of 2 rounds used`.
 
-### Aturan produksi
+> “Evidence is mapped to the exact criterion it supports. One review submission consumes at most one round after freelancer confirmation. Once the agreed rounds are exhausted, the next request is routed to the scope guardrail—not silently treated as free revision work.”
 
-- **Rekam suara terpisah dari layar**, lalu gabungkan. Merekam keduanya sekaligus
-  sambil gugup adalah cara tercepat menghabiskan 3 jam.
-- Latihan sekali, rekam maksimal dua kali. Jangan mengejar sempurna.
-- **SALAH — sudah dikoreksi, lihat [`09`](09-KEPUTUSAN-DAN-VERIFIKASI.md) V-1.**
-  ~~UI dan draft pesan boleh tetap bahasa Indonesia.~~ Aturan resmi: *"The
-  Application must, at a minimum, support English language use."* **UI dan
-  seluruh alur kerja wajib bisa dipakai dalam bahasa Inggris.** Lokalisasi
-  Indonesia ditampilkan sebagai selector bahasa output, bukan sebagai
-  satu-satunya mode.
-- Narasi bahasa Inggris, dan **video wajib punya subtitle English** meski
-  narasinya sudah English (V-4).
-- **Video wajib publik di YouTube atau Vimeo** (V-3), dan wajib menampilkan
-  eksekusi **live yang tidak diedit** (V-5) — potong waktu mati di sekeliling,
-  tapi pertahankan alur inti sebagai satu take utuh.
-- **Jangan tampilkan percakapan WhatsApp pribadi yang asli.** Pakai data sintetis
-  atau yang sudah diredaksi, dan hindari logo pihak ketiga.
-- Zoom teks kecil. Trace yang tidak terbaca sama saja tidak ditampilkan.
+On-screen disclaimer: `Defensible audit trail, not a certified legal signature`.
 
----
+### 2:55–3:15 — Persistent collaboration
 
-## 3. Kerangka deskripsi Devpost
+**Visual:** owner confirms “two revision rounds” as preference; create second deal; policy appears as `FREELANCER_POLICY`, not `AGREED`.
 
-**Inspiration**
-Brief klien di WhatsApp terlihat lengkap padahal menyembunyikan hal yang
-menentukan untung-rugi. Freelancer tahu harus bertanya, tapi friksinya terlalu
-besar untuk dilakukan setiap kali.
+> “Confirmed preferences carry into the next deal, but memory never becomes a client fact until that client approves it.”
 
-**What it does**
-Terima brief sekali; agent menjalankan siklus klarifikasi otonom di background
-sampai brief aman di-quote, lalu menyiapkan pesan siap kirim.
+### 3:15–3:35 — Google Cloud proof
 
-**How we built it**
-Google ADK + Gemini 3.5+ untuk ekstraksi dan orkestrasi. Aturan deal
-deterministik dan seluruh perhitungan di Python. Cloud Run (tiga service),
-Pub/Sub untuk eksekusi asinkron, Firestore untuk state dan Memory Bank lintas
-sesi, Firebase Auth, Secret Manager.
+**Visual:** architecture diagram, Cloud Run services, Pub/Sub delivery/log entry dengan job ID, Firestore baseline document. Blur project identifiers bila perlu.
 
-**Challenges we ran into**
-Diisi jujur dari yang benar-benar terjadi. Kandidat: IAM push subscription
-Pub/Sub, menegakkan idempotensi worker, memaksa model tidak mengarang kutipan.
+> “Delividence uses Gemini 3.5 Flash, Google ADK, Cloud Run, Firestore, Pub/Sub, Cloud Storage, and Cloud Logging. The client event shown here resumed this exact worker job in Google Cloud.”
 
-**Accomplishments that we're proud of**
-Pemisahan tegas: model mengekstrak dan menyusun bahasa, kode yang menilai dan
-menghitung — sehingga hasilnya reproducible dan bisa diaudit. Trace yang
-membuktikannya, terbuka untuk user.
+### 3:35–3:40 — Penutup
 
-**What we learned**
-Diisi jujur.
+> “Clear scope. Controlled change. Accepted work.”
 
-**What's next**
-Integrasi WhatsApp/Gmail supaya brief masuk tanpa disalin manual.
+## 5. Aturan produksi video
 
-> Jangan mengklaim apa pun yang tidak ada di video atau repo. Klaim yang tidak
-> terbukti lebih merugikan daripada fitur yang tidak ada.
+- Rekam klip terpisah dan potong loading/waiting.
+- Jangan mengetik panjang secara live; paste fixture.
+- Jangan tampilkan login/setup.
+- Gunakan zoom/callout untuk provenance, citation, version, dan cloud job ID.
+- Target 3:40 agar encoding/upload tidak membuat durasi melewati 4:00.
+- Putar hasil final dari link publik dan perangkat lain.
 
----
+## 6. Draft deskripsi Devpost (English)
 
-## 4. Yang harus ada di README repo
+### Inspiration
 
-Dinilai eksplisit di kriteria *Demo & Production Readiness* (30%).
+Freelancers rarely lose control of scope because they cannot write a proposal. They lose it because vague statements become assumptions, later requests overwrite the original boundary, and delivery proof is disconnected from what the client actually approved.
 
-- [ ] Satu paragraf: produk ini apa
-- [ ] Diagram arsitektur (gambar tertanam)
-- [ ] **Setup dari nol** — persis isi [`06-SETUP.md`](06-SETUP.md)
-- [ ] Tabel environment variable
-- [ ] Cara menjalankan test + hasil sebenarnya
-- [ ] Perintah deploy ke Google Cloud
-- [ ] Bagian **"Google Cloud services used"** — memudahkan juri memverifikasi
-- [ ] Batasan yang diketahui, ditulis jujur
+### What it does
 
-Perlakukan README sebagai barang yang dinilai, bukan formalitas. Juri mungkin
-tidak menjalankan kodenya, tapi mereka pasti membaca README-nya.
+Delividence is a two-party AI scope and acceptance protocol. It converts brief text and screenshots into an evidence-backed Deal Ledger, asks the three highest-impact clarification questions, and gives the client a no-account review link. Once approved, the baseline is versioned and hashed. New requests are compared against that baseline with citations and human-confirmed change classification. Delivery evidence is then mapped to acceptance criteria for granular client acceptance.
+
+### How we built it
+
+Gemini 3.5 Flash performs multimodal extraction and semantic comparison. Google ADK orchestrates the stateful workflow. Cloud Run hosts the web, API, and private worker; Pub/Sub resumes jobs after client events; Firestore stores ledger versions, preferences, and audit events; Cloud Storage stores source/evidence images.
+
+### Why it is agentic
+
+The system maintains deal state across people and sessions, prioritizes clarification based on unresolved risk, resumes autonomously after external events, invokes constrained tools, and adapts to explicitly confirmed freelancer preferences. Deterministic services retain authority over readiness, approvals, versions, and hashes.
+
+### Challenges and learning
+
+The hardest design problem was separating model judgment from authoritative state. We use Gemini for semantic work while keeping approval gates, provenance, criterion versioning, revision accounting, drift aggregation, idempotency, and snapshot integrity deterministic. The model has no tool capable of approving a baseline, resolving a conflict, or consuming a revision round, so prompt injection cannot acquire those capabilities.
+
+### Limitations
+
+Delividence is not a marketplace, payment platform, legal service, certified e-signature, or automated dispute judge. Its approval records and hashes improve traceability but do not verify a participant’s legal identity or prove that uploaded evidence is truthful.
+
+## 7. README implementation checklist
+
+- [ ] Product summary + differentiator.
+- [ ] Demo GIF/screenshot and hosted URL.
+- [ ] Architecture diagram.
+- [ ] Exact Google model, SDK, ADK, and Cloud services.
+- [ ] Local prerequisites and commands.
+- [ ] Google Cloud setup/deploy commands.
+- [ ] Environment variable table with placeholders only.
+- [ ] Seed/golden demo instructions.
+- [ ] Test commands and known limitations.
+- [ ] Security model for owner/client/worker.
+- [ ] Start date, team, license, disclosure.
