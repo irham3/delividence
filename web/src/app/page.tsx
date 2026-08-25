@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import {
+  ApiError,
   apiFetch,
   openAuthedInNewTab,
   setAuthTokenProvider,
@@ -75,8 +76,20 @@ export default function Home() {
       try {
         const data = await apiFetch<Run>(`/runs/${runId}`);
         if (!cancelled) setRun(data);
-      } catch {
-        // Transient; the next tick retries.
+      } catch (e) {
+        if (cancelled) return;
+        if (e instanceof ApiError && (e.status === 404 || e.status === 403)) {
+          // Permanent, not transient -- the run is gone or belongs to a
+          // different signed-in account (e.g. a stale runId left over from
+          // another session). Retrying forever would just poll a dead
+          // endpoint every second with no way for the user to notice.
+          clearInterval(timer);
+          setRun(null);
+          setRunId(null);
+          setError("That run is no longer available (it may belong to a different account). Start a new one below.");
+          return;
+        }
+        // Transient (network blip, 5xx); the next tick retries.
       }
     }
     poll();

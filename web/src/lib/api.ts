@@ -77,6 +77,19 @@ export type ProofManifest = {
   criteria: { criterion_key: string; text: string }[];
 };
 
+// Carries the HTTP status so callers can tell a permanent failure (404/403 --
+// wrong owner, deleted run) from a transient one (network blip, 5xx) instead
+// of treating every fetch failure the same way. Extends Error so existing
+// `e instanceof Error` / `e.message` call sites keep working unchanged.
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function authHeaders(): Promise<Record<string, string>> {
   const token = await getAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -89,7 +102,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
-    throw new Error(`${res.status} ${res.statusText}${detail ? `: ${detail}` : ""}`);
+    throw new ApiError(res.status, `${res.status} ${res.statusText}${detail ? `: ${detail}` : ""}`);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
