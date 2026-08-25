@@ -200,7 +200,7 @@ lewat console manual:**
    out mengembalikan ke gate. Hook debug sementara yang dipakai untuk ini
    (`window.__authDebug`) SUDAH DIHAPUS lagi dari `firebase.ts` setelah
    tes selesai -- tidak ada sisa kode test di commit.
-- Commit `[isi setelah commit]` (branch `rifqi`).
+- Commit `d991b39` (branch `rifqi`).
 - **Belum diverifikasi**: klik tombol "Sign in with Google" yang
   sungguh-sungguh membuka popup consent Google sampai selesai -- perlu
   dicoba manual oleh Rifqi di browser normal (bukan browser otomasi)
