@@ -14,7 +14,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Repo submission | <https://github.com/irham3/delividence> (public, akun partner, remote `delividence`) |
 | Repo cadangan | <https://github.com/rifqiahmadpratama/dealready> (private, remote `origin`) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **87 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **88 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 Tidak ada proses yang ditinggal jalan. Aman dimatikan.
 
@@ -103,9 +103,25 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
    jalur kode yang pernah menghasilkan `CONFLICTING` (lihat alasan di
    `extraction.py`). Belum ada tool ADK (`save_questions`) yang memanggilnya
    — sama seperti `agent.py`, belum di-wire ke mana pun.
-5. **Keputusan `run_id` vs `deal_id`**, baru sambungkan `agent.py` +
-   `questions.py` ke `worker.py`.
-6. Baru setelah itu: portal klien, baseline approval, Guardrail, Proof.
+5. ~~**Keputusan `run_id` vs `deal_id`**.~~ **Selesai** — dikonfirmasi ke Rifqi:
+   **satu-satu, `deal_id == run_id`**. Satu brief yang disubmit = tepat satu
+   deal. Sudah di-wire ke `api.py`: `POST /runs` sekarang menulis dua audit
+   event beneran lewat `app/audit.py` — `DEAL_CREATED` lalu `ARTIFACT_ADDED`
+   (`artifact_ref: "artifact:brief-1"`), pakai `run_id` sebagai `deal_id`.
+   Mekanisme lama (`store.append_audit_step`/`run["audit_trail"]`) TIDAK
+   dihapus — masih dipakai worker.py apa adanya, supaya tidak menyentuh test
+   vertical slice yang sudah hijau. 1 test baru di `tests/test_slice.py`.
+   Total 88 test hijau.
+6. **Sambungkan `agent.py` + `questions.py` ke `worker.py`** — ini yang masih
+   nyata-nyata diblokir billing GCP. `worker.py` masih stub "Belum ada logika
+   produk" dengan sengaja: memanggil Gemini sungguhan di sana baru jujur bisa
+   ditulis (dan diuji sampai selesai) setelah kredensial ada. Yang sudah siap
+   dipakai begitu billing aktif: isi `tool_context.state["artifacts"]` dari
+   `store.get_run(run_id)["brief"]` (pakai `artifact_ref="artifact:brief-1"`,
+   sama seperti yang ditulis `api.py`), jalankan `agent.extraction_agent` lewat
+   ADK `Runner`, ambil `ledger_draft` dari state, lalu tulis `LEDGER_DRAFT_SAVED`
+   ke `app/audit.py` dan rank pertanyaan lewat `questions.rank_questions()`.
+7. Baru setelah itu: portal klien, baseline approval, Guardrail, Proof.
 
 ---
 

@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
-from app import config, queue, store
+from app import audit, config, queue, store
 
 app = FastAPI(title="Delividence API")
 
@@ -43,8 +43,19 @@ def health():
 
 @app.post("/runs", status_code=202)
 def create_run(req: CreateRunRequest):
+    # deal_id == run_id (satu-satu, lihat CATATAN-LANJUTAN.md): satu brief
+    # yang disubmit menciptakan tepat satu deal, jadi id run pemrosesannya
+    # dipakai ulang sebagai deal_id untuk audit log 09-DOMAIN-RULES §7.
     run_id = uuid.uuid4().hex
     store.create_run(run_id, req.brief, req.output_language)
+    audit.append_event(
+        run_id, "DEAL_CREATED", "freelancer", 0,
+        {"output_language": req.output_language},
+    )
+    audit.append_event(
+        run_id, "ARTIFACT_ADDED", "freelancer", 0,
+        {"artifact_ref": "artifact:brief-1", "type": "text", "chars": len(req.brief)},
+    )
     queue.publish({"run_id": run_id, "round": 1})
     return {"run_id": run_id, "status": "queued"}
 

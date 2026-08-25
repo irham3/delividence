@@ -3,7 +3,7 @@ import json
 
 from fastapi.testclient import TestClient
 
-from app import store
+from app import audit, store
 from app.api import app as api_app
 from app.worker import app as worker_app
 
@@ -30,6 +30,17 @@ def test_create_run_mengantre_dan_belum_diproses(published):
     assert run["status"] == "queued"
     assert run["audit_trail"] == []
     assert published == [{"run_id": run_id, "round": 1}]
+
+
+def test_create_run_menulis_deal_created_dan_artifact_added(published):
+    """deal_id == run_id (lihat CATATAN-LANJUTAN.md): audit log deal dan
+    state run hidup di bawah id yang sama."""
+    run_id = api.post("/runs", json={"brief": "Need an edit for our IG content."}).json()["run_id"]
+
+    events = audit.list_events(run_id)
+    assert [e["type"] for e in events] == ["DEAL_CREATED", "ARTIFACT_ADDED"]
+    assert [e["seq"] for e in events] == [1, 2]
+    assert events[1]["payload"]["artifact_ref"] == "artifact:brief-1"
 
 
 def test_output_language_default_english(published):
