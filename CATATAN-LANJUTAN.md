@@ -14,7 +14,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Repo submission | <https://github.com/irham3/delividence> (public, akun partner, remote `delividence`) |
 | Repo cadangan | <https://github.com/rifqiahmadpratama/dealready> (private, remote `origin`) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **80 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **87 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 Tidak ada proses yang ditinggal jalan. Aman dimatikan.
 
@@ -93,9 +93,19 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
      `.venv` (constraint dari ADK). Tidak terlihat masalah — `uvicorn` masih
      jalan, semua test hijau — tapi catat di sini kalau nanti ada gejala aneh
      di WebSocket/dev server.
-4. **Ranking tiga pertanyaan** prioritas.
-5. Baru setelah itu: portal klien, baseline approval, Guardrail, Proof, dan
-   menyambungkan `agent.py` ke `worker.py` (butuh `deal_id` data model dulu).
+4. ~~**Ranking tiga pertanyaan** prioritas.~~ **Selesai** —
+   `backend/app/domain/questions.py`: `rank_questions()`, murni, `priority =
+   scope_impact + acceptance_impact + schedule_impact + conflict_severity`
+   (02 §4.4), ambil `MAX_CLARIFICATION_QUESTIONS` (3) teratas, stable sort
+   (skor sama -> urutan kemunculan asli). 7 test di `tests/test_questions.py`.
+   **Sengaja tidak** mengimplementasikan forced-slot untuk field kritis
+   `CONFLICTING` (09 §5.6) — itu bagian Modul D yang dilepas, dan tidak ada
+   jalur kode yang pernah menghasilkan `CONFLICTING` (lihat alasan di
+   `extraction.py`). Belum ada tool ADK (`save_questions`) yang memanggilnya
+   — sama seperti `agent.py`, belum di-wire ke mana pun.
+5. **Keputusan `run_id` vs `deal_id`**, baru sambungkan `agent.py` +
+   `questions.py` ke `worker.py`.
+6. Baru setelah itu: portal klien, baseline approval, Guardrail, Proof.
 
 ---
 
