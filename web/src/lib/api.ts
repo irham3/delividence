@@ -22,7 +22,11 @@ export type AcceptanceCriterion = {
 export type Ledger = {
   deliverables?: LedgerField<Deliverable[]>;
   acceptance_criteria?: LedgerField<AcceptanceCriterion[]>;
+  in_scope?: LedgerField<string[]>;
   out_of_scope?: LedgerField<string[]>;
+  dependencies?: LedgerField<string[]>;
+  assumptions?: LedgerField<string[]>;
+  unresolved_questions?: LedgerField<string[]>;
   timeline?: { final_deadline?: LedgerField<string> };
   revision_policy?: { rounds_total?: LedgerField<number | "NOT_SET"> };
 };

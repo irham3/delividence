@@ -27,7 +27,11 @@ export default function ClientClarificationPage({
 
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [criteria, setCriteria] = useState<AcceptanceCriterion[]>([]);
+  const [inScope, setInScope] = useState<string[]>([]);
   const [outOfScope, setOutOfScope] = useState<string[]>([]);
+  const [dependencies, setDependencies] = useState<string[]>([]);
+  const [assumptions, setAssumptions] = useState<string[]>([]);
+  const [unresolvedQuestions, setUnresolvedQuestions] = useState<string[]>([]);
   const [deadline, setDeadline] = useState("");
   const [roundsTotal, setRoundsTotal] = useState<string>("");
   const [roundsNotSet, setRoundsNotSet] = useState(false);
@@ -40,7 +44,11 @@ export default function ClientClarificationPage({
       const l = v.ledger;
       setDeliverables(l.deliverables?.value ?? []);
       setCriteria(l.acceptance_criteria?.value ?? []);
+      setInScope(l.in_scope?.value ?? []);
       setOutOfScope(l.out_of_scope?.value ?? []);
+      setDependencies(l.dependencies?.value ?? []);
+      setAssumptions(l.assumptions?.value ?? []);
+      setUnresolvedQuestions(l.unresolved_questions?.value ?? []);
       setDeadline(l.timeline?.final_deadline?.value ?? "");
       const rt = l.revision_policy?.rounds_total?.value;
       if (rt === NOT_SET) {
@@ -68,7 +76,11 @@ export default function ClientClarificationPage({
       const answers: { field: string; value: unknown }[] = [
         { field: "deliverables", value: deliverables },
         { field: "acceptance_criteria", value: criteria },
+        { field: "in_scope", value: inScope },
         { field: "out_of_scope", value: outOfScope },
+        { field: "dependencies", value: dependencies },
+        { field: "assumptions", value: assumptions },
+        { field: "unresolved_questions", value: unresolvedQuestions },
         { field: "timeline.final_deadline", value: deadline || null },
         {
           field: "revision_policy.rounds_total",
@@ -246,6 +258,71 @@ export default function ClientClarificationPage({
               />
               No limit set (explicitly)
             </label>
+          </div>
+        </div>
+
+        <div className="border-t border-neutral-200 pt-6 dark:border-neutral-800">
+          <p className="text-sm font-medium">Additional context</p>
+          <p className="mt-1 text-xs text-neutral-500">
+            Not required to confirm the plan, but helps avoid surprises later.
+          </p>
+          <div className="mt-4 space-y-6">
+            <ListField
+              label="In scope"
+              items={inScope}
+              onChange={setInScope}
+              empty=""
+              render={(item, onEdit) => (
+                <input
+                  value={item}
+                  onChange={(e) => onEdit(e.target.value)}
+                  placeholder="Something explicitly included"
+                  className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                />
+              )}
+            />
+            <ListField
+              label="Dependencies / client responsibilities"
+              items={dependencies}
+              onChange={setDependencies}
+              empty=""
+              render={(item, onEdit) => (
+                <input
+                  value={item}
+                  onChange={(e) => onEdit(e.target.value)}
+                  placeholder="Something the client needs to provide"
+                  className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                />
+              )}
+            />
+            <ListField
+              label="Assumptions"
+              items={assumptions}
+              onChange={setAssumptions}
+              empty=""
+              render={(item, onEdit) => (
+                <input
+                  value={item}
+                  onChange={(e) => onEdit(e.target.value)}
+                  placeholder="Something being assumed true"
+                  className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                />
+              )}
+            />
+            <ListField
+              label="Unresolved questions"
+              items={unresolvedQuestions}
+              onChange={setUnresolvedQuestions}
+              empty=""
+              render={(item, onEdit) => (
+                <input
+                  value={item}
+                  onChange={(e) => onEdit(e.target.value)}
+                  placeholder="Something still unclear"
+                  className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                />
+              )}
+            />
           </div>
         </div>
       </section>
