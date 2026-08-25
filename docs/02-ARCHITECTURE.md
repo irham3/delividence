@@ -41,7 +41,7 @@ UI melakukan polling status run setiap 2–3 detik untuk MVP. WebSocket/SSE tida
 | Cloud Storage | source screenshot dan evidence image |
 | Cloud Logging | bukti run, latency, error, dan Pub/Sub delivery |
 
-Keputusan tetap: model dipanggil melalui Google Gen AI/ADK pada **Vertex AI** menggunakan Application Default Credentials, dengan `GOOGLE_GENAI_USE_VERTEXAI=TRUE`. Verifikasi exact model ID, region, dan quota pada hari pertama; Gemini Developer API/API-key mode bukan fallback MVP.
+Keputusan direvisi 25 Agustus 2026 (lihat `10-KEPUTUSAN-DAN-VERIFIKASI.md` §1): model dipanggil melalui Google Gen AI/ADK pada **Gemini Developer API** (`GEMINI_API_KEY`, `GOOGLE_GENAI_USE_VERTEXAI=FALSE`) — billing GCP tidak aktif, Developer API punya free tier tanpa kartu, dan aturan hackathon eksplisit mengizinkan keduanya. Vertex AI + Application Default Credentials tetap jalur produksi kalau billing aktif (tinggal ganti `GOOGLE_GENAI_USE_VERTEXAI=TRUE` + isi `GOOGLE_CLOUD_PROJECT`, tidak ada kode yang berubah).
 
 ## 3. Batas layanan
 

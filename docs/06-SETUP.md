@@ -30,7 +30,8 @@ Gunakan placeholders di `.env.example`; jangan commit nilai nyata.
 |---|---|---|
 | `GOOGLE_CLOUD_PROJECT` | API/worker | project ID |
 | `GOOGLE_CLOUD_LOCATION` | worker | region model/Vertex AI |
-| `GOOGLE_GENAI_USE_VERTEXAI` | worker | wajib `TRUE`; mencegah fallback ke Gemini Developer API/API key |
+| `GOOGLE_GENAI_USE_VERTEXAI` | worker | direvisi 25 Agu 2026: default `FALSE` (Gemini Developer API, billing GCP tidak aktif) -- lihat `10-KEPUTUSAN-DAN-VERIFIKASI.md` §1. Set `TRUE` untuk Vertex AI kalau billing aktif |
+| `GEMINI_API_KEY` | worker | key dari aistudio.google.com/apikey, dipakai kalau `GOOGLE_GENAI_USE_VERTEXAI=FALSE` |
 | `GEMINI_MODEL` | worker | target `gemini-3.7-flash`, setelah diverifikasi |
 | `PUBSUB_TOPIC` | API | `scope-events` |
 | `STORAGE_BUCKET` | API/worker | bucket artifact |
