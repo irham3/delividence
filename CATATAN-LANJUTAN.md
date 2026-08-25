@@ -15,7 +15,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Branch kerja | Mulai 25 Agu 2026 malam: push ke branch **`rifqi`**, BUKAN `main` — supaya tidak tabrakan dengan partner (owner repo) yang juga kerja di `main`. Commit sampai dengan `120 test hijau` di atas ada di `main`; commit sesudahnya ada di `rifqi`. |
 | Repo cadangan (tidak dipush lagi) | <https://github.com/rifqiahmadpratama/dealready> (masih ada di GitHub, tapi remote `origin` sudah dilepas dari git lokal 25 Agu — fokus ke `delividence` saja) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **120 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **135 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 Tidak ada proses yang ditinggal jalan. Aman dimatikan.
 
@@ -155,8 +155,8 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
      (potongan hash, bukan token mentah).
    - **Keputusan sengaja**: link TIDAK ditandai `completed` setelah
      `/answers` — klien boleh kirim beberapa ronde koreksi. Baru ditandai
-     selesai nanti oleh aksi "Confirm project plan" (baseline approval,
-     belum dibangun).
+     selesai nanti oleh aksi "Confirm project plan" — **sekarang sudah
+     dibangun, lihat item 9**.
    - Ini jalan penuh TANPA Gemini — ledger dimulai `{}` dan diisi langsung
      oleh klien lewat portal; begitu ekstraksi Gemini aktif (item 6), ia
      tinggal mengisi `ledger` duluan sebelum klien membuka link.
@@ -164,9 +164,37 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
      run -> terbitkan link -> klien lihat (readiness blocker lengkap) ->
      klien jawab `timeline.final_deadline` -> blocker itu hilang -> GET ulang
      menunjukkan nilai persist. `app/domain/ledger.py` (5 test) +
-     `tests/test_client_portal.py` (9 test). Total **120 test hijau**.
-9. Baru setelah itu: portal klien penuh (approval, delivery review, new
-   request), baseline approval, Guardrail, Proof.
+     `tests/test_client_portal.py` (9 test).
+9. ~~**"Confirm project plan" / baseline approval.**~~ **Selesai** —
+   `app/domain/baseline.py: build_canonical_payload(ledger, version)` (murni,
+   ekstrak `.value` mentah dari tiap ledger field + hitung `text_hash` tiap
+   criterion). `app/baselines.py`: `get_active_version()`/`create()`/`get()`,
+   append-only, `deals/{deal_id}/baselines/{version}.json` di mode lokal.
+   Endpoint baru di `api.py`:
+   - `GET /client/{token}` sekarang juga mengembalikan `payload_hash` — hash
+     canonical_payload versi berikutnya, dihitung dari ledger saat ini.
+   - `POST /client/{token}/confirm` — body `{"payload_hash": ...}` WAJIB
+     persis sama dengan yang barusan dilihat lewat GET (precondition 02 §5;
+     tidak cocok -> **409**, ledger berubah sejak terakhir dilihat). Readiness
+     gate MUST lolos dulu (belum ready -> **422**, tidak bisa dilewati dari
+     endpoint ini). Sukses: tulis `BASELINE_APPROVED` (actor client) lalu
+     `BASELINE_ACTIVATED` (actor system) berurutan, simpan baseline versi
+     baru, set `active_baseline_version` di run, dan **link ditandai
+     completed** — beda dari `/answers` yang sengaja tidak menutup link.
+   - Diverifikasi lewat `uvicorn` sungguhan end-to-end: run -> link ->
+     jawab semua field kritis -> `readiness.ready=true` -> GET ambil
+     `payload_hash` -> confirm -> baseline v1 aktif (`activated_seq` terisi
+     benar) -> link dipakai lagi -> 403.
+   - `tests/test_baseline.py` (5), `tests/test_baselines_store.py` (6),
+     `tests/test_confirm.py` (5). Total **135 test hijau**.
+   - **Catatan untuk nanti**: `build_canonical_payload` menandai SEMUA
+     criterion `introduced_in_version = <versi yang lagi dibuat>`. Itu benar
+     untuk v1. Begitu ada jalur yang bikin v2 (change request/Guardrail),
+     fungsi ini harus diperbarui supaya criterion yang sudah ada di v(n-1)
+     mempertahankan `introduced_in_version` aslinya (09 §2.6 A-7) — jangan
+     lupa, sudah ditandai juga di docstring-nya.
+10. Baru setelah itu: portal klien penuh (delivery review, new request),
+    Guardrail, Proof.
 
 ---
 

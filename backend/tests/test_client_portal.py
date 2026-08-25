@@ -74,8 +74,8 @@ def test_klien_menjawab_mengubah_ledger_dan_menulis_audit_event(published):
 
 
 def test_link_tetap_valid_setelah_dipakai_menjawab_sekali(published):
-    """Klien boleh mengirim beberapa ronde koreksi sebelum Confirm project
-    plan (belum dibangun) -- link tidak otomatis selesai setelah satu jawaban."""
+    """Klien boleh mengirim beberapa ronde koreksi sebelum confirm -- link
+    tidak otomatis selesai setelah satu jawaban (lihat test_confirm.py)."""
     run_id = _new_run(published)
     token = api.post("/runs/%s/client-links" % run_id).json()["token"]
 
