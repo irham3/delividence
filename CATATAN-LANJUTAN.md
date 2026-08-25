@@ -16,7 +16,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Histori commit | 25 Agu 2026 malam: partner menghapus & membuat ulang repo `irham3/delividence` dari kosong. Seluruh histori (main + rifqi) sudah di-push ulang ke repo baru itu — **bersih dari trailer/atribusi tooling apa pun di commit message** (lomba disponsori Google, wajib Gemini). Commit berikutnya juga MUST tetap begitu. |
 | Repo cadangan (tidak dipush lagi) | <https://github.com/rifqiahmadpratama/dealready> (masih ada di GitHub, tapi remote `origin` sudah dilepas dari git lokal 25 Agu — fokus ke `delividence` saja) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **207 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **210 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 ## MILESTONE 25 Agu malam — alur inti terbukti jalan end-to-end di browser
 
@@ -219,6 +219,42 @@ lewat console manual:**
   lewat jalur internal yang tidak tersedia di REST API publik. Setelah
   ini, Rifqi coba lagi dan **berhasil sign-in dengan akun asli**
   (`rifqiahmadpratama@gmail.com`), dashboard render dengan benar.
+
+---
+
+## MILESTONE 26 Agu (lanjutan #4) — client_links.revoke() akhirnya tersambung
+
+Ditemukan sambil menelusuri kode (bukan dari doc): `app/client_links.py`
+punya fungsi `revoke(raw_token)` LENGKAP sejak awal proyek ini dibangun
+(hash, expiry, semuanya beres) -- tapi tidak ada satu endpoint pun yang
+memanggilnya. Satu-satunya tempat itu dipakai adalah test yang memanggil
+fungsi domain-nya langsung (`test_klien_membuka_link_yang_sudah_direvoke_403`),
+bukan lewat HTTP. Freelancer yang salah kirim link, atau ingin
+membatalkan link lama setelah menerbitkan yang baru untuk ronde
+berikutnya, **tidak punya cara sama sekali** untuk melakukannya.
+
+**Constraint desain yang penting**: raw token cuma pernah ada SEKALI, di
+response `POST .../client-links` -- backend cuma menyimpan hash-nya
+(02 §8, sengaja, supaya token bocor dari database tidak berguna). Artinya
+revoke HANYA bisa ditawarkan tepat setelah link dibuat (selagi raw token
+masih ada di state React), bukan lewat "daftar riwayat link" -- daftar
+begitu memang tidak mungkin dibangun tanpa melanggar constraint itu.
+
+**Fix**: `POST /runs/{run_id}/client-links/{token}/revoke` (owner-only,
+404 kalau token tidak dikenal ATAU `deal_id`-nya bukan run ini). Frontend:
+tombol "Revoke" kecil di sebelah link yang baru dibuat (baik clarification
+maupun delivery review) -- state link sekarang `{token, url}`, bukan cuma
+url string, supaya token-nya tersedia buat tombol ini.
+
+Dites lewat Chrome sungguhan (sign-in real + klik "Create clarification
+link" + klik "Revoke" + verifikasi lewat curl bahwa `GET /client/{token}`
+sungguhan berubah dari 200 jadi 403 "This link has been revoked"). Test
+baru: `test_freelancer_revoke_lewat_endpoint_bikin_link_403`,
+`test_revoke_token_tidak_dikenal_404`,
+`test_revoke_token_milik_run_lain_404` di `test_client_portal.py`.
+
+Total **210 test hijau**. Commit `7ea2c06` (branch `rifqi`, di-push,
+diverifikasi `gh api`).
 
 ---
 
