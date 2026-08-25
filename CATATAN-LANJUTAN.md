@@ -222,6 +222,32 @@ lewat console manual:**
 
 ---
 
+## MILESTONE 26 Agu — polling run yang 404/403 tidak pernah berhenti
+
+Ditemukan sendiri (bukan dilaporkan Rifqi) selagi verifikasi manual auth
+sebelumnya: kalau `localStorage` menyimpan `runId` yang basi -- run
+kedaluwarsa, run milik owner lain (habis ganti akun sign-in), atau
+sekadar tidak pernah ada -- `GET /runs/{id}` di `page.tsx` balas 404/403,
+tapi `catch` di `poll()` menelan semua error tanpa pandang bulu dan
+membiarkan `setInterval` jalan terus **setiap detik, selamanya**, dengan
+UI diam-diam nyangkut di "Status: queued" tanpa pesan apa pun.
+
+**Fix**: `api.ts` sekarang punya `class ApiError extends Error` yang
+membawa `status` -- `apiFetch` melempar ini, bukan `Error` polos. `poll()`
+di `page.tsx` membedakan 404/403 (permanen -- run memang bukan milik akun
+ini atau sudah hilang) dari yang lain (transient -- retry jalan terus
+seperti biasa): pada 404/403, `clearInterval`, `runId`/`run` di-reset
+(otomatis membersihkan localStorage lewat effect yang sudah ada), dan
+pesan error ditampilkan ("That run is no longer available...").
+
+Dites lewat Chrome sungguhan: sign-in real (akun test REST, dihapus lagi
+setelah selesai), suntik `runId` acak yang tidak pernah ada ke
+localStorage, reload -- hasilnya pesan error tampil, `localStorage`
+terbukti kosong lagi, tidak ada section "Run" nyangkut. Commit `b8e8871`
+(branch `rifqi`, di-push).
+
+---
+
 ## MILESTONE 25 Agu malam (lanjutan #4) — ledger field yang terekstrak tapi tidak pernah ditampilkan
 
 Instruksi Rifqi: "fokus beresin BE dan FE nya saja dulu yang masih belum
