@@ -7,6 +7,15 @@ ROLE = os.environ.get("ROLE", "api").strip().lower()
 PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT", "").strip()
 PUBSUB_TOPIC = os.environ.get("PUBSUB_TOPIC", "delividence-runs").strip()
 
+# 06 §2. Model terverifikasi di 10-KEPUTUSAN-DAN-VERIFIKASI.md: paket revisi
+# sempat menulis gemini-3.5-flash, dikoreksi karena Google kini menyebutnya
+# legacy Flash model.
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.7-flash").strip()
+GOOGLE_CLOUD_LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "asia-southeast2").strip()
+# Wajib TRUE: mencegah ADK diam-diam fallback ke Gemini Developer API/API key
+# (02 §2, "Google technology mapping").
+GOOGLE_GENAI_USE_VERTEXAI = os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "TRUE").strip()
+
 # Tanpa GOOGLE_CLOUD_PROJECT, jalan dalam mode lokal: antrean lewat HTTP langsung
 # ke worker, state ke file JSON. Bentuk envelope dan semantik klaim job dibuat
 # identik dengan produksi supaya yang diuji lokal adalah jalur yang sama.

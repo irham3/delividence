@@ -14,7 +14,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Repo submission | <https://github.com/irham3/delividence> (public, akun partner, remote `delividence`) |
 | Repo cadangan | <https://github.com/rifqiahmadpratama/dealready> (private, remote `origin`) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **64 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **80 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 Tidak ada proses yang ditinggal jalan. Aman dimatikan.
 
@@ -63,12 +63,39 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
    mendeskripsikan bentuk; tidak menyentuh/mengubah `criteria.py`/`readiness.py`
    yang sudah ada. 13 test baru di `tests/test_schemas.py`, termasuk cross-check
    langsung ke output `app.audit.append_event()`.
-3. **Ekstraksi brief → ledger** lewat Gemini, dengan `validate_quote`
-   dijalankan tanpa syarat atas setiap field sebelum draft ditulis. Sekarang
-   ada `schemas.DealLedger`/`schemas.Baseline` untuk memvalidasi hasil ekstraksi
-   sebelum ditulis — pakai itu, jangan bikin dict manual lagi.
+3. **Ekstraksi brief → ledger lewat Gemini** — **sebagian selesai**, sisanya
+   butuh billing GCP aktif untuk dilanjutkan.
+   - ~~Proyeksi kandidat model → ledger field, `validate_quote` tanpa syarat,
+     G-1 (model tidak boleh AGREED).~~ **Selesai** — `backend/app/domain/extraction.py`
+     (`project_field_candidate`, `assemble_ledger_draft`). 10 test di
+     `tests/test_extraction.py`. Murni, tidak menyentuh Gemini/ADK.
+   - ~~Agent ADK + tool.~~ **Selesai, tapi belum pernah dijalankan sungguhan** —
+     `backend/app/agent.py`: `extraction_agent` (`google-adk==2.7.1`,
+     `google-genai==2.19.0`, ditambahkan ke `requirements.txt`), tool
+     `validate_quote_candidate` (self-check, tidak otoritatif) dan
+     `save_ledger_draft` (menulis `tool_context.state["ledger_draft"]`,
+     memvalidasi ulang lewat `extraction.py` — model tidak bisa melewati gate
+     hanya dengan tidak memanggil `validate_quote_candidate`). 6 test di
+     `tests/test_agent.py`, semuanya memanggil tool langsung (bypass LLM) —
+     Agent ADK-nya sendiri BENAR-BENAR dikonstruksi di test (bukan mock),
+     tapi belum pernah memanggil Gemini sungguhan.
+   - **Sengaja belum dibangun**: tool `load_deal_context`/`read_artifact` dari
+     tool allowlist §4.2 penuh — butuh model data `deals/{deal_id}/artifacts/`
+     yang belum ada. Untuk sekarang pemanggil agent ini isi sendiri
+     `tool_context.state["artifacts"]` (dict `artifact_ref` → teks) sebelum
+     run. Juga belum di-wire ke `worker.py` — vertical slice masih stub
+     "Belum ada logika produk" seperti sebelumnya; menyambungkannya butuh
+     keputusan dulu soal apakah `run_id` (model lama) dan `deal_id` (model
+     `09-DOMAIN-RULES`/`app/audit.py`) itu entitas yang sama atau beda.
+   - Config baru: `GEMINI_MODEL`, `GOOGLE_CLOUD_LOCATION`,
+     `GOOGLE_GENAI_USE_VERTEXAI` di `app/config.py` (06 §2).
+   - Menginstal `google-adk` menurunkan `websockets` dari 17.0.1 ke 15.0.1 di
+     `.venv` (constraint dari ADK). Tidak terlihat masalah — `uvicorn` masih
+     jalan, semua test hijau — tapi catat di sini kalau nanti ada gejala aneh
+     di WebSocket/dev server.
 4. **Ranking tiga pertanyaan** prioritas.
-5. Baru setelah itu: portal klien, baseline approval, Guardrail, Proof.
+5. Baru setelah itu: portal klien, baseline approval, Guardrail, Proof, dan
+   menyambungkan `agent.py` ke `worker.py` (butuh `deal_id` data model dulu).
 
 ---
 
