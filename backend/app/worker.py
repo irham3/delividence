@@ -6,9 +6,9 @@ from fastapi import FastAPI, Request, Response
 
 from app import config, store
 
-log = logging.getLogger("dealready.worker")
+log = logging.getLogger("delividence.worker")
 
-app = FastAPI(title="DealReady Worker")
+app = FastAPI(title="Delividence Worker")
 
 
 @app.get("/health")

@@ -1,4 +1,4 @@
-# DealReady — backend
+# Delividence — backend
 
 Vertical slice: `POST /runs → antrean → worker → store`. Belum ada logika produk
 di dalamnya; yang dibuktikan di tahap ini adalah **eksekusi terpisah dari
@@ -13,7 +13,7 @@ request** dan **idempotensi**.
 | `api` (default) | `app.api` | `GET /health`, `POST /runs`, `GET /runs/{run_id}` |
 | `worker` | `app.worker` | `GET /health`, `POST /pubsub/push` |
 
-Ini yang membuat `dealready-api` dan `dealready-worker` bisa di-deploy dari satu
+Ini yang membuat `delividence-api` dan `delividence-worker` bisa di-deploy dari satu
 sumber tanpa keduanya boot app yang sama.
 
 ## Mode lokal

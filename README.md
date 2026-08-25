@@ -1,4 +1,4 @@
-# DealReady
+# Delividence
 
 **An asynchronous collaborative agent that turns a messy client brief into an
 evidence-backed scope a freelancer can safely quote.**
@@ -48,8 +48,11 @@ product logic, so that the risky part fails early instead of on the last day.
 Verified locally: 10 tests pass, and two real services running side by side move
 a run from `queued` to `done` with no second request.
 
+A Next.js page drives it end to end: submit a brief, watch the status move from
+`queued` to `done` on its own, and read the steps the worker recorded.
+
 **Not built yet:** the extraction agent, the deterministic rule set, the scope
-ledger, the frontend, and deployment to Google Cloud.
+ledger, and deployment to Google Cloud.
 
 ## Architecture
 
@@ -58,14 +61,14 @@ it serves. This is what lets the API and the worker deploy from a single source
 without both booting the same app.
 
 ```
-client ──▶ dealready-api (Cloud Run, public)
+client ──▶ delividence-api (Cloud Run, public)
                │  writes run
                ▼
            Firestore ◀────────────┐
                ▲                  │ writes result + audit trail
                │ publishes job    │
                ▼                  │
-           Pub/Sub ──push OIDC──▶ dealready-worker (Cloud Run, private)
+           Pub/Sub ──push OIDC──▶ delividence-worker (Cloud Run, private)
                │                          │
                └──▶ dead-letter topic     └──▶ Vertex AI (Gemini)
 ```
@@ -93,6 +96,14 @@ cd backend
 ..\.venv\Scripts\python.exe -m pytest -q
 ```
 
+The frontend:
+
+```powershell
+cd web
+pnpm install
+pnpm run dev          # http://localhost:3000
+```
+
 Google Cloud setup and deployment are scripted:
 
 ```powershell
@@ -104,9 +115,14 @@ Google Cloud setup and deployment are scripted:
 
 | Layer | Choice |
 |---|---|
+| Frontend | Next.js 16 (App Router) + TypeScript + Tailwind CSS 4, package manager `pnpm` |
+| Backend | Python 3.11 + FastAPI, served by uvicorn |
 | Model | `gemini-3.7-flash` (current stable Flash; the rules require Gemini 3.5 or newer) |
 | Agent framework | Google ADK |
 | Infrastructure | Cloud Run, Pub/Sub, Firestore, Artifact Registry, Cloud Build |
+
+The backend is Python rather than Node because Google ADK is Python-first, and
+the agent is the part of this system that must not fight its own framework.
 
 ## Disclosure of pre-existing work
 

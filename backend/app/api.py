@@ -1,11 +1,21 @@
 import uuid
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
 from app import config, queue, store
 
-app = FastAPI(title="DealReady API")
+app = FastAPI(title="Delividence API")
+
+# Frontend berjalan di origin lain (Next.js), jadi CORS wajib. Daftarnya dibatasi
+# lewat env supaya produksi tidak terbuka untuk semua origin.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=config.ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
 
 
 class CreateRunRequest(BaseModel):

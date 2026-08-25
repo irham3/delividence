@@ -1,17 +1,17 @@
 <#
-    DealReady - deploy ke Cloud Run + sambungkan push subscription.
+    Delividence - deploy ke Cloud Run + sambungkan push subscription.
 
     Urutannya penting: worker di-deploy lebih dulu karena URL-nya dibutuhkan
     untuk membuat push subscription, baru API di-deploy terakhir.
 
     Pemakaian:
-        .\02-deploy.ps1 -ProjectId dealready-xxxx
+        .\02-deploy.ps1 -ProjectId delividence-xxxx
 #>
 
 param(
     [Parameter(Mandatory = $true)][string]$ProjectId,
     [string]$Region = "asia-southeast2",
-    [string]$Topic = "dealready-runs"
+    [string]$Topic = "delividence-runs"
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,9 +20,9 @@ $DlqTopic = "$Topic-dlq"
 $PushSub = "$Topic-push"
 $Backend = Join-Path $PSScriptRoot "..\backend"
 
-$SaApi = "dealready-api@$ProjectId.iam.gserviceaccount.com"
-$SaWorker = "dealready-worker@$ProjectId.iam.gserviceaccount.com"
-$SaPush = "dealready-pubsub@$ProjectId.iam.gserviceaccount.com"
+$SaApi = "delividence-api@$ProjectId.iam.gserviceaccount.com"
+$SaWorker = "delividence-worker@$ProjectId.iam.gserviceaccount.com"
+$SaPush = "delividence-pubsub@$ProjectId.iam.gserviceaccount.com"
 
 function Step($text) { Write-Host "`n==> $text" -ForegroundColor Cyan }
 
@@ -38,7 +38,7 @@ function Must([string]$what, [scriptblock]$cmd) {
 
 Step "Deploy worker (tertutup - hanya Pub/Sub yang boleh memanggil)"
 Must "deploy worker" {
-    gcloud run deploy dealready-worker `
+    gcloud run deploy delividence-worker `
         --source=$Backend `
         --region=$Region `
         --service-account=$SaWorker `
@@ -49,13 +49,13 @@ Must "deploy worker" {
         --quiet
 }
 
-$WorkerUrl = (gcloud run services describe dealready-worker --region=$Region --format="value(status.url)")
+$WorkerUrl = (gcloud run services describe delividence-worker --region=$Region --format="value(status.url)")
 if (-not $WorkerUrl) { throw "URL worker tidak terbaca" }
 Write-Host "worker: $WorkerUrl"
 
 Step "Izin: hanya identitas push Pub/Sub yang boleh memanggil worker"
 Must "run.invoker" {
-    gcloud run services add-iam-policy-binding dealready-worker `
+    gcloud run services add-iam-policy-binding delividence-worker `
         --region=$Region `
         --member="serviceAccount:$SaPush" `
         --role="roles/run.invoker" `
@@ -94,7 +94,7 @@ if (Exists { gcloud pubsub subscriptions describe $PushSub --format="value(name)
 
 Step "Deploy API (terbuka - juri harus bisa mengaksesnya tanpa restriksi)"
 Must "deploy api" {
-    gcloud run deploy dealready-api `
+    gcloud run deploy delividence-api `
         --source=$Backend `
         --region=$Region `
         --service-account=$SaApi `
@@ -104,7 +104,7 @@ Must "deploy api" {
         --quiet
 }
 
-$ApiUrl = (gcloud run services describe dealready-api --region=$Region --format="value(status.url)")
+$ApiUrl = (gcloud run services describe delividence-api --region=$Region --format="value(status.url)")
 
 Write-Host "`nSELESAI." -ForegroundColor Green
 Write-Host "api   : $ApiUrl"
@@ -125,6 +125,6 @@ benar-benar memanggil worker, bukan API yang mengerjakannya sendiri.
 
 Kalau macet, urutan pemeriksaan:
   gcloud pubsub subscriptions describe $PushSub
-  gcloud run services logs read dealready-worker --region=$Region --limit=50
+  gcloud run services logs read delividence-worker --region=$Region --limit=50
   gcloud pubsub subscriptions pull $DlqTopic-sub --limit=5    # pesan yang mati
 "@

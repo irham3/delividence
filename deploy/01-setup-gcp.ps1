@@ -1,5 +1,5 @@
 <#
-    DealReady - penyiapan resource Google Cloud.
+    Delividence - penyiapan resource Google Cloud.
 
     Jalankan sekali setelah billing aktif. Aman diulang: setiap resource dicek
     dulu keberadaannya, jadi menjalankan ulang tidak menggandakan apa pun.
@@ -10,19 +10,19 @@
         gcloud config set project <PROJECT_ID>
 
     Pemakaian:
-        .\01-setup-gcp.ps1 -ProjectId dealready-xxxx
+        .\01-setup-gcp.ps1 -ProjectId delividence-xxxx
 #>
 
 param(
     [Parameter(Mandatory = $true)][string]$ProjectId,
     [string]$Region = "asia-southeast2",
-    [string]$Topic = "dealready-runs"
+    [string]$Topic = "delividence-runs"
 )
 
 $ErrorActionPreference = "Stop"
 
 $DlqTopic = "$Topic-dlq"
-$Repo = "dealready"
+$Repo = "delividence"
 
 function Step($text) { Write-Host "`n==> $text" -ForegroundColor Cyan }
 
@@ -78,9 +78,9 @@ if (Exists { gcloud artifacts repositories describe $Repo --location=$Region --f
 
 Step "Service account (satu per peran, hak minimum)"
 $accounts = @{
-    "dealready-api"    = "API: menulis run, menerbitkan pekerjaan"
-    "dealready-worker" = "Worker: memproses pekerjaan, memanggil Vertex AI"
-    "dealready-pubsub" = "Identitas push Pub/Sub: hanya boleh memanggil worker"
+    "delividence-api"    = "API: menulis run, menerbitkan pekerjaan"
+    "delividence-worker" = "Worker: memproses pekerjaan, memanggil Vertex AI"
+    "delividence-pubsub" = "Identitas push Pub/Sub: hanya boleh memanggil worker"
 }
 foreach ($name in $accounts.Keys) {
     $email = "$name@$ProjectId.iam.gserviceaccount.com"
@@ -94,8 +94,8 @@ foreach ($name in $accounts.Keys) {
     }
 }
 
-$SaApi = "dealready-api@$ProjectId.iam.gserviceaccount.com"
-$SaWorker = "dealready-worker@$ProjectId.iam.gserviceaccount.com"
+$SaApi = "delividence-api@$ProjectId.iam.gserviceaccount.com"
+$SaWorker = "delividence-worker@$ProjectId.iam.gserviceaccount.com"
 
 Step "IAM level project"
 # API: baca/tulis Firestore. Worker: Firestore + Vertex AI. Tidak lebih.
