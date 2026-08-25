@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { API, apiFetch } from "@/lib/api";
+import { API, apiFetch, type Citation, type ProofManifest, type ScopeRequest } from "@/lib/api";
 
 type AuditStep = { at: string; step: string; detail: string };
 
@@ -359,6 +359,242 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
           </a>
         </div>
       </div>
+
+      {hasBaseline && <GuardrailPanel runId={runId} />}
     </section>
+  );
+}
+
+const CLASSIFICATIONS = ["IN_SCOPE", "AMBIGUOUS", "CHANGE_REQUEST"] as const;
+type Classification = (typeof CLASSIFICATIONS)[number];
+
+function GuardrailPanel({ runId }: { runId: string }) {
+  const [requests, setRequests] = useState<ScopeRequest[]>([]);
+  const [citableRefs, setCitableRefs] = useState<{ ref: string; text: string }[]>([]);
+  const [rawText, setRawText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    try {
+      const [reqs, proof] = await Promise.all([
+        apiFetch<ScopeRequest[]>(`/runs/${runId}/requests`),
+        apiFetch<ProofManifest>(`/runs/${runId}/proof?format=json`),
+      ]);
+      setRequests(reqs);
+      setCitableRefs(proof.criteria.map((c) => ({ ref: c.criterion_key, text: c.text })));
+    } catch {
+      // Best-effort -- panel just stays empty/stale until the next load().
+    }
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runId]);
+
+  async function submitRequest(event: React.FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await apiFetch(`/runs/${runId}/requests`, {
+        method: "POST",
+        body: JSON.stringify({ raw_text: rawText, submitted_by: "freelancer" }),
+      });
+      setRawText("");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to log request.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="border-t border-neutral-200 pt-8 dark:border-neutral-800">
+      <h2 className="text-sm font-medium">New requests (Guardrail)</h2>
+      <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+        Log something the client asked for after the plan was confirmed. Classify it against
+        the baseline with a verbatim citation -- without one it&apos;s automatically downgraded
+        to AMBIGUOUS, never assumed in scope.
+      </p>
+
+      <form onSubmit={submitRequest} className="mt-3 flex items-center gap-2">
+        <input
+          value={rawText}
+          onChange={(e) => setRawText(e.target.value)}
+          required
+          placeholder="What did the client ask for?"
+          className="min-w-48 flex-1 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+        />
+        <button
+          type="submit"
+          disabled={submitting}
+          className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+        >
+          {submitting ? "Logging…" : "Log request"}
+        </button>
+      </form>
+      {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
+
+      <div className="mt-4 space-y-3">
+        {requests.map((r) => (
+          <RequestCard
+            key={r.request_id}
+            runId={runId}
+            request={r}
+            citableRefs={citableRefs}
+            onClassified={load}
+          />
+        ))}
+        {requests.length === 0 && (
+          <p className="text-xs text-neutral-400">No requests logged yet.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RequestCard({
+  runId,
+  request,
+  citableRefs,
+  onClassified,
+}: {
+  runId: string;
+  request: ScopeRequest;
+  citableRefs: { ref: string; text: string }[];
+  onClassified: () => void;
+}) {
+  const [classification, setClassification] = useState<Classification>("AMBIGUOUS");
+  const [citations, setCitations] = useState<Citation[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function classify() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      await apiFetch(`/runs/${runId}/requests/${request.request_id}/classify`, {
+        method: "POST",
+        body: JSON.stringify({ classification, citations }),
+      });
+      onClassified();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to classify.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (request.confirmed_classification) {
+    return (
+      <div className="rounded-md border border-neutral-200 p-3 text-sm dark:border-neutral-800">
+        <p>{request.raw_text}</p>
+        <p className="mt-1 text-xs">
+          Classification: <strong>{request.confirmed_classification}</strong>
+        </p>
+        {request.citations.length > 0 && (
+          <ul className="mt-1 space-y-0.5 text-xs text-neutral-500">
+            {request.citations.map((c, i) => (
+              <li key={i}>
+                <code>{c.ref}</code> — &quot;{c.quote}&quot;
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border border-neutral-200 p-3 text-sm dark:border-neutral-800">
+      <p>{request.raw_text}</p>
+      <div className="mt-2 flex items-center gap-2">
+        <select
+          value={classification}
+          onChange={(e) => setClassification(e.target.value as Classification)}
+          className="rounded border border-neutral-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+        >
+          {CLASSIFICATIONS.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={classify}
+          disabled={submitting}
+          className="rounded-md border border-neutral-300 px-3 py-1 text-xs disabled:opacity-40 dark:border-neutral-700"
+        >
+          {submitting ? "Saving…" : "Confirm classification"}
+        </button>
+      </div>
+
+      {classification !== "AMBIGUOUS" && (
+        <div className="mt-2">
+          {citableRefs.length > 0 && (
+            <ul className="space-y-0.5 text-xs text-neutral-400">
+              {citableRefs.map((c) => (
+                <li key={c.ref}>
+                  <code>{c.ref}</code>: {c.text}
+                </li>
+              ))}
+            </ul>
+          )}
+          <CitationList citations={citations} onChange={setCitations} />
+        </div>
+      )}
+      {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
+    </div>
+  );
+}
+
+function CitationList({
+  citations,
+  onChange,
+}: {
+  citations: Citation[];
+  onChange: (c: Citation[]) => void;
+}) {
+  return (
+    <div className="mt-1 space-y-1">
+      {citations.map((c, i) => (
+        <div key={i} className="flex items-center gap-1">
+          <input
+            value={c.ref}
+            onChange={(e) =>
+              onChange(citations.map((it, j) => (j === i ? { ...it, ref: e.target.value } : it)))
+            }
+            placeholder="ref"
+            className="w-32 rounded border border-neutral-300 px-1 py-0.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+          />
+          <input
+            value={c.quote}
+            onChange={(e) =>
+              onChange(citations.map((it, j) => (j === i ? { ...it, quote: e.target.value } : it)))
+            }
+            placeholder="verbatim quote"
+            className="flex-1 rounded border border-neutral-300 px-1 py-0.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+          />
+          <button
+            type="button"
+            onClick={() => onChange(citations.filter((_, j) => j !== i))}
+            className="text-xs text-neutral-400"
+          >
+            remove
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...citations, { ref: "", quote: "" }])}
+        className="text-xs text-neutral-500 underline"
+      >
+        + add citation
+      </button>
+    </div>
   );
 }

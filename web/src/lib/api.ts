@@ -47,6 +47,22 @@ export type ReviewCriterion = {
 
 export type ReviewView = { baseline_version: number; criteria: ReviewCriterion[] };
 
+export type Citation = { ref: string; quote: string };
+
+export type ScopeRequest = {
+  request_id: string;
+  raw_text: string;
+  submitted_by: string;
+  confirmed_classification: string | null;
+  citations: Citation[];
+  created_at: string;
+  decided_at: string | null;
+};
+
+export type ProofManifest = {
+  criteria: { criterion_key: string; text: string }[];
+};
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...init,
