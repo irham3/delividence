@@ -222,6 +222,37 @@ lewat console manual:**
 
 ---
 
+## MILESTONE 25 Agu malam (lanjutan #4) — ledger field yang terekstrak tapi tidak pernah ditampilkan
+
+Instruksi Rifqi: "fokus beresin BE dan FE nya saja dulu yang masih belum
+beres" — sisir ulang PRD vs kode untuk cari gap nyata yang TIDAK diblokir
+Gemini/billing.
+
+**Temuan**: `app/domain/schemas.py: DealLedger` (dan ekstraksi Gemini di
+`app/agent.py`, lihat instruksi field-nya) sudah lama punya empat field
+`in_scope`, `dependencies`, `assumptions`, `unresolved_questions` — persis
+disebut di 01-PRD §4 sebagai bagian "ledger minimum". Tapi
+`web/src/app/client/[token]/page.tsx` (portal klien) TIDAK PERNAH
+menampilkan atau membiarkan klien mengedit keempatnya — cuma
+deliverables/acceptance_criteria/out_of_scope/timeline/revision_policy
+yang ada UI-nya. Nilai yang berhasil diekstrak Gemini (atau yang mestinya
+bisa diisi manual klien) diam-diam hilang dari pandangan pengguna.
+
+**Fix**: seksi baru "Additional context" di bawah field kritis (bukan
+readiness-gating, jadi sengaja dipisah visual dari field yang wajib) —
+4 `ListField` baru pakai komponen yang sama persis dengan "Out of scope"
+yang sudah ada. `web/src/lib/api.ts`: tipe `Ledger` ditambah keempat field
+ini (`LedgerField<string[]>`). Tidak ada perubahan backend sama sekali --
+`DealLedger` sudah menerima field ini sejak awal (`extra="forbid"` cuma
+menolak nama field yang TIDAK dikenal, dan keempatnya sudah dikenal),
+`readiness.evaluate` sudah benar tidak menganggapnya critical field.
+
+Dites lewat curl (payload tersimpan & round-trip lewat `/client/{token}`)
+DAN lewat Chrome sungguhan (nilai tampil benar di masing-masing input).
+Commit `2916b4a` (branch `rifqi`, di-push).
+
+---
+
 ## MILESTONE 25 Agu malam (lanjutan #3) — CHANGE_REQUEST -> baseline v2 selesai, dites end-to-end
 
 Instruksi Rifqi: "lanjutkan yang belum beres ... fokus ke FE/BE yang belum
