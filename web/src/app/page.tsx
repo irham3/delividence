@@ -11,7 +11,6 @@ import {
   type AcceptanceCriterion,
   type Citation,
   type Ledger,
-  type ProofManifest,
   type ScopeRequest,
 } from "@/lib/api";
 import { auth, signInWithGoogle, signOutOwner } from "@/lib/firebase";
@@ -560,12 +559,16 @@ function GuardrailPanel({ runId }: { runId: string }) {
 
   async function load() {
     try {
-      const [reqs, proof] = await Promise.all([
+      const [reqs, refs] = await Promise.all([
         apiFetch<ScopeRequest[]>(`/runs/${runId}/requests`),
-        apiFetch<ProofManifest>(`/runs/${runId}/proof?format=json`),
+        // Full citable set (criteria + out_of_scope[i] + deliverables[i]) --
+        // matches exactly what guardrail.citable_text() validates against,
+        // not just criteria (proof.criteria used to be the only source here
+        // and silently left out_of_scope/deliverables refs undiscoverable).
+        apiFetch<Record<string, string>>(`/runs/${runId}/citable-refs`),
       ]);
       setRequests(reqs);
-      setCitableRefs(proof.criteria.map((c) => ({ ref: c.criterion_key, text: c.text })));
+      setCitableRefs(Object.entries(refs).map(([ref, text]) => ({ ref, text })));
     } catch {
       // Best-effort -- panel just stays empty/stale until the next load().
     }

@@ -564,6 +564,18 @@ def list_scope_requests(run_id: str, owner_id: str = Depends(auth.require_owner)
     return scope_requests.list_for_deal(run_id)
 
 
+@app.get("/runs/{run_id}/citable-refs")
+def get_citable_refs(run_id: str, owner_id: str = Depends(auth.require_owner)):
+    """{ref: text} lengkap yang boleh dikutip untuk classify (Guardrail) --
+    sama persis dengan yang divalidasi `classify_scope_request` lewat
+    `guardrail.citable_text()`, jadi UI bisa menunjukkan ref yang BENAR
+    (termasuk `out_of_scope[i]`/`deliverables[i]`, bukan cuma criterion_key)
+    sebelum freelancer menebak-nebak format ref sendiri."""
+    run = _owned_run_or_404(run_id, owner_id)
+    _, active_baseline = _active_baseline_or_409(run_id, run)
+    return guardrail.citable_text(active_baseline)
+
+
 class CitationItem(BaseModel):
     ref: str = Field(min_length=1)
     quote: str = Field(min_length=1)

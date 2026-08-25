@@ -127,3 +127,19 @@ def test_classification_tidak_dikenal_422(published):
         json={"classification": "MAYBE", "citations": []},
     )
     assert r.status_code == 422
+
+
+def test_citable_refs_meliputi_criterion_dan_out_of_scope(published):
+    """UI Guardrail (GuardrailPanel) menampilkan ini sebagai hint ref+teks
+    sebelum freelancer mengisi citation -- harus mencakup SEMUA yang
+    divalidasi `classify()`, bukan cuma criterion_key."""
+    run_id = _run_with_active_baseline(published)
+    refs = api.get("/runs/%s/citable-refs" % run_id).json()
+    assert refs["mobile-breakpoints"] == "Renders at 375px."
+    assert refs["out_of_scope[0]"] == "No paid ads."
+    assert refs["deliverables[0]"] == "Landing page"
+
+
+def test_citable_refs_tanpa_baseline_aktif_409(published):
+    run_id = api.post("/runs", json={"brief": "Need a landing page."}).json()["run_id"]
+    assert api.get("/runs/%s/citable-refs" % run_id).status_code == 409

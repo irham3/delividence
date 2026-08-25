@@ -73,10 +73,6 @@ export type ScopeRequest = {
   decided_at: string | null;
 };
 
-export type ProofManifest = {
-  criteria: { criterion_key: string; text: string }[];
-};
-
 // Carries the HTTP status so callers can tell a permanent failure (404/403 --
 // wrong owner, deleted run) from a transient one (network blip, 5xx) instead
 // of treating every fetch failure the same way. Extends Error so existing
