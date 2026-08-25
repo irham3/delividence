@@ -266,9 +266,39 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
     - **Sengaja belum**: model benar-benar mengusulkan classification+citation
       (butuh Gemini, sama seperti item 6), dan CHANGE_REQUEST yang disetujui
       membuat baseline v2 (butuh perbaikan `introduced_in_version` dulu).
-13. Baru setelah ini semua: wiring Gemini sungguhan (item 6, diblokir billing)
-    — begitu itu jalan, `agent.py`/`extraction_agent` bisa diperluas untuk
-    juga mengusulkan classification Guardrail, bukan cuma ekstraksi ledger.
+13. ~~**Wiring `worker.py` ke `agent.extraction_agent`, Gemini sungguhan.**~~
+    **Kode selesai, terverifikasi end-to-end, TAPI belum pernah sukses
+    ekstraksi sungguhan** — `GEMINI_API_KEY` valid dan jalan (dibuktikan
+    lewat panggilan sederhana: `generate_content(..., "Balas satu kata:
+    OK")` -> `"OK"`), tapi `gemini-3.7-flash` konsisten balas **503
+    "This model is currently experiencing high demand"** setiap kali
+    dipanggil lewat `extraction_agent` (dicoba 3x, langsung dan lewat HTTP
+    penuh). Ini murni kapasitas server Google saat ini, bukan bug di kode.
+    - `app/worker.py`: `run_extraction(run_id, brief)` — `InMemoryRunner`
+      + `session_service.create_session(state={"artifacts": {...}})` +
+      `run_async(new_message=...)`, baca `ledger_draft` dari
+      `session.state` setelah run selesai. Dipanggil dari `push()`,
+      dibungkus `try/except` supaya kegagalan Gemini (503 dll) tidak
+      menjatuhkan worker — status tetap ditulis jujur ("Ekstraksi Gemini
+      gagal"), bukan diam-diam dianggap sukses kosong.
+    - **Gap yang diketahui, dicatat apa adanya**: round yang gagal karena
+      Gemini transient **tidak otomatis di-retry** — `claim_job` sudah
+      mengklaim round itu sebelum ekstraksi dicoba, jadi redelivery
+      Pub/Sub akan dianggap duplikat dan di-drop, bukan diulang. Perlu
+      mekanisme retry level-job (mis. tidak claim sampai ekstraksi
+      sukses, atau job terpisah untuk retry) kalau ini jadi masalah nyata
+      saat demo — belum dibangun.
+    - `tests/conftest.py`: fixture `stub_extraction` (autouse) — semua 189
+      test TIDAK memanggil Gemini sungguhan (cepat, deterministik, tidak
+      butuh API key). Wiring sungguhan hanya diverifikasi manual.
+    - **Coba lagi nanti**: jalankan ulang verifikasi manual (perintah ada
+      di riwayat commit/sesi) begitu demand `gemini-3.7-flash` mereda, atau
+      coba model Gemini lain sebentar buat isolasi masalah (`gemini-2.5-
+      flash` misalnya) — TAPI jangan ganti `GEMINI_MODEL` default tanpa
+      alasan baru, itu keputusan terkunci (lihat bawah).
+14. Baru setelah ini semua sukses sekali secara nyata: perluas `agent.py`
+    untuk juga mengusulkan classification Guardrail (item 12), bukan cuma
+    ekstraksi ledger.
 
 ---
 
@@ -311,20 +341,20 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
    tim di Devpost dan undangannya sudah diterima.
 5. **Aturan kontes Emergent** (D-4) belum dicek soal benturan.
 
-### Setelah GEMINI_API_KEY diisi (tidak perlu billing/gcloud sama sekali)
+### GEMINI_API_KEY — status: SUDAH DIISI, wiring selesai, tinggal tunggu demand mereda
 
-Ini yang sekarang jadi jalur utama -- mode lokal (`GOOGLE_CLOUD_PROJECT`
-kosong) tetap dipakai untuk Firestore/Pub/Sub (state ke file JSON, seperti
-semua 189 test sekarang), Gemini-nya saja yang jadi panggilan sungguhan
-lewat Developer API:
+~~1. Isi GEMINI_API_KEY~~ **selesai** — key digenerate dari akun Google lain
+(akun pertama, `rifqiahmad234a@gmail.com`, sempat gagal "request is
+suspicious" 2x waktu generate key; akun kedua berhasil). Ada di
+`backend/.env` (gitignored, tidak ke-commit).
 
-1. Isi `GEMINI_API_KEY` di `backend/.env` (`GOOGLE_GENAI_USE_VERTEXAI=FALSE`
-   sudah default).
-2. Lanjut wiring `worker.py` ke `agent.extraction_agent` (item 6 di
-   atas) — sekarang bisa ditulis DAN diuji sampai selesai, bukan cuma
-   dikonstruksi.
-3. Perluas `agent.py`/tool baru untuk juga mengusulkan classification+citation
-   Guardrail (item 12), bukan cuma ekstraksi ledger.
+~~2. Wiring worker.py~~ **selesai, lihat item 13 di atas** — kodenya benar
+dan sudah diverifikasi jalan end-to-end sampai titik panggilan Gemini;
+panggilan sungguhan-nya sendiri belum pernah sukses gara-gara 503 dari
+Google. Coba lagi nanti, tidak perlu menulis ulang kode apa pun.
+
+3. Setelah item 13 sukses sekali: perluas `agent.py`/tool baru untuk juga
+   mengusulkan classification+citation Guardrail (item 12/14).
 
 ### Setelah billing GCP aktif (baru relevan untuk deploy, bukan untuk Gemini)
 

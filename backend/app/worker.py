@@ -4,11 +4,46 @@ import logging
 
 from fastapi import FastAPI, Request, Response
 
-from app import config, store
+from app import agent, audit, config, store
 
 log = logging.getLogger("delividence.worker")
 
 app = FastAPI(title="Delividence Worker")
+
+
+async def run_extraction(run_id, brief):
+    """Jalankan agent.extraction_agent lewat Gemini sungguhan atas satu
+    artifact brief (artifact:brief-1). Mengembalikan ledger draft (dict)
+    dari tool_context.state["ledger_draft"] setelah run selesai, atau None
+    kalau agent tidak pernah memanggil save_ledger_draft.
+
+    Fungsi terpisah (bukan inline di push()) supaya test bisa
+    memonkeypatch-nya -- lihat conftest.stub_extraction (autouse): semua
+    test lewat push handler TIDAK memanggil Gemini sungguhan, supaya test
+    suite cepat, deterministik, dan tidak butuh GEMINI_API_KEY. Wiring ini
+    diverifikasi manual lewat uvicorn (CATATAN-LANJUTAN.md), bukan di sini.
+    """
+    from google.adk.runners import InMemoryRunner
+    from google.genai import types as genai_types
+
+    runner = InMemoryRunner(agent=agent.extraction_agent, app_name="delividence")
+    await runner.session_service.create_session(
+        app_name="delividence",
+        user_id="worker",
+        session_id=run_id,
+        state={"artifacts": {"artifact:brief-1": brief}},
+    )
+    message = genai_types.Content(
+        role="user",
+        parts=[genai_types.Part(text="Extract the deal ledger from artifact:brief-1.")],
+    )
+    async for _ in runner.run_async(user_id="worker", session_id=run_id, new_message=message):
+        pass
+
+    session = await runner.session_service.get_session(
+        app_name="delividence", user_id="worker", session_id=run_id
+    )
+    return session.state.get("ledger_draft")
 
 
 @app.get("/health")
@@ -53,11 +88,30 @@ async def push(request: Request):
         return Response(status_code=204)
 
     store.update_run(run_id, status="processing", round=round_no)
-    store.append_audit_step(
-        run_id,
-        "vertical_slice",
-        "Pekerjaan diterima dari antrean dan diproses di luar request. "
-        "Belum ada logika produk di tahap ini.",
-    )
+
+    # Kegagalan Gemini (mis. 503 model sedang overload) TIDAK BOLEH
+    # menjatuhkan seluruh worker -- round ini sudah diklaim (claim_job di
+    # atas), jadi Pub/Sub redelivery tidak akan mengulang kerja ini (lihat
+    # CATATAN-LANJUTAN.md: belum ada retry level-job untuk kegagalan Gemini
+    # transient, gap yang diketahui). Status tetap ditulis jujur sebagai
+    # gagal, bukan diam-diam dianggap "0 field ditemukan".
+    try:
+        ledger_draft = await run_extraction(run_id, run["brief"])
+    except Exception:
+        log.exception("ekstraksi Gemini gagal untuk run %s", run_id)
+        ledger_draft = None
+        detail = "Ekstraksi Gemini gagal (lihat log worker); ledger belum terisi."
+    else:
+        if ledger_draft:
+            store.update_run(run_id, ledger=ledger_draft)
+            audit.append_event(
+                run_id, "LEDGER_DRAFT_SAVED", "model", 0,
+                {"fields": sorted(ledger_draft.keys())},
+            )
+            detail = "Brief diekstrak lewat Gemini -- %d field ledger terisi." % len(ledger_draft)
+        else:
+            detail = "Gemini tidak menghasilkan field ledger apa pun dari brief ini."
+    store.append_audit_step(run_id, "extraction", detail)
+
     store.update_run(run_id, status="done")
     return Response(status_code=204)

@@ -18,3 +18,17 @@ def published(monkeypatch):
     sent = []
     monkeypatch.setattr(queue, "publish", lambda message: sent.append(message))
     return sent
+
+
+@pytest.fixture(autouse=True)
+def stub_extraction(monkeypatch):
+    """Test lewat worker push handler TIDAK memanggil Gemini sungguhan --
+    supaya test suite cepat, deterministik, dan tidak butuh GEMINI_API_KEY.
+    Wiring worker.run_extraction ke Gemini sungguhan diverifikasi manual
+    lewat uvicorn (lihat CATATAN-LANJUTAN.md), bukan di sini."""
+    from app import worker
+
+    async def _stub(run_id, brief):
+        return None
+
+    monkeypatch.setattr(worker, "run_extraction", _stub)
