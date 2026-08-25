@@ -14,7 +14,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Repo submission | <https://github.com/irham3/delividence> (public, akun partner, remote `delividence`) |
 | Repo cadangan | <https://github.com/rifqiahmadpratama/dealready> (private, remote `origin`) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **51 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **64 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 Tidak ada proses yang ditinggal jalan. Aman dimatikan.
 
@@ -54,10 +54,19 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
    §7.1) dan `list_events()` (urut seq asc, dipakai semua modul §6). Belum ada
    pemanggil lain; ini fondasi, bukan fitur yang terlihat. 10 test baru di
    `tests/test_audit.py`.
-2. **Skema ledger** (`shared/schemas/`, §10 butir 1) — masih tersebar sebagai
-   dict di test, belum jadi source of truth.
+2. ~~**Skema ledger** (§10 butir 1).~~ **Selesai** — `backend/app/domain/schemas.py`:
+   model Pydantic `LedgerField`, `DealLedger`, `Criterion`/`CanonicalPayload`/
+   `Baseline`, `CriterionDecision`, `AuditEventEnvelope`. Sengaja **bukan** di
+   folder root `shared/schemas/` seperti tertulis di 06 §1 — sudah dicek ke
+   Rifqi, keputusannya taruh di dalam backend karena satu-satunya konsumen
+   saat ini Python backend (web/ belum menyentuh bentuk ledger). Hanya
+   mendeskripsikan bentuk; tidak menyentuh/mengubah `criteria.py`/`readiness.py`
+   yang sudah ada. 13 test baru di `tests/test_schemas.py`, termasuk cross-check
+   langsung ke output `app.audit.append_event()`.
 3. **Ekstraksi brief → ledger** lewat Gemini, dengan `validate_quote`
-   dijalankan tanpa syarat atas setiap field sebelum draft ditulis.
+   dijalankan tanpa syarat atas setiap field sebelum draft ditulis. Sekarang
+   ada `schemas.DealLedger`/`schemas.Baseline` untuk memvalidasi hasil ekstraksi
+   sebelum ditulis — pakai itu, jangan bikin dict manual lagi.
 4. **Ranking tiga pertanyaan** prioritas.
 5. Baru setelah itu: portal klien, baseline approval, Guardrail, Proof.
 
