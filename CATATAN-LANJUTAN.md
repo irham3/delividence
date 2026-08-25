@@ -11,10 +11,11 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Deadline | **1 September 2026, 07:00 WIB** (31 Agu 17:00 PT) |
 | Target submit internal | 31 Agustus, 18:00 WIB |
 | Sisa waktu kerja realistis | **~26–29 jam** |
-| Repo submission | <https://github.com/irham3/delividence> (public, akun partner, remote `delividence`) |
-| Repo cadangan | <https://github.com/rifqiahmadpratama/dealready> (private, remote `origin`) |
+| Repo submission | <https://github.com/irham3/delividence> (public, akun partner, remote `delividence`, **satu-satunya remote aktif**) |
+| Branch kerja | Mulai 25 Agu 2026 malam: push ke branch **`rifqi`**, BUKAN `main` — supaya tidak tabrakan dengan partner (owner repo) yang juga kerja di `main`. Commit sampai dengan `120 test hijau` di atas ada di `main`; commit sesudahnya ada di `rifqi`. |
+| Repo cadangan (tidak dipush lagi) | <https://github.com/rifqiahmadpratama/dealready> (masih ada di GitHub, tapi remote `origin` sudah dilepas dari git lokal 25 Agu — fokus ke `delividence` saja) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **106 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **120 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 Tidak ada proses yang ditinggal jalan. Aman dimatikan.
 
@@ -132,16 +133,40 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
    token mentah — dipakai nanti pas endpoint client beneran menulis
    `CLIENT_ANSWERED` dll). 18 test baru (`test_client_link.py` +
    `test_client_links.py`). Total 106 test hijau.
-   **Sengaja belum**: endpoint HTTP buat menerbitkan/memakai link ini —
-   belum ada layar "review ledger draft" di sisi freelancer yang jadi
-   pemicu alami "kirim client link", dan belum ada endpoint clarification
-   yang benar-benar dijawab klien. `PURPOSES` (CLARIFICATION/APPROVAL/
-   DELIVERY_REVIEW/NEW_REQUEST) didefinisikan di sini karena dokumen tidak
-   menormatifkannya sebagai enum tertutup di manapun — kalau nanti nemu
-   definisi resmi yang beda, sinkronkan.
-8. Baru setelah itu: portal klien (endpoint clarification/approval/delivery
-   review beneran, pakai client_links.py di atas), baseline approval,
-   Guardrail, Proof.
+   `PURPOSES` (CLARIFICATION/APPROVAL/DELIVERY_REVIEW/NEW_REQUEST)
+   didefinisikan di sini karena dokumen tidak menormatifkannya sebagai enum
+   tertutup di manapun — kalau nanti nemu definisi resmi yang beda,
+   sinkronkan.
+8. ~~**Endpoint HTTP clarification** — freelancer kirim link, klien buka &
+   jawab.~~ **Selesai** — di `app/api.py`:
+   - `POST /runs/{run_id}/client-links` — freelancer menerbitkan token
+     CLARIFICATION (`_CLARIFICATION_ACTIONS = ["view", "answer"]`).
+   - `GET /client/{token}` — klien lihat brief + ledger + readiness saat ini.
+     Token invalid/revoked/expired -> 403 dengan alasan netral dari
+     `client_link.check()`.
+   - `POST /client/{token}/answers` — klien menulis nilai langsung ke field
+     ledger manapun (`app/domain/ledger.py: apply_client_answer`, state selalu
+     `CLIENT_STATED`, TANPA `validate_quote` — ini input langsung klien lewat
+     form, bukan ekstraksi dari artifact, jadi tidak butuh kutipan). Ledger
+     hasil merge divalidasi lewat `schemas.DealLedger` SEBELUM satu pun audit
+     event ditulis (field top-level tidak dikenal -> 422, tidak ada tulisan
+     setengah jalan). Tiap field yang berubah menulis event `CLIENT_ANSWERED`
+     lewat `app/audit.py`, `actor_ref` dari `client_links.actor_ref_for()`
+     (potongan hash, bukan token mentah).
+   - **Keputusan sengaja**: link TIDAK ditandai `completed` setelah
+     `/answers` — klien boleh kirim beberapa ronde koreksi. Baru ditandai
+     selesai nanti oleh aksi "Confirm project plan" (baseline approval,
+     belum dibangun).
+   - Ini jalan penuh TANPA Gemini — ledger dimulai `{}` dan diisi langsung
+     oleh klien lewat portal; begitu ekstraksi Gemini aktif (item 6), ia
+     tinggal mengisi `ledger` duluan sebelum klien membuka link.
+   - Diverifikasi lewat `uvicorn` sungguhan (bukan cuma `TestClient`): buat
+     run -> terbitkan link -> klien lihat (readiness blocker lengkap) ->
+     klien jawab `timeline.final_deadline` -> blocker itu hilang -> GET ulang
+     menunjukkan nilai persist. `app/domain/ledger.py` (5 test) +
+     `tests/test_client_portal.py` (9 test). Total **120 test hijau**.
+9. Baru setelah itu: portal klien penuh (approval, delivery review, new
+   request), baseline approval, Guardrail, Proof.
 
 ---
 

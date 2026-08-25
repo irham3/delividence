@@ -63,6 +63,9 @@ def create_run(run_id, brief, output_language):
         "brief": brief,
         "round": 0,
         "audit_trail": [],
+        # deal_id == run_id (lihat api.py) -- ledger draft hidup di sini
+        # sampai ada alasan nyata untuk memisahkannya ke collection sendiri.
+        "ledger": {},
         "created_at": _now(),
         "updated_at": _now(),
     }
