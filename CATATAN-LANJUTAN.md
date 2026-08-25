@@ -222,6 +222,31 @@ lewat console manual:**
 
 ---
 
+## MILESTONE 26 Agu (lanjutan #6) — criterion key jadi dropdown, dan penutup sesi ini
+
+Perbaikan kecil terakhir sebelum berhenti: field "criterion key" di form
+"Attach evidence" tadinya free text -- freelancer harus mengetik ulang key
+dari ingatan, salah ketik gagal diam-diam (404, baru ketahuan setelah
+submit). Sekarang `<select>` dari `run.ledger.acceptance_criteria`
+(sudah tersedia di frontend sejak `ChangeProposalPanel` dibangun). Dites
+lewat Chrome sungguhan: dua criteria muncul benar di dropdown, evidence
+yang dipilih dari dropdown tersimpan ke criterion yang benar (diverifikasi
+lewat proof manifest). Commit `0a8a48e`.
+
+**Sesi ini dihentikan di sini atas keputusan Rifqi** -- 8 gap FE/BE nyata
+ditemukan & diperbaiki lewat tiga jalur sisir berbeda (01-PRD step list,
+audit event catalog + fungsi yang belum tersambung, 05-SUBMISSION-
+CHECKLIST smoke test): ledger field yang tidak tampil, polling run 404
+tak berhenti, retry ekstraksi Gemini, Guardrail citable-refs tidak
+lengkap, `client_links.revoke()` tidak tersambung, portal New Request
+klien, dan dropdown criterion key. **215 test hijau**, semua sudah
+di-push ke `rifqi` dan diverifikasi langsung ke GitHub (`gh api`, bukan
+cuma git lokal). Sisa yang genuinely diblokir faktor luar (bukan kode):
+model-side Guardrail (butuh kuota Gemini yang sudah sering habis di sesi
+ini) dan deploy Cloud Run (butuh billing GCP yang belum aktif).
+
+---
+
 ## MILESTONE 26 Agu (lanjutan #5) — portal "New Request" untuk klien, purpose yang sudah dicadangkan sejak awal tapi belum pernah dipakai
 
 Instruksi Rifqi: "kerjain aja terus kalau bisa sampai beres" -- disisir
