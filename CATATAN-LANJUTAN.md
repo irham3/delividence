@@ -16,7 +16,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Histori commit | 25 Agu 2026 malam: partner menghapus & membuat ulang repo `irham3/delividence` dari kosong. Seluruh histori (main + rifqi) sudah di-push ulang ke repo baru itu — **bersih dari trailer/atribusi tooling apa pun di commit message** (lomba disponsori Google, wajib Gemini). Commit berikutnya juga MUST tetap begitu. |
 | Repo cadangan (tidak dipush lagi) | <https://github.com/rifqiahmadpratama/dealready> (masih ada di GitHub, tapi remote `origin` sudah dilepas dari git lokal 25 Agu — fokus ke `delividence` saja) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **200 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **204 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 ## MILESTONE 25 Agu malam — alur inti terbukti jalan end-to-end di browser
 
@@ -219,6 +219,43 @@ lewat console manual:**
   lewat jalur internal yang tidak tersedia di REST API publik. Setelah
   ini, Rifqi coba lagi dan **berhasil sign-in dengan akun asli**
   (`rifqiahmadpratama@gmail.com`), dashboard render dengan benar.
+
+---
+
+## MILESTONE 26 Agu (lanjutan) — retry ekstraksi manual, menutup gap yang sudah lama dicatat
+
+Ini gap yang SUDAH dicatat sejak wiring `worker.py` ke Gemini (lihat item
+13 "Gap yang diketahui" sebelumnya): `claim_job(run_id, round)` mengklaim
+kunci `{run_id}__{round}` SEBELUM `run_extraction` dicoba. Kalau Gemini
+gagal transient (503 "high demand", atau, seperti terbukti nyata di sesi
+ini, 429 kuota habis), status ditulis jujur sebagai gagal -- **tapi round
+itu tetap terkunci selamanya**. Karena tidak ada mekanisme lain yang
+menaikkan `round`, run itu permanen macet di "Ekstraksi Gemini gagal"
+tanpa jalan keluar selain bikin run baru dari nol (kehilangan brief-nya).
+
+**Fix**: endpoint baru `POST /runs/{run_id}/retry-extraction`
+(owner-only, 409 kalau baseline sudah ada -- retry cuma masuk akal
+SEBELUM ledger dijadikan baseline v1). Ambil `run["round"]` (angka yang
+terakhir kali BENAR-BENAR ditulis worker setelah memproses, bukan yang
+di-publish API), `+1`, publish ulang. Kunci klaim untuk round baru belum
+pernah ada, jadi worker memprosesnya dari nol -- bukan didrop sebagai
+duplikat seperti kalau Pub/Sub redelivery round lama terjadi.
+
+Frontend: tombol "Retry extraction" kecil di sebelah "Status: done",
+muncul hanya kalau `status === "done" && !active_baseline_version`.
+
+**Dites dengan Gemini ASLI** (bukan stub) lewat curl+token asli: run
+pertama gagal beneran (429 kuota habis -- kebetulan reproduksi kondisi
+paling realistis untuk fitur ini), `retry-extraction` -> round naik ke 2,
+worker BENAR-BENAR memproses ulang (audit_trail bertambah entry baru
+dengan timestamp baru, bukan di-drop), gagal lagi (kuota masih habis,
+diharapkan) tapi terbukti prosesnya jalan dari awal, bukan macet. 409
+setelah baseline dikonfirmasi juga terbukti benar.
+
+Test: `tests/test_retry_extraction.py` (baru, 4 test, pakai `TestClient`
+worker+api sungguhan, bukan cuma mock -- supaya `claim_job`/`round`
+diuji lewat jalur yang sama persis dengan produksi). Total **204 test
+hijau**. Commit `56588bf` (branch `rifqi`, di-push).
 
 ---
 
@@ -652,13 +689,15 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
       dibungkus `try/except` supaya kegagalan Gemini (503 dll) tidak
       menjatuhkan worker — status tetap ditulis jujur ("Ekstraksi Gemini
       gagal"), bukan diam-diam dianggap sukses kosong.
-    - **Gap yang diketahui, dicatat apa adanya**: round yang gagal karena
-      Gemini transient **tidak otomatis di-retry** — `claim_job` sudah
-      mengklaim round itu sebelum ekstraksi dicoba, jadi redelivery
-      Pub/Sub akan dianggap duplikat dan di-drop, bukan diulang. Perlu
-      mekanisme retry level-job (mis. tidak claim sampai ekstraksi
-      sukses, atau job terpisah untuk retry) kalau ini jadi masalah nyata
-      saat demo — belum dibangun.
+    - ~~**Gap yang diketahui**: round yang gagal karena Gemini transient
+      tidak otomatis di-retry.~~ **SELESAI, 26 Agu** — lihat MILESTONE 26
+      Agu "retry ekstraksi manual" di atas. `claim_job` memang tetap
+      mengklaim round SEBELUM ekstraksi dicoba (arsitektur idempotency-nya
+      tidak diubah), tapi sekarang ada `POST /runs/{id}/retry-extraction`
+      yang menerbitkan round BARU (bukan mengandalkan redelivery Pub/Sub
+      di round lama) — freelancer memicu sendiri, bukan otomatis, dan itu
+      cukup: kegagalan Gemini transient bukan kejadian yang perlu retry
+      background tanpa sepengetahuan freelancer.
     - `tests/conftest.py`: fixture `stub_extraction` (autouse) — semua 189
       test TIDAK memanggil Gemini sungguhan (cepat, deterministik, tidak
       butuh API key). Wiring sungguhan hanya diverifikasi manual.
