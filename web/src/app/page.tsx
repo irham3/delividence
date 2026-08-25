@@ -45,6 +45,7 @@ export default function Home() {
   const [run, setRun] = useState<Run | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
@@ -115,6 +116,20 @@ export default function Home() {
       setError(e instanceof Error ? e.message : "Request failed");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function retryExtraction() {
+    if (!runId) return;
+    setError(null);
+    setRetrying(true);
+    try {
+      await apiFetch(`/runs/${runId}/retry-extraction`, { method: "POST" });
+      setRun(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Retry failed");
+    } finally {
+      setRetrying(false);
     }
   }
 
@@ -219,9 +234,20 @@ export default function Home() {
             </div>
           </div>
 
-          <p className="mt-2 text-sm">
-            Status: <strong>{run?.status ?? "queued"}</strong>
-          </p>
+          <div className="mt-2 flex items-center gap-3">
+            <p className="text-sm">
+              Status: <strong>{run?.status ?? "queued"}</strong>
+            </p>
+            {run?.status === "done" && !run.active_baseline_version && (
+              <button
+                onClick={retryExtraction}
+                disabled={retrying}
+                className="text-xs text-neutral-500 underline disabled:opacity-40"
+              >
+                {retrying ? "Retrying…" : "Retry extraction"}
+              </button>
+            )}
+          </div>
 
           <ol className="mt-4 space-y-3">
             {(run?.audit_trail ?? []).map((step, i) => (

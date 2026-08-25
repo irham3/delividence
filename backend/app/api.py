@@ -90,6 +90,32 @@ def get_run(run_id: str, owner_id: str = Depends(auth.require_owner)):
     return _owned_run_or_404(run_id, owner_id)
 
 
+@app.post("/runs/{run_id}/retry-extraction", status_code=202)
+def retry_extraction(run_id: str, owner_id: str = Depends(auth.require_owner)):
+    """Coba ulang ekstraksi Gemini setelah kegagalan transient (mis. 503
+    "high demand"). Gap yang diketahui dan dicatat apa adanya di
+    CATATAN-LANJUTAN.md: `claim_job` mengklaim satu round SEBELUM ekstraksi
+    dicoba, jadi redelivery Pub/Sub untuk round yang sama dianggap duplikat
+    dan di-drop, bukan diulang otomatis -- freelancer harus memintanya
+    secara eksplisit. Round baru = kunci klaim baru (`{run_id}__{round}`),
+    jadi worker memprosesnya dari awal, bukan dianggap duplikat.
+
+    409 kalau baseline sudah ada -- retry ekstraksi ke ledger yang sudah
+    dijadikan baseline v1+ bisa membingungkan (ledger berubah diam-diam di
+    belakang layar); begitu ada baseline, koreksi ledger lewat jalur yang
+    sudah ada (`/client/{token}/answers` atau `/runs/{id}/change-proposal`)."""
+    run = _owned_run_or_404(run_id, owner_id)
+    if run.get("active_baseline_version"):
+        raise HTTPException(
+            status_code=409,
+            detail="A baseline already exists. Edit the ledger via the client link or change-proposal instead.",
+        )
+    next_round = run["round"] + 1
+    store.update_run(run_id, status="queued")
+    queue.publish({"run_id": run_id, "round": next_round})
+    return {"run_id": run_id, "round": next_round, "status": "queued"}
+
+
 class CreateClientLinkRequest(BaseModel):
     purpose: str = "CLARIFICATION"
 
