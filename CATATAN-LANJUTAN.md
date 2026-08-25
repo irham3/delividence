@@ -18,6 +18,93 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
 | Test | **189 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
+## MILESTONE 25 Agu malam — alur inti terbukti jalan end-to-end di browser
+
+**Ini bukan lagi cuma backend teruji lewat curl — sekarang benar-benar dites
+lewat UI sungguhan (Chrome), dan seluruh alur Handshake -> Delivery -> Proof
+JALAN**: submit brief -> freelancer bikin clarification link -> klien isi
+form ledger (deliverables, acceptance criteria, out of scope, deadline,
+rounds) -> readiness gate berubah hijau -> confirm project plan -> baseline
+v1 aktif -> freelancer lampirkan evidence -> freelancer bikin delivery
+review link -> klien accept criterion -> Proof Manifest (Markdown) keluar
+lengkap dengan kutipan, status, dan keputusan klien. **Tidak ada satu langkah
+pun yang gagal di jalur ini.**
+
+### Frontend (baru, sebelumnya sama sekali belum ada UI untuk fitur-fitur ini)
+
+- `web/src/lib/api.ts` — tipe TypeScript + helper fetch bersama.
+- `web/src/app/client/[token]/page.tsx` — portal clarification: lihat brief,
+  readiness blockers, form dinamis (deliverables/acceptance criteria/out of
+  scope sebagai daftar bisa tambah-hapus, deadline, revision rounds + NOT_SET),
+  "Save changes" -> `POST .../answers`, "Confirm project plan" (aktif hanya
+  kalau `readiness.ready`) -> `POST .../confirm` pakai `payload_hash` dari GET
+  terakhir.
+- `web/src/app/client/[token]/review/page.tsx` — portal delivery review:
+  daftar criterion + evidence + status badge, Accept/Request changes (reason
+  wajib), "Submit review" -> `POST .../review`. Criterion yang sudah
+  `ACCEPTED` terkunci (pesan A-9 tampil).
+- `web/src/app/page.tsx` — panel "Freelancer actions" baru: tombol bikin
+  clarification link & delivery review link (link kedua nonaktif sampai ada
+  baseline), form lampirkan evidence, link "View JSON"/"View Markdown" ke
+  Proof. **`runId` sekarang persist ke `localStorage`** (sebelumnya hilang
+  kalau halaman di-reload — freelancer kehilangan akses ke run-nya sendiri;
+  ada tombol "Start a new run" buat reset sengaja).
+- Semua lolos `tsc --noEmit`, `eslint`, dan `next build`.
+
+### Bug nyata yang ketemu & diperbaiki selagi tes UI sungguhan
+
+1. **`worker.py` tidak pernah benar-benar mengirim teks brief ke model.**
+   `tool_context.state["artifacts"]` cuma kebaca dari DALAM tool, model
+   sendiri tidak bisa "melihat" state itu — jadi model selalu bilang "tidak
+   ada konten untuk dikutip" walau state sudah terisi. **Fix**: teks brief
+   sekarang disertakan langsung di pesan awal ke model (`run_extraction` di
+   `app/worker.py`). Ini bug yang lolos di commit sebelumnya karena verifikasi
+   sebelumnya cuma sampai "berhasil sampai ke Gemini dan gagal dengan baik" —
+   belum pernah benar-benar melihat isi ekstraksinya.
+2. **Instruksi agent tidak cukup spesifik soal bentuk `value`.** Model
+   awalnya menulis `deliverables`/`acceptance_criteria` sebagai satu string
+   paragraf, bukan `list of object` sesuai `app/domain/schemas.py`. **Fix**:
+   `_INSTRUCTION` di `app/agent.py` sekarang menjabarkan bentuk persis tiap
+   field. Hasil re-test: `schemas.DealLedger.model_validate()` lolos.
+3. **CORS menolak `:3001`.** Next.js pindah otomatis ke port 3001 kalau 3000
+   sedang dipakai project lain di mesin yang sama (di sini: project ARGA).
+   `ALLOWED_ORIGINS` di `.env`/`.env.example` sekarang mengizinkan 3000 DAN
+   3001 sekaligus untuk localhost dan 127.0.0.1.
+4. **HMR Next.js diblokir kalau diakses lewat `127.0.0.1`, bukan
+   `localhost`.** Next.js 16 by default menolak dev resource cross-origin;
+   `127.0.0.1` dan `localhost` dihitung origin berbeda. Efeknya: klik/ketik
+   di halaman jadi tidak konsisten (state ke-reset di tengah interaksi,
+   React ref jadi stale) karena client HMR terus retry gagal. **Bukan bug di
+   kode aplikasi** — kalau test manual lewat browser lagi, **selalu pakai
+   `http://localhost:PORT`, jangan `127.0.0.1:PORT`**.
+
+### Temuan penting soal Gemini — WAJIB dibaca sebelum demo/testing lagi
+
+- **`gemini-3.7-flash` konsisten 503 "high demand"** setiap dipanggil lewat
+  `extraction_agent` (tool-calling + system instruction) — tapi panggilan
+  SEDERHANA (tanpa tool) ke model yang sama berhasil. Jadi bukan soal API
+  key/auth, murni kapasitas Google untuk beban kerja tool-calling di model
+  itu saat ini.
+- **`gemini-2.5-flash` sudah deprecated** (404, "no longer available to new
+  users").
+- **`gemini-3.6-flash` terbukti sukses** — ekstraksi asli dengan kutipan
+  verbatim tervalidasi, hasil lolos validasi skema. **Sekarang jadi default**
+  (`GEMINI_MODEL` di `app/config.py`, `.env`, `.env.example`).
+- **Free tier Gemini Developer API punya kuota SANGAT terbatas: 20
+  request/hari PER MODEL PER PROJECT** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`).
+  Satu kali ekstraksi lewat `extraction_agent` menghabiskan **beberapa**
+  quota sekaligus (multi-turn tool-calling: panggilan awal + tiap balasan
+  tool = panggilan terpisah ke API). Kuota `gemini-3.6-flash` project
+  `dudepercobaan` **sudah habis untuk hari ini** gara-gara sesi debugging
+  ini sendiri (429 RESOURCE_EXHAUSTED). **Implikasi untuk demo**: jangan
+  coba-coba ekstraksi berkali-kali di hari H tanpa rencana — kuota reset
+  harian, tapi 20 request habis dalam hitungan menit kalau dites berulang.
+  Kalau butuh lebih dari itu, generate API key dari akun/project GCP lain
+  (masing-masing project dapat kuota gratis sendiri), atau upgrade ke
+  billing (balik ke opsi Vertex AI/paid tier).
+- Ganti model kapan saja tinggal ubah `GEMINI_MODEL` di `.env` — tidak ada
+  kode yang perlu diubah.
+
 Tidak ada proses yang ditinggal jalan. Aman dimatikan.
 
 ---

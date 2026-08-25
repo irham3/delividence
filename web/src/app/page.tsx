@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
+import { API, apiFetch } from "@/lib/api";
 
 type AuditStep = { at: string; step: string; detail: string };
 
@@ -13,31 +12,56 @@ type Run = {
   brief: string;
   round: number;
   audit_trail: AuditStep[];
+  active_baseline_version?: number;
 };
+
+const RUN_ID_STORAGE_KEY = "delividence_run_id";
 
 export default function Home() {
   const [brief, setBrief] = useState("");
   const [language, setLanguage] = useState("en");
-  const [runId, setRunId] = useState<string | null>(null);
+  // Persisted so refreshing the page (or coming back later) doesn't lose the
+  // freelancer's in-progress run -- the actions panel below is otherwise
+  // unreachable again without it.
+  const [runId, setRunId] = useState<string | null>(() =>
+    typeof window !== "undefined" ? localStorage.getItem(RUN_ID_STORAGE_KEY) : null
+  );
   const [run, setRun] = useState<Run | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    try {
+      if (runId) localStorage.setItem(RUN_ID_STORAGE_KEY, runId);
+      else localStorage.removeItem(RUN_ID_STORAGE_KEY);
+    } catch {
+      // Private browsing / storage disabled -- runId just won't survive a reload.
+    }
+  }, [runId]);
+
   // The run is processed outside the request, so the page polls until the
-  // worker reports a terminal state.
+  // worker reports a terminal state. Fetches immediately on mount/runId
+  // change (not just after the first interval tick) so a restored runId
+  // shows its state right away instead of a blank "queued" flash.
   useEffect(() => {
     if (!runId) return;
     if (run && (run.status === "done" || run.status === "failed")) return;
 
-    const timer = setInterval(async () => {
+    let cancelled = false;
+    async function poll() {
       try {
         const res = await fetch(`${API}/runs/${runId}`);
-        if (res.ok) setRun(await res.json());
+        if (res.ok && !cancelled) setRun(await res.json());
       } catch {
         // Transient; the next tick retries.
       }
-    }, 1000);
-    return () => clearInterval(timer);
+    }
+    poll();
+    const timer = setInterval(poll, 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, [runId, run]);
 
   async function submit(event: React.FormEvent) {
@@ -108,9 +132,21 @@ export default function Home() {
 
       {runId && (
         <section className="mt-10 border-t border-neutral-200 pt-6 dark:border-neutral-800">
-          <div className="flex items-baseline justify-between">
+          <div className="flex items-baseline justify-between gap-4">
             <h2 className="text-sm font-medium">Run</h2>
-            <code className="text-xs text-neutral-500">{runId}</code>
+            <div className="flex items-center gap-3">
+              <code className="text-xs text-neutral-500">{runId}</code>
+              <button
+                onClick={() => {
+                  setRunId(null);
+                  setRun(null);
+                  setBrief("");
+                }}
+                className="text-xs text-neutral-500 underline"
+              >
+                Start a new run
+              </button>
+            </div>
           </div>
 
           <p className="mt-2 text-sm">
@@ -143,6 +179,186 @@ export default function Home() {
           )}
         </section>
       )}
+
+      {runId && <FreelancerActions runId={runId} run={run} />}
     </main>
+  );
+}
+
+function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
+  const [clarificationLink, setClarificationLink] = useState<string | null>(null);
+  const [reviewLink, setReviewLink] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  const [criterionKey, setCriterionKey] = useState("");
+  const [evidenceType, setEvidenceType] = useState<"url" | "text">("url");
+  const [evidenceUri, setEvidenceUri] = useState("");
+  const [evidenceCaption, setEvidenceCaption] = useState("");
+  const [evidenceMessage, setEvidenceMessage] = useState<string | null>(null);
+  const [evidenceSaving, setEvidenceSaving] = useState(false);
+
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+
+  async function createLink(purpose: "CLARIFICATION" | "DELIVERY_REVIEW") {
+    setLinkError(null);
+    try {
+      const { token } = await apiFetch<{ token: string }>(`/runs/${runId}/client-links`, {
+        method: "POST",
+        body: JSON.stringify({ purpose }),
+      });
+      const url =
+        purpose === "CLARIFICATION"
+          ? `${origin}/client/${token}`
+          : `${origin}/client/${token}/review`;
+      if (purpose === "CLARIFICATION") setClarificationLink(url);
+      else setReviewLink(url);
+    } catch (e) {
+      setLinkError(e instanceof Error ? e.message : "Failed to create link.");
+    }
+  }
+
+  async function addEvidence(event: React.FormEvent) {
+    event.preventDefault();
+    setEvidenceSaving(true);
+    setEvidenceMessage(null);
+    try {
+      await apiFetch(`/runs/${runId}/evidence`, {
+        method: "POST",
+        body: JSON.stringify({
+          criterion_key: criterionKey,
+          type: evidenceType,
+          uri: evidenceUri,
+          caption: evidenceCaption || null,
+        }),
+      });
+      setEvidenceMessage("Evidence attached.");
+      setCriterionKey("");
+      setEvidenceUri("");
+      setEvidenceCaption("");
+    } catch (e) {
+      setEvidenceMessage(e instanceof Error ? e.message : "Failed to attach evidence.");
+    } finally {
+      setEvidenceSaving(false);
+    }
+  }
+
+  const hasBaseline = !!run?.active_baseline_version;
+
+  return (
+    <section className="mt-10 space-y-8 border-t border-neutral-200 pt-6 dark:border-neutral-800">
+      <h2 className="text-sm font-medium">Freelancer actions</h2>
+
+      <div>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Send this link to the client so they can review and confirm the plan.
+        </p>
+        <div className="mt-2 flex items-center gap-3">
+          <button
+            onClick={() => createLink("CLARIFICATION")}
+            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700"
+          >
+            Create clarification link
+          </button>
+          {clarificationLink && (
+            <code className="truncate text-xs text-neutral-500">{clarificationLink}</code>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          {hasBaseline
+            ? "Once the plan is confirmed, send this link for delivery review."
+            : "Available once the client confirms the project plan."}
+        </p>
+        <div className="mt-2 flex items-center gap-3">
+          <button
+            onClick={() => createLink("DELIVERY_REVIEW")}
+            disabled={!hasBaseline}
+            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm disabled:opacity-40 dark:border-neutral-700"
+          >
+            Create delivery review link
+          </button>
+          {reviewLink && <code className="truncate text-xs text-neutral-500">{reviewLink}</code>}
+        </div>
+      </div>
+      {linkError && <p className="text-sm text-red-700">{linkError}</p>}
+
+      <div>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Attach evidence to an acceptance criterion (needs a confirmed plan).
+        </p>
+        <form onSubmit={addEvidence} className="mt-2 flex flex-wrap items-center gap-2">
+          <input
+            value={criterionKey}
+            onChange={(e) => setCriterionKey(e.target.value)}
+            required
+            disabled={!hasBaseline}
+            placeholder="criterion key"
+            className="w-40 rounded border border-neutral-300 px-2 py-1 text-sm disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"
+          />
+          <select
+            value={evidenceType}
+            onChange={(e) => setEvidenceType(e.target.value as "url" | "text")}
+            disabled={!hasBaseline}
+            className="rounded border border-neutral-300 px-2 py-1 text-sm disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"
+          >
+            <option value="url">url</option>
+            <option value="text">text</option>
+          </select>
+          <input
+            value={evidenceUri}
+            onChange={(e) => setEvidenceUri(e.target.value)}
+            required
+            disabled={!hasBaseline}
+            placeholder={evidenceType === "url" ? "https://…" : "Test result text"}
+            className="min-w-48 flex-1 rounded border border-neutral-300 px-2 py-1 text-sm disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"
+          />
+          <input
+            value={evidenceCaption}
+            onChange={(e) => setEvidenceCaption(e.target.value)}
+            disabled={!hasBaseline}
+            placeholder="caption (optional)"
+            className="w-40 rounded border border-neutral-300 px-2 py-1 text-sm disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"
+          />
+          <button
+            type="submit"
+            disabled={!hasBaseline || evidenceSaving}
+            className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+          >
+            {evidenceSaving ? "Saving…" : "Attach"}
+          </button>
+        </form>
+        {evidenceMessage && (
+          <p className="mt-2 text-xs text-neutral-500">{evidenceMessage}</p>
+        )}
+      </div>
+
+      <div>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          {hasBaseline
+            ? "Acceptance Record, exportable as JSON or Markdown."
+            : "Proof export is available once a baseline is confirmed."}
+        </p>
+        <div className="mt-2 flex items-center gap-3 text-sm">
+          <a
+            href={`${API}/runs/${runId}/proof?format=json`}
+            target="_blank"
+            rel="noreferrer"
+            className={`underline ${!hasBaseline ? "pointer-events-none opacity-40" : ""}`}
+          >
+            View JSON
+          </a>
+          <a
+            href={`${API}/runs/${runId}/proof?format=md`}
+            target="_blank"
+            rel="noreferrer"
+            className={`underline ${!hasBaseline ? "pointer-events-none opacity-40" : ""}`}
+          >
+            View Markdown
+          </a>
+        </div>
+      </div>
+    </section>
   );
 }

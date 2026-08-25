@@ -8,9 +8,14 @@ PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT", "").strip()
 PUBSUB_TOPIC = os.environ.get("PUBSUB_TOPIC", "delividence-runs").strip()
 
 # 06 §2. Model terverifikasi di 10-KEPUTUSAN-DAN-VERIFIKASI.md: paket revisi
-# sempat menulis gemini-3.5-flash, dikoreksi karena Google kini menyebutnya
-# legacy Flash model.
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.7-flash").strip()
+# sempat menulis gemini-3.5-flash (dikoreksi -> 3.7, Google menyebutnya
+# legacy Flash model), lalu direvisi lagi 25 Agu malam ke 3.6: 3.7-flash
+# konsisten balas 503 "high demand" lewat extraction_agent (tool-calling +
+# system instruction) walau panggilan sederhana ke 3.7 tanpa tool berhasil --
+# 3.6-flash terbukti sukses end-to-end (kutipan verbatim tervalidasi, skema
+# valid) di percobaan yang sama. Ganti balik ke 3.7 kapan saja lewat env
+# GEMINI_MODEL begitu demand-nya mereda -- tidak ada kode yang perlu diubah.
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash").strip()
 GOOGLE_CLOUD_LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "asia-southeast2").strip()
 
 # Keputusan direvisi 25 Agu 2026: default sekarang Gemini Developer API (API

@@ -11,9 +11,12 @@ bertanggung jawab mengisi `tool_context.state["artifacts"]` (dict
 artifact_ref -> teks lengkap) sebelum run dimulai. `save_ledger_draft` dan
 `validate_quote_candidate` membaca dari situ.
 
-Belum pernah dijalankan sungguhan (billing GCP belum aktif, lihat
-CATATAN-LANJUTAN.md) -- konstruksi Agent ini diuji (importable, tool
-callable), pemanggilan Gemini yang sesungguhnya belum.
+Sudah dijalankan sungguhan lewat Gemini Developer API (lihat
+CATATAN-LANJUTAN.md) -- kutipan verbatim + provenance terbukti benar. Bentuk
+`value` tiap field dijabarkan eksplisit di _INSTRUCTION di bawah karena model
+awalnya menulis deliverables/acceptance_criteria sebagai satu string paragraf,
+bukan list of object sesuai app.domain.schemas -- jangan hapus penjelasan
+bentuk itu, itu bukan hiasan.
 """
 
 from typing import Any, Literal, Optional
@@ -80,9 +83,24 @@ Kamu mengekstrak Deal Ledger terstruktur dari brief freelance (teks, dan opsiona
 satu screenshot chat). Setiap sumber tersedia sebagai satu artifact_ref di
 konteks yang diberikan.
 
-Field ledger minimum: deliverables, in_scope, out_of_scope, acceptance_criteria,
-timeline.final_deadline, revision_policy.rounds_total, dependencies,
-assumptions, unresolved_questions.
+Field ledger minimum, dan BENTUK value yang WAJIB kamu pakai untuk tiap field
+(field lain di luar daftar ini ditolak sistem -- jangan mengarang field baru):
+
+- deliverables: list of {{"id": "d1", "title": "..."}} -- id pendek unik per
+  deliverable, kamu yang membuatnya (d1, d2, ...), BUKAN kalimat.
+- acceptance_criteria: list of {{"deliverable_id": "d1", "criterion_key": "...",
+  "text": "..."}} -- criterion_key: huruf kecil, angka, tanda hubung saja
+  (mis. "mobile-breakpoints"), deliverable_id MUST cocok salah satu id di atas.
+- out_of_scope, in_scope, assumptions, unresolved_questions: list of string,
+  satu klaim per string -- JANGAN gabung banyak klaim jadi satu paragraf.
+- timeline.final_deadline: satu string tanggal/keterangan (mis. "2026-08-28"
+  atau "Jumat" kalau brief tidak menyebut tanggal pasti).
+- revision_policy.rounds_total: integer, atau JANGAN diajukan sama sekali
+  kalau tidak disebut sebagai angka eksplisit (lihat aturan di bawah).
+
+Setiap field di atas adalah SATU kandidat field-level (satu source_quote
+mewakili satu list utuh atau satu deliverable/criterion) -- lihat field kritis
+di bawah, kirim value dengan bentuk persis seperti dijelaskan.
 
 Field kritis (paling menentukan readiness): {critical_fields}.
 
@@ -92,11 +110,9 @@ Aturan wajib:
 - asserted_by MUST "client" kalau klaim berasal dari klien, atau "freelancer"
   kalau berasal dari kebijakan/pernyataan freelancer.
 - JANGAN menebak nilai yang tidak disebutkan eksplisit. "beberapa revisi"
-  BUKAN angka -- itu MISSING, bukan diisi 2 atau 3.
+  BUKAN angka -- itu MISSING (jangan diajukan sama sekali), bukan diisi 2 atau 3.
 - JANGAN pernah mengusulkan state AGREED. Kamu tidak berwenang menyetujui
   apa pun; itu hanya terjadi lewat aksi klien yang tervalidasi.
-- criterion_key (kalau mengusulkan acceptance criterion baru): huruf kecil,
-  angka, dan tanda hubung saja, mis. "mobile-breakpoints".
 - Panggil save_ledger_draft tepat sekali di akhir, dengan seluruh kandidat
   field yang kamu temukan sekaligus.
 """.format(critical_fields=", ".join(CRITICAL_FIELDS))

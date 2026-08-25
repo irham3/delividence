@@ -33,9 +33,19 @@ async def run_extraction(run_id, brief):
         session_id=run_id,
         state={"artifacts": {"artifact:brief-1": brief}},
     )
+    # tool_context.state (diisi di atas) HANYA terlihat dari dalam tool
+    # (validate_quote_candidate/save_ledger_draft) -- model sendiri tidak
+    # bisa "melihat" state, jadi teks brief MUST disertakan langsung di
+    # prompt di sini juga. Tanpa ini model menjawab tidak ada konten sama
+    # sekali untuk dikutip, walau state sudah terisi (bug yang sempat
+    # lolos: run pertama selalu menghasilkan ledger kosong).
     message = genai_types.Content(
         role="user",
-        parts=[genai_types.Part(text="Extract the deal ledger from artifact:brief-1.")],
+        parts=[genai_types.Part(text=(
+            'Extract the deal ledger from this artifact. source_artifact for every '
+            'candidate MUST be exactly "artifact:brief-1" (with the "artifact:" prefix).\n\n'
+            "--- artifact:brief-1 ---\n" + brief
+        ))],
     )
     async for _ in runner.run_async(user_id="worker", session_id=run_id, new_message=message):
         pass
