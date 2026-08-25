@@ -16,7 +16,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Histori commit | 25 Agu 2026 malam: partner menghapus & membuat ulang repo `irham3/delividence` dari kosong. Seluruh histori (main + rifqi) sudah di-push ulang ke repo baru itu — **bersih dari trailer/atribusi tooling apa pun di commit message** (lomba disponsori Google, wajib Gemini). Commit berikutnya juga MUST tetap begitu. |
 | Repo cadangan (tidak dipush lagi) | <https://github.com/rifqiahmadpratama/dealready> (masih ada di GitHub, tapi remote `origin` sudah dilepas dari git lokal 25 Agu — fokus ke `delividence` saja) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **204 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **207 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 ## MILESTONE 25 Agu malam — alur inti terbukti jalan end-to-end di browser
 
@@ -219,6 +219,49 @@ lewat console manual:**
   lewat jalur internal yang tidak tersedia di REST API publik. Setelah
   ini, Rifqi coba lagi dan **berhasil sign-in dengan akun asli**
   (`rifqiahmadpratama@gmail.com`), dashboard render dengan benar.
+
+---
+
+## MILESTONE 26 Agu (lanjutan #3) — dua verifikasi tambahan sambil sisir 05-SUBMISSION-CHECKLIST.md
+
+Instruksi Rifqi: "lanjut cek gap lain yang belum beres" — kali ini sisirnya
+lewat `docs/05-SUBMISSION-CHECKLIST.md` §3 (pre-submit smoke test), bukan
+`01-PRD.md`, cari item yang belum pernah benar-benar dites lewat endpoint
+sungguhan (bukan cuma unit test domain murni).
+
+1. **"Baseline version baru ... menandai criterion yang berubah sebagai
+   SUPERSEDED"** — sebelumnya cuma dites di `test_domain.py` (fungsi murni
+   `effective_status`), belum pernah dites lewat rantai endpoint v2 yang
+   baru dibangun (`change-proposal` -> confirm). Dicoba manual lewat curl
+   + token asli: criterion yang SUDAH `ACCEPTED` di v1, teksnya diubah
+   lewat `change-proposal`, confirm jadi v2 -> `effective_status` benar
+   balik jadi **SUPERSEDED** (bukan tetap ACCEPTED, bukan PENDING).
+   Ditambah test permanen `test_v2_criterion_yang_teksnya_berubah_jadi_superseded`
+   di `test_change_proposal.py`.
+2. **Guardrail citation hint tidak lengkap** — `GuardrailPanel` di
+   `page.tsx` menampilkan daftar ref+teks yang boleh dikutip SEBELUM
+   freelancer mengisi citation, tapi sumbernya (`proof.criteria`) cuma
+   berisi criterion, sedangkan `guardrail.citable_text()` (yang benar-benar
+   memvalidasi citation di endpoint classify) JUGA menerima
+   `out_of_scope[i]` dan `deliverables[i]`. Freelancer yang mau mengutip
+   item out-of-scope tidak akan tahu format ref-nya sama sekali dari UI --
+   citation-nya akan gagal validasi diam-diam (turun AMBIGUOUS) tanpa
+   penjelasan. **Fix**: endpoint baru `GET /runs/{id}/citable-refs`
+   (owner-only, 409 tanpa baseline) yang langsung mengembalikan hasil
+   `guardrail.citable_text()` apa adanya -- satu-satunya sumber kebenaran
+   yang sama dipakai baik untuk validasi maupun hint UI, tidak ada dua
+   definisi yang bisa berbeda tipis. `page.tsx` diarahkan ke endpoint ini;
+   type `ProofManifest` di `api.ts` jadi orphan (satu-satunya pemakainya
+   dihapus) dan dibersihkan.
+
+Dites lewat curl+token asli: `citable-refs` mengembalikan ketiga jenis ref
+sekaligus (`mobile-breakpoints`, `out_of_scope[0]`, `deliverables[0]`).
+Test baru: `test_citable_refs_meliputi_criterion_dan_out_of_scope` +
+`test_citable_refs_tanpa_baseline_aktif_409` di `test_guardrail_endpoint.py`.
+
+Total **207 test hijau**. Commit `de8dd4c` + `4579b10` (branch `rifqi`,
+di-push, diverifikasi lewat `gh api` langsung ke GitHub bukan cuma git
+lokal).
 
 ---
 
