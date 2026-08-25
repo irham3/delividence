@@ -130,3 +130,49 @@ def test_v2_criterion_lama_pertahankan_introduced_in_version_dan_acceptance(publ
     statuses = {c["criterion_key"]: c["status"] for c in view["criteria"]}
     assert statuses["mobile-breakpoints"] == "ACCEPTED"
     assert statuses["hero-video"] == "PENDING"
+
+
+def test_v2_criterion_yang_teksnya_berubah_jadi_superseded(published):
+    """05-SUBMISSION-CHECKLIST.md §3: "Baseline version baru mempertahankan
+    acceptance untuk criterion dengan hash identik dan menandai criterion
+    yang berubah sebagai SUPERSEDED" -- kebalikan dari test di atas (yang
+    teksnya TIDAK berubah)."""
+    run_id = _run_with_active_baseline(published)
+    review_token = api.post(
+        "/runs/%s/client-links" % run_id, json={"purpose": "DELIVERY_REVIEW"}
+    ).json()["token"]
+    api.post(
+        "/client/%s/review" % review_token,
+        json={"decisions": [{"criterion_key": "mobile-breakpoints", "decision": "ACCEPTED"}]},
+    )
+
+    api.post(
+        "/runs/%s/change-proposal" % run_id,
+        json={
+            "answers": [
+                {
+                    "field": "acceptance_criteria",
+                    "value": [
+                        {
+                            "deliverable_id": "d1",
+                            "criterion_key": "mobile-breakpoints",
+                            "text": "Renders at 375px, 768px, and 1440px widths.",
+                        }
+                    ],
+                }
+            ]
+        },
+    )
+
+    clar_token_2 = api.post("/runs/%s/client-links" % run_id).json()["token"]
+    current_hash = api.get("/client/%s" % clar_token_2).json()["payload_hash"]
+    api.post("/client/%s/confirm" % clar_token_2, json={"payload_hash": current_hash})
+
+    baseline_v2 = baselines.get(run_id, 2)
+    assert baseline_v2["canonical_payload"]["criteria"]["mobile-breakpoints"]["introduced_in_version"] == 2
+
+    review_token_2 = api.post(
+        "/runs/%s/client-links" % run_id, json={"purpose": "DELIVERY_REVIEW"}
+    ).json()["token"]
+    view = api.get("/client/%s/review" % review_token_2).json()
+    assert view["criteria"][0]["status"] == "SUPERSEDED"
