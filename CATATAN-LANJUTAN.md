@@ -16,7 +16,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Histori commit | 25 Agu 2026 malam: partner menghapus & membuat ulang repo `irham3/delividence` dari kosong. Seluruh histori (main + rifqi) sudah di-push ulang ke repo baru itu — **bersih dari trailer/atribusi tooling apa pun di commit message** (lomba disponsori Google, wajib Gemini). Commit berikutnya juga MUST tetap begitu. |
 | Repo cadangan (tidak dipush lagi) | <https://github.com/rifqiahmadpratama/dealready> (masih ada di GitHub, tapi remote `origin` sudah dilepas dari git lokal 25 Agu — fokus ke `delividence` saja) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **194 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **200 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 ## MILESTONE 25 Agu malam — alur inti terbukti jalan end-to-end di browser
 
@@ -201,11 +201,96 @@ lewat console manual:**
    (`window.__authDebug`) SUDAH DIHAPUS lagi dari `firebase.ts` setelah
    tes selesai -- tidak ada sisa kode test di commit.
 - Commit `d991b39` (branch `rifqi`).
-- **Belum diverifikasi**: klik tombol "Sign in with Google" yang
-  sungguh-sungguh membuka popup consent Google sampai selesai -- perlu
-  dicoba manual oleh Rifqi di browser normal (bukan browser otomasi)
-  sebelum demo, karena environment tes Claude Code memblokir `window.open`
-  untuk popup.
+- **Update: Rifqi sudah coba manual di browser normal -- gagal pertama
+  kali** dengan `Error 401: deleted_client` dari Google ("The OAuth client
+  was deleted"). Root cause: project `dudepercobaan` proyek lama yang
+  sudah dipakai belasan eksperimen pribadi Rifqi -- OAuth 2.0 Client ID
+  yang tersambung ke `defaultSupportedIdpConfigs/google.com` sudah
+  dihapus di suatu titik sebelumnya, tapi Identity Platform masih
+  menyimpan referensi ke client ID lama itu (`...cctmnbkp7vvcd89g...`).
+  **Tidak ada API publik untuk membuat ulang OAuth Client ID "Web
+  application" dari nol** (Firebase Management/Identity Toolkit REST API
+  cuma bisa PATCH provider yang sudah ada, POST-create menolak dengan
+  "client_id cannot be empty" kalau tidak ada client_id valid). **Fix**:
+  dikerjakan lewat Firebase Console UI sungguhan (bukan API mentah) --
+  Authentication > Sign-in method > Add new provider > Google > isi
+  "Support email for project" (belum pernah diisi) > Save. Console
+  meng-auto-provision OAuth client BARU (`...soh32jqn9afqtpdvhv1j...`)
+  lewat jalur internal yang tidak tersedia di REST API publik. Setelah
+  ini, Rifqi coba lagi dan **berhasil sign-in dengan akun asli**
+  (`rifqiahmadpratama@gmail.com`), dashboard render dengan benar.
+
+---
+
+## MILESTONE 25 Agu malam (lanjutan #3) — CHANGE_REQUEST -> baseline v2 selesai, dites end-to-end
+
+Instruksi Rifqi: "lanjutkan yang belum beres ... fokus ke FE/BE yang belum
+beres". Gap yang tersisa dari item 12 (Guardrail) — CHANGE_REQUEST yang
+dikonfirmasi Guardrail belum bisa jadi baseline v2 sungguhan.
+
+**Temuan penting**: endpoint `POST /client/{token}/confirm` **SUDAH
+version-agnostic sejak awal** (`next_version = get_active_version + 1`) --
+tidak perlu endpoint baru untuk "aktivasi v2". Yang benar-benar hilang cuma
+dua hal:
+
+1. **Bug di `build_canonical_payload`** (`app/domain/baseline.py`): selalu
+   mencap SEMUA criterion dengan `introduced_in_version = version` yang
+   sedang dibuat, termasuk criterion yang teksnya sama sekali tidak
+   berubah dari versi sebelumnya. Melanggar 09 §2.6 A-7. **Fix**: parameter
+   baru `previous_criteria` (canonical_payload.criteria dari baseline
+   aktif) -- criterion dengan `text_hash` identik mempertahankan
+   `introduced_in_version` aslinya, criterion baru/berubah dicap versi
+   sekarang. `_next_baseline_preview` di `api.py` sekarang mengambil
+   baseline aktif dan meneruskan `criteria`-nya.
+2. **Tidak ada jalur bagi freelancer mengedit ledger setelah v1** --
+   `apply_client_answer` cuma bisa dipanggil lewat client link. Endpoint
+   baru `POST /runs/{run_id}/change-proposal` (owner-only, 409 tanpa
+   baseline aktif): freelancer mengirim field ledger yang diusulkan
+   (bentuk sama persis dengan `/client/{token}/answers`), state jadi
+   `FREELANCER_POLICY` (bukan `CLIENT_STATED`), audit event
+   `CHANGE_PROPOSED` (enum ini sudah lama dicadangkan di `enums.py`,
+   belum pernah dipakai). `app/domain/ledger.py`:
+   `apply_client_answer(..., state=CLIENT_STATED)` sekarang punya
+   parameter `state` supaya bisa dipakai ulang untuk kedua kasus.
+
+**Alur produk lengkapnya** (tidak ada UI diff/impact visual -- itu tetap
+di luar cakupan per keputusan awal, lihat "Sengaja belum" di 01-PRD §5
+langkah 8): request masuk lewat Guardrail -> freelancer classify jadi
+CHANGE_REQUEST -> freelancer buka panel baru "Propose a scope change" di
+dashboard, tambah criterion baru untuk request itu -> `change-proposal`
+menyimpan usulan ke ledger -> freelancer bikin clarification link BARU
+(tombol yang sama persis dengan v1) -> klien buka link, lihat ledger yang
+sudah terisi (termasuk criterion lama), "Confirm project plan" -> baseline
+v2 aktif lewat endpoint yang SAMA dengan v1.
+
+**Frontend**: `ChangeProposalPanel` baru di `page.tsx` (tampil kalau
+`hasBaseline`) -- form deliverable_id/criterion_key/text, "Propose
+change" -> `change-proposal` lalu langsung bikin clarification link baru
+dan menampilkan URL-nya. Tipe `Run` ditambah `ledger?: Ledger` (ternyata
+`GET /runs/{id}` SUDAH mengembalikan ledger mentah sejak awal, cuma
+belum dipetakan di tipe TypeScript-nya).
+
+**Dites end-to-end DUA kali** (backend via curl dengan token Firebase asli,
+DAN lewat UI browser sungguhan dengan akun asli Rifqi yang sudah sign-in):
+criterion `mobile-breakpoints` yang sudah `ACCEPTED` di v1 (teks tidak
+berubah) di v2 tetap `introduced_in_version: 1` DAN status `ACCEPTED`
+bertahan (09 A-8: naik versi tidak mengubah status apa pun); criterion baru
+`hero-video` muncul `introduced_in_version: 2`, status `PENDING`. Sesuai
+persis test vector A-T2 dan A-T7.
+
+Catatan proses: dua kali sempat salah diagnosis --  (1) klik tombol lewat
+`computer` tool (koordinat/screenshot) sempat tidak konsisten mendaftarkan
+klik/ketik di form ini (gotcha lama, lihat memory `gotcha-chrome-tool-
+coordinate-scaling`) -- diatasi dengan `javascript_tool` men-set value
+lewat native setter + dispatch event `input`, jauh lebih reliable untuk
+form React di sesi ini; (2) server API/worker yang jalan di background
+sempat berumur lebih tua dari kode terbaru (tidak pakai `--reload`) --
+hasil test pertama salah (endpoint 404, `introduced_in_version` tidak
+terlindungi) semata gara-gara proses lama, bukan bug -- **restart
+server setiap kali `app/` berubah sebelum verifikasi manual lagi.**
+
+Test: `tests/test_baseline.py` (+3), `tests/test_change_proposal.py` (baru,
+3). Total **200 test hijau**. Commit `88a964d` (branch `rifqi`, di-push).
 
 ---
 
@@ -474,9 +559,12 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
     - `app/scope_requests.py` — store `deals/{deal_id}/requests/{request_id}`
       (sengaja dinamai `scope_requests`, bukan `requests`, supaya tidak
       tabrakan nama dengan paket HTTP `requests`). `change_draft_id` dari
-      bentuk data 02 §6 sengaja tidak ada — CHANGE_REQUEST yang bikin
-      baseline v2 belum dibangun (lihat catatan `introduced_in_version` di
-      `app/domain/baseline.py`, masih PR yang sama).
+      bentuk data 02 §6 sengaja tidak ada — tidak ada foreign key eksplisit
+      dari scope_request ke baseline v2 yang dihasilkannya; keterkaitannya
+      tetap terlihat lewat urutan audit log (REQUEST_SUBMITTED ->
+      SCOPE_CLASSIFICATION_DECIDED -> CHANGE_PROPOSED -> BASELINE_APPROVED/
+      ACTIVATED), bukan lewat kolom tersendiri. Cukup untuk MVP, jangan
+      ditambah tanpa alasan baru.
     - Endpoint: `POST /runs/{run_id}/requests` (freelancer/klien mencatat
       request baru, 409 tanpa baseline aktif), `GET /runs/{run_id}/requests`,
       `POST /runs/{run_id}/requests/{request_id}/classify` (freelancer
@@ -489,8 +577,8 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
     - `tests/test_guardrail.py` (9) + `tests/test_scope_requests.py` (7) +
       `tests/test_guardrail_endpoint.py` (8). Total **189 test hijau**.
     - **Sengaja belum**: model benar-benar mengusulkan classification+citation
-      (butuh Gemini, sama seperti item 6), dan CHANGE_REQUEST yang disetujui
-      membuat baseline v2 (butuh perbaikan `introduced_in_version` dulu).
+      (butuh Gemini, sama seperti item 6). CHANGE_REQUEST -> baseline v2
+      **SELESAI**, lihat MILESTONE 25 Agu malam (lanjutan #3) di atas.
 13. ~~**Wiring `worker.py` ke `agent.extraction_agent`, Gemini sungguhan.**~~
     **Kode selesai, terverifikasi end-to-end, TAPI belum pernah sukses
     ekstraksi sungguhan** — `GEMINI_API_KEY` valid dan jalan (dibuktikan
