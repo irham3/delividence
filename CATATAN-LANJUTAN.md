@@ -14,7 +14,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Repo submission | <https://github.com/irham3/delividence> (public, akun partner, remote `delividence`) |
 | Repo cadangan | <https://github.com/rifqiahmadpratama/dealready> (private, remote `origin`) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **41 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **51 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 Tidak ada proses yang ditinggal jalan. Aman dimatikan.
 
@@ -48,8 +48,12 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
 
 ## Yang dikerjakan berikutnya
 
-1. **Alokasi `seq`** (§7.2) + service penulis audit event. Ini §10 butir 3, satu
-   pemilik, dan belum ada. Harus mendarat sebelum modul lain menulis event.
+1. ~~**Alokasi `seq`** (§7.2) + service penulis audit event.~~ **Selesai** —
+   `backend/app/audit.py`: `append_event()` (validasi type/actor/baseline_version
+   G-6, alokasi seq dalam transaksi Firestore / lock in-process lokal, envelope
+   §7.1) dan `list_events()` (urut seq asc, dipakai semua modul §6). Belum ada
+   pemanggil lain; ini fondasi, bukan fitur yang terlihat. 10 test baru di
+   `tests/test_audit.py`.
 2. **Skema ledger** (`shared/schemas/`, §10 butir 1) — masih tersebar sebagai
    dict di test, belum jadi source of truth.
 3. **Ekstraksi brief → ledger** lewat Gemini, dengan `validate_quote`
