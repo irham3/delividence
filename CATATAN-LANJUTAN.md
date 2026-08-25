@@ -16,7 +16,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Histori commit | 25 Agu 2026 malam: partner menghapus & membuat ulang repo `irham3/delividence` dari kosong. Seluruh histori (main + rifqi) sudah di-push ulang ke repo baru itu — **bersih dari trailer/atribusi tooling apa pun di commit message** (lomba disponsori Google, wajib Gemini). Commit berikutnya juga MUST tetap begitu. |
 | Repo cadangan (tidak dipush lagi) | <https://github.com/rifqiahmadpratama/dealready> (masih ada di GitHub, tapi remote `origin` sudah dilepas dari git lokal 25 Agu — fokus ke `delividence` saja) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **210 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **215 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 ## MILESTONE 25 Agu malam — alur inti terbukti jalan end-to-end di browser
 
@@ -219,6 +219,63 @@ lewat console manual:**
   lewat jalur internal yang tidak tersedia di REST API publik. Setelah
   ini, Rifqi coba lagi dan **berhasil sign-in dengan akun asli**
   (`rifqiahmadpratama@gmail.com`), dashboard render dengan benar.
+
+---
+
+## MILESTONE 26 Agu (lanjutan #5) — portal "New Request" untuk klien, purpose yang sudah dicadangkan sejak awal tapi belum pernah dipakai
+
+Instruksi Rifqi: "kerjain aja terus kalau bisa sampai beres" -- disisir
+lewat kode langsung (bukan doc): fungsi/purpose apa saja yang SUDAH
+didefinisikan lengkap tapi tidak pernah tersambung ke endpoint mana pun,
+mengulang pola yang ketemu di `client_links.revoke()` sebelumnya.
+
+**Temuan**: `app.domain.client_link.PURPOSES` sudah lama berisi 4 nilai
+(`CLARIFICATION`, `APPROVAL`, `DELIVERY_REVIEW`, `NEW_REQUEST`), tapi
+`_ACTIONS_BY_PURPOSE` di `api.py` cuma mengizinkan penerbitan link untuk 2
+dari 4 (komentar di kode sendiri sudah mengaku: "portal new-request lewat
+client link belum dibangun"). Ini persis 01-PRD §5 langkah 7: "klien dapat
+mengirim request baru melalui portal yang sama" -- SEBELUM fix ini, satu-
+satunya jalan mencatat request klien adalah freelancer menyalin manual
+dari chat/email ke `GuardrailPanel` (endpoint `POST /runs/{id}/requests`
+owner-only), bukan klien mengirim sendiri.
+
+**Fix** (pola yang sama persis dengan CLARIFICATION/DELIVERY_REVIEW,
+tidak ada endpoint/purpose baru yang diciptakan dari nol -- cuma
+melengkapi yang sudah dirancang):
+- `_ACTIONS_BY_PURPOSE["NEW_REQUEST"] = ["view", "submit"]`.
+- `GET /client/{token}/new-request` (lihat brief untuk konteks) +
+  `POST /client/{token}/new-request` (kirim `raw_text`, actor selalu
+  `"client"`, `actor_ref` dari hash token -- pola sama dengan endpoint
+  client lain, TIDAK PERNAH mempercayai identitas dari body). 409 tanpa
+  baseline aktif (sama seperti endpoint requests yang lain). **Link
+  sengaja TIDAK ditandai selesai setelah submit** -- beda dari
+  `/review` (satu `review_session_id` per submit), klien boleh mengirim
+  beberapa request terpisah lewat link yang sama sepanjang umur project,
+  sama seperti `/answers` untuk CLARIFICATION.
+- Halaman baru `web/src/app/client/[token]/request/page.tsx` (pola sama
+  dengan `/review`): tampilkan brief untuk konteks, textarea + "Send
+  request", pesan sukses yang tetap membolehkan kirim lagi.
+- Dashboard freelancer: `FreelancerActions` di-refactor dari 2 pasang
+  state (`clarificationLink`/`reviewLink`) jadi satu `Record<LinkPurpose,
+  ...>` supaya nambah purpose ketiga tidak menduplikasi blok JSX/logic --
+  tombol ketiga "Create new-request link" + "Revoke" (fitur revoke yang
+  baru dibangun tadi otomatis ikut berlaku untuk purpose ini juga, tanpa
+  kode tambahan).
+
+**Dites end-to-end lewat Chrome sungguhan** (akun test asli, dihapus lagi
+setelah selesai): submit brief -> confirm v1 lewat curl -> reload
+dashboard -> klik "Create new-request link" -> buka link itu di tab
+terpisah (`/client/{token}/request`, tanpa login sama sekali, sesuai
+desain) -> isi & kirim -> `GET /runs/{id}/requests` (lewat token owner
+asli) membuktikan `submitted_by: "client"` tersimpan benar dan tampil di
+`GuardrailPanel` freelancer, siap diklasifikasi seperti request manapun.
+
+Test baru: `tests/test_client_new_request.py` (5 test) -- termasuk
+`test_new_request_link_tidak_bisa_dipakai_untuk_purpose_lain` (token
+NEW_REQUEST ditolak di endpoint CLARIFICATION, dan sebaliknya).
+
+Total **215 test hijau**. Commit `31865df` (branch `rifqi`, di-push,
+diverifikasi `gh api`).
 
 ---
 
