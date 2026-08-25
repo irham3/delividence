@@ -281,9 +281,12 @@ export default function Home() {
 }
 
 function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
-  const [clarificationLink, setClarificationLink] = useState<string | null>(null);
-  const [reviewLink, setReviewLink] = useState<string | null>(null);
+  const [clarificationLink, setClarificationLink] = useState<{ token: string; url: string } | null>(
+    null
+  );
+  const [reviewLink, setReviewLink] = useState<{ token: string; url: string } | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [revoking, setRevoking] = useState<"CLARIFICATION" | "DELIVERY_REVIEW" | null>(null);
 
   const [criterionKey, setCriterionKey] = useState("");
   const [evidenceType, setEvidenceType] = useState<"url" | "text">("url");
@@ -305,10 +308,26 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
         purpose === "CLARIFICATION"
           ? `${origin}/client/${token}`
           : `${origin}/client/${token}/review`;
-      if (purpose === "CLARIFICATION") setClarificationLink(url);
-      else setReviewLink(url);
+      if (purpose === "CLARIFICATION") setClarificationLink({ token, url });
+      else setReviewLink({ token, url });
     } catch (e) {
       setLinkError(e instanceof Error ? e.message : "Failed to create link.");
+    }
+  }
+
+  async function revokeLink(purpose: "CLARIFICATION" | "DELIVERY_REVIEW") {
+    const link = purpose === "CLARIFICATION" ? clarificationLink : reviewLink;
+    if (!link) return;
+    setRevoking(purpose);
+    setLinkError(null);
+    try {
+      await apiFetch(`/runs/${runId}/client-links/${link.token}/revoke`, { method: "POST" });
+      if (purpose === "CLARIFICATION") setClarificationLink(null);
+      else setReviewLink(null);
+    } catch (e) {
+      setLinkError(e instanceof Error ? e.message : "Failed to revoke link.");
+    } finally {
+      setRevoking(null);
     }
   }
 
@@ -355,7 +374,16 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
             Create clarification link
           </button>
           {clarificationLink && (
-            <code className="truncate text-xs text-neutral-500">{clarificationLink}</code>
+            <>
+              <code className="truncate text-xs text-neutral-500">{clarificationLink.url}</code>
+              <button
+                onClick={() => revokeLink("CLARIFICATION")}
+                disabled={revoking === "CLARIFICATION"}
+                className="shrink-0 text-xs text-neutral-400 underline hover:text-red-600 disabled:opacity-40"
+              >
+                {revoking === "CLARIFICATION" ? "Revoking…" : "Revoke"}
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -374,7 +402,18 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
           >
             Create delivery review link
           </button>
-          {reviewLink && <code className="truncate text-xs text-neutral-500">{reviewLink}</code>}
+          {reviewLink && (
+            <>
+              <code className="truncate text-xs text-neutral-500">{reviewLink.url}</code>
+              <button
+                onClick={() => revokeLink("DELIVERY_REVIEW")}
+                disabled={revoking === "DELIVERY_REVIEW"}
+                className="shrink-0 text-xs text-neutral-400 underline hover:text-red-600 disabled:opacity-40"
+              >
+                {revoking === "DELIVERY_REVIEW" ? "Revoking…" : "Revoke"}
+              </button>
+            </>
+          )}
         </div>
       </div>
       {linkError && <p className="text-sm text-red-700">{linkError}</p>}

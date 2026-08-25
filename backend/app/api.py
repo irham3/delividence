@@ -143,6 +143,25 @@ def create_client_link(
     return {"token": token, "purpose": req.purpose}
 
 
+@app.post("/runs/{run_id}/client-links/{token}/revoke")
+def revoke_client_link(run_id: str, token: str, owner_id: str = Depends(auth.require_owner)):
+    """Freelancer membatalkan link yang sudah diterbitkan (mis. salah kirim,
+    atau link lama masih tergantung padahal sudah ada link baru untuk ronde
+    berikutnya) -- `app.client_links.revoke()` sudah lama ada tapi belum
+    pernah tersambung ke endpoint mana pun. Raw token cuma pernah ada di
+    frontend SEKALI, tepat setelah dibuat (02 §8: sistem tidak menyimpannya
+    lagi setelah itu) -- jadi ini cuma bisa dipanggil selagi link itu masih
+    kelihatan di layar, bukan lewat daftar riwayat link (memang tidak ada
+    daftar seperti itu, sengaja, supaya token mentah lama tidak pernah
+    tersimpan di mana pun)."""
+    _owned_run_or_404(run_id, owner_id)
+    record = client_links.resolve(token)
+    if record is None or record["deal_id"] != run_id:
+        raise HTTPException(status_code=404, detail="link not found")
+    client_links.revoke(token)
+    return {"revoked": True}
+
+
 def _resolve_client_link(token: str, purpose: str, action: str):
     record = client_links.resolve(token)
     ok, reason = client_link.check(record, datetime.now(timezone.utc), purpose, action)
