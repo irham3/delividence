@@ -12,7 +12,8 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Target submit internal | 31 Agustus, 18:00 WIB |
 | Sisa waktu kerja realistis | **~26–29 jam** |
 | Repo submission | <https://github.com/irham3/delividence> (public, akun partner, remote `delividence`, **satu-satunya remote aktif**) |
-| Branch kerja | Mulai 25 Agu 2026 malam: push ke branch **`rifqi`**, BUKAN `main` — supaya tidak tabrakan dengan partner (owner repo) yang juga kerja di `main`. Commit sampai dengan `120 test hijau` di atas ada di `main`; commit sesudahnya ada di `rifqi`. |
+| Branch kerja | Push ke branch **`rifqi`**, BUKAN `main` — supaya tidak tabrakan dengan partner (owner repo) yang juga kerja di `main`. |
+| Histori commit | 25 Agu 2026 malam: partner menghapus & membuat ulang repo `irham3/delividence` dari kosong. Seluruh histori (main + rifqi) sudah di-push ulang ke repo baru itu — **sudah tidak ada tulisan "Claude"/"Anthropic" di commit message maupun trailer** (lomba disponsori Google). Commit berikutnya juga MUST tetap begitu — jangan tambahkan atribusi AI apa pun. |
 | Repo cadangan (tidak dipush lagi) | <https://github.com/rifqiahmadpratama/dealready> (masih ada di GitHub, tapi remote `origin` sudah dilepas dari git lokal 25 Agu — fokus ke `delividence` saja) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
 | Test | **135 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
