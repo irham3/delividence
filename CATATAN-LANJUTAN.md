@@ -274,14 +274,19 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
 
 ## Blocker yang tidak bisa diselesaikan dari sisi kode
 
-1. **Billing Google Cloud BELUM aktif** — sempat dikira sudah (25 Agu malam),
-   tapi setelah `gcloud` CLI benar-benar terpasang dan dicek: `gcloud billing
-   accounts list` kosong (0 billing account di akun `rifqiahmad234a@gmail.com`),
-   dan `gcloud billing projects describe dudepercobaan` -> `billingEnabled:
-   false`. Rifqi sedang mengaktifkan sendiri lewat console.cloud.google.com
-   (tambah metode pembayaran / klaim $150 credit) — **status: ditunggu**.
-   Begitu dikonfirmasi, langkah selanjutnya ada di bawah ("Setelah billing
-   aktif").
+1. ~~**Billing Google Cloud belum aktif -> blokir wiring Gemini.**~~
+   **Dilewati, 25 Agu malam** — `gcloud billing accounts list` kosong (0
+   billing account di akun `rifqiahmad234a@gmail.com`), jadi diputuskan
+   **pindah dari Vertex AI ke Gemini Developer API** (`GEMINI_API_KEY`,
+   free tier, tanpa kartu/billing GCP sama sekali) — sah menurut aturan
+   hackathon (V-8), lihat `docs/10-KEPUTUSAN-DAN-VERIFIKASI.md` §1 dan
+   commit terkait. **Billing GCP masih belum aktif** dan TIDAK LAGI
+   memblokir Gemini — hanya memblokir deploy ke Cloud Run (jauh nanti,
+   sesudah semua fitur beres). **Yang sekarang jadi penentu**: isi
+   `GEMINI_API_KEY` di `backend/.env` (generate gratis di
+   https://aistudio.google.com/apikey) — begitu itu ada, wiring
+   `worker.py` ke Gemini sungguhan (item 6) bisa langsung dikerjakan DAN
+   diuji sampai selesai, tanpa perlu gcloud/project/billing apa pun.
 2. ~~`gcloud` belum terpasang.~~ **Selesai, 25 Agu malam** — Cloud SDK
    581.0.0 terpasang di
    `C:\Users\ASUS\AppData\Local\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd`
@@ -306,7 +311,22 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
    tim di Devpost dan undangannya sudah diterima.
 5. **Aturan kontes Emergent** (D-4) belum dicek soal benturan.
 
-### Setelah billing aktif
+### Setelah GEMINI_API_KEY diisi (tidak perlu billing/gcloud sama sekali)
+
+Ini yang sekarang jadi jalur utama -- mode lokal (`GOOGLE_CLOUD_PROJECT`
+kosong) tetap dipakai untuk Firestore/Pub/Sub (state ke file JSON, seperti
+semua 189 test sekarang), Gemini-nya saja yang jadi panggilan sungguhan
+lewat Developer API:
+
+1. Isi `GEMINI_API_KEY` di `backend/.env` (`GOOGLE_GENAI_USE_VERTEXAI=FALSE`
+   sudah default).
+2. Lanjut wiring `worker.py` ke `agent.extraction_agent` (item 6 di
+   atas) — sekarang bisa ditulis DAN diuji sampai selesai, bukan cuma
+   dikonstruksi.
+3. Perluas `agent.py`/tool baru untuk juga mengusulkan classification+citation
+   Guardrail (item 12), bukan cuma ekstraksi ledger.
+
+### Setelah billing GCP aktif (baru relevan untuk deploy, bukan untuk Gemini)
 
 1. `.\deploy\01-setup-gcp.ps1 -ProjectId dudepercobaan` — script ini SUDAH
    ADA di repo dan mengasumsikan project sudah ada + billing aktif (bukan
@@ -317,12 +337,12 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
 2. `.\deploy\02-deploy.ps1 -ProjectId dudepercobaan`.
 3. Set `GOOGLE_CLOUD_PROJECT=dudepercobaan` di env backend (lihat
    `backend/.env.example`) supaya `config.LOCAL` jadi `False` dan
-   `app/agent.py`/Vertex AI benar-benar terpanggil, bukan mode lokal.
-4. Verifikasi ketersediaan `gemini-3.7-flash` di region `asia-southeast2`
-   sebelum bergantung penuh ke situ (06 §3 sudah mem-pin region ini, tapi
-   belum pernah dicek langsung ke API).
-5. Baru lanjut wiring `worker.py` ke `agent.extraction_agent` (item 6 di
-   atas) — ini baru bisa ditulis DAN diuji sampai selesai setelah titik ini.
+   Firestore/Pub/Sub sungguhan terpakai, bukan mode lokal.
+4. (Opsional) Set `GOOGLE_GENAI_USE_VERTEXAI=TRUE` untuk balik ke Vertex AI
+   kalau mau -- verifikasi ketersediaan `gemini-3.7-flash` di region
+   `asia-southeast2` dulu (06 §3 mem-pin region ini, belum pernah dicek
+   langsung ke API). Tidak wajib -- Developer API tetap sah dipakai sampai
+   submission.
 
 ---
 
