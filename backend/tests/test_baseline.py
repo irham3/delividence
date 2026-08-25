@@ -53,3 +53,34 @@ def test_dua_ledger_yang_setara_menghasilkan_payload_yang_sama_persis():
     a = build_canonical_payload(ledger_lengkap(), version=1)
     b = build_canonical_payload(ledger_lengkap(), version=1)
     assert a == b
+
+
+def test_criterion_teks_identik_di_v2_mempertahankan_introduced_in_version():
+    """09 §2.6 A-7: criterion yang tidak berubah tidak "lahir ulang" hanya
+    karena baseline naik versi."""
+    v1 = build_canonical_payload(ledger_lengkap(), version=1)
+    v2 = build_canonical_payload(ledger_lengkap(), version=2, previous_criteria=v1["criteria"])
+    assert v2["criteria"]["mobile-breakpoints"]["introduced_in_version"] == 1
+
+
+def test_criterion_teks_berubah_di_v2_dicap_versi_baru():
+    v1 = build_canonical_payload(ledger_lengkap(), version=1)
+
+    ledger = ledger_lengkap()
+    ledger["acceptance_criteria"]["value"][0]["text"] = "Different text entirely."
+    v2 = build_canonical_payload(ledger, version=2, previous_criteria=v1["criteria"])
+
+    assert v2["criteria"]["mobile-breakpoints"]["introduced_in_version"] == 2
+
+
+def test_criterion_baru_di_v2_dicap_versi_baru():
+    v1 = build_canonical_payload(ledger_lengkap(), version=1)
+
+    ledger = ledger_lengkap()
+    ledger["acceptance_criteria"]["value"].append(
+        {"deliverable_id": "d1", "criterion_key": "second-thing", "text": "Something else entirely."}
+    )
+    v2 = build_canonical_payload(ledger, version=2, previous_criteria=v1["criteria"])
+
+    assert v2["criteria"]["mobile-breakpoints"]["introduced_in_version"] == 1
+    assert v2["criteria"]["second-thing"]["introduced_in_version"] == 2

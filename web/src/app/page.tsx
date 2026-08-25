@@ -7,7 +7,9 @@ import {
   apiFetch,
   openAuthedInNewTab,
   setAuthTokenProvider,
+  type AcceptanceCriterion,
   type Citation,
+  type Ledger,
   type ProofManifest,
   type ScopeRequest,
 } from "@/lib/api";
@@ -25,6 +27,7 @@ type Run = {
   round: number;
   audit_trail: AuditStep[];
   active_baseline_version?: number;
+  ledger?: Ledger;
 };
 
 const RUN_ID_STORAGE_KEY = "delividence_run_id";
@@ -412,8 +415,97 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
         </div>
       </div>
 
+      {hasBaseline && <ChangeProposalPanel runId={runId} run={run} />}
       {hasBaseline && <GuardrailPanel runId={runId} />}
     </section>
+  );
+}
+
+function ChangeProposalPanel({ runId, run }: { runId: string; run: Run | null }) {
+  const [deliverableId, setDeliverableId] = useState("");
+  const [criterionKey, setCriterionKey] = useState("");
+  const [text, setText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [linkUrl, setLinkUrl] = useState<string | null>(null);
+
+  const currentCriteria: AcceptanceCriterion[] = run?.ledger?.acceptance_criteria?.value ?? [];
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+
+  async function propose(event: React.FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setMessage(null);
+    setLinkUrl(null);
+    try {
+      const nextCriteria = [
+        ...currentCriteria,
+        { deliverable_id: deliverableId, criterion_key: criterionKey, text },
+      ];
+      await apiFetch(`/runs/${runId}/change-proposal`, {
+        method: "POST",
+        body: JSON.stringify({
+          answers: [{ field: "acceptance_criteria", value: nextCriteria }],
+        }),
+      });
+      const { token } = await apiFetch<{ token: string }>(`/runs/${runId}/client-links`, {
+        method: "POST",
+        body: JSON.stringify({ purpose: "CLARIFICATION" }),
+      });
+      setLinkUrl(`${origin}/client/${token}`);
+      setMessage("Change proposed. Send the link below to the client to review and confirm v2.");
+      setDeliverableId("");
+      setCriterionKey("");
+      setText("");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Failed to propose change.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="border-t border-neutral-200 pt-8 dark:border-neutral-800">
+      <h2 className="text-sm font-medium">Propose a scope change</h2>
+      <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+        For a request confirmed as CHANGE_REQUEST above: add a new acceptance criterion for it,
+        then send a fresh clarification link so the client can review and confirm it as v
+        {(run?.active_baseline_version ?? 1) + 1}. Existing criteria and their acceptance status
+        are kept as-is (09-DOMAIN-RULES A-8).
+      </p>
+      <form onSubmit={propose} className="mt-3 flex flex-wrap items-center gap-2">
+        <input
+          value={deliverableId}
+          onChange={(e) => setDeliverableId(e.target.value)}
+          required
+          placeholder="deliverable id"
+          className="w-32 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+        />
+        <input
+          value={criterionKey}
+          onChange={(e) => setCriterionKey(e.target.value)}
+          required
+          placeholder="new criterion key"
+          className="w-40 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+        />
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          required
+          placeholder="verbatim acceptance text"
+          className="min-w-56 flex-1 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+        />
+        <button
+          type="submit"
+          disabled={submitting}
+          className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+        >
+          {submitting ? "Proposing…" : "Propose change"}
+        </button>
+      </form>
+      {message && <p className="mt-2 text-xs text-neutral-500">{message}</p>}
+      {linkUrl && <code className="mt-1 block truncate text-xs text-neutral-500">{linkUrl}</code>}
+    </div>
   );
 }
 

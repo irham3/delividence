@@ -11,7 +11,7 @@ from app import audit, auth, baselines, client_links, config, evidence, queue, s
 from app.domain import client_link, criteria, guardrail, proof, readiness, schemas
 from app.domain.baseline import build_canonical_payload
 from app.domain.canonical import payload_hash as compute_payload_hash
-from app.domain.enums import ACCEPTED, CHANGES_REQUESTED
+from app.domain.enums import ACCEPTED, CHANGES_REQUESTED, FREELANCER_POLICY
 from app.domain.ledger import apply_client_answer
 
 # Action yang diizinkan tiap purpose client link -- portal new-request lewat
@@ -131,8 +131,11 @@ def _next_baseline_preview(deal_id, ledger):
     Deterministik dari ledger yang sama (test_baseline.py) -- dipakai GET
     /client/{token} untuk menunjukkan payload_hash yang harus di-echo balik
     ke POST .../confirm sebagai precondition (02 §5: approval basi -> 409)."""
-    next_version = baselines.get_active_version(deal_id) + 1
-    canonical_payload = build_canonical_payload(ledger, next_version)
+    active_version = baselines.get_active_version(deal_id)
+    next_version = active_version + 1
+    previous = baselines.get(deal_id, active_version) if active_version else None
+    previous_criteria = previous["canonical_payload"]["criteria"] if previous else None
+    canonical_payload = build_canonical_payload(ledger, next_version, previous_criteria)
     return next_version, canonical_payload, compute_payload_hash(canonical_payload)
 
 
@@ -256,6 +259,43 @@ def confirm_project_plan(token: str, req: ConfirmProjectPlanRequest):
     client_links.mark_completed(token)
 
     return {"version": next_version, "payload_hash": hash_, "baseline": baseline}
+
+
+@app.post("/runs/{run_id}/change-proposal")
+def propose_change(
+    run_id: str, req: SubmitAnswersRequest, owner_id: str = Depends(auth.require_owner)
+):
+    """Freelancer mengusulkan perubahan ledger setelah request diklasifikasi
+    CHANGE_REQUEST (01-PRD §5 langkah 8: "sistem membuat diff ...; perubahan
+    hanya aktif setelah approval"). Mengedit ledger yang sama dengan
+    `/client/{token}/answers` -- bedanya state jadi FREELANCER_POLICY (bukan
+    CLIENT_STATED) dan MUST sudah ada baseline aktif (endpoint ini untuk
+    mengubah kesepakatan yang sudah berjalan, bukan setup awal). Belum
+    mengaktifkan apa pun -- freelancer masih perlu menerbitkan client link
+    CLARIFICATION baru supaya klien meninjau lalu "Confirm project plan" (
+    endpoint yang sama dengan v1, version-agnostic: next_version = active + 1
+    ) sebelum ini jadi baseline v2."""
+    run = _owned_run_or_404(run_id, owner_id)
+    active_version, _ = _active_baseline_or_409(run_id, run)
+
+    ledger = run.get("ledger", {})
+    for answer in req.answers:
+        apply_client_answer(ledger, answer.field, answer.value, state=FREELANCER_POLICY)
+
+    try:
+        schemas.DealLedger.model_validate(ledger)
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+    for answer in req.answers:
+        audit.append_event(
+            run_id, "CHANGE_PROPOSED", "freelancer", active_version,
+            {"field": answer.field, "value": answer.value},
+        )
+
+    store.update_run(run_id, ledger=ledger)
+    ready, blockers = readiness.evaluate(ledger)
+    return {"ledger": ledger, "readiness": {"ready": ready, "blockers": blockers}}
 
 
 class AddEvidenceRequest(BaseModel):
