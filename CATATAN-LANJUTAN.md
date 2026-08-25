@@ -240,20 +240,55 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
 
 ## Blocker yang tidak bisa diselesaikan dari sisi kode
 
-1. **Billing Google Cloud sudah aktif** (dikonfirmasi Rifqi 25 Agu malam).
-   Yang MASIH menghambat: `gcloud` CLI belum terpasang & belum ada
-   Application Default Credentials di mesin ini (lihat butir 2). Begitu itu
-   selesai, langsung lanjut item 6 di atas (wiring `worker.py` ke Gemini).
-2. **`gcloud` belum terpasang** (tidak ada `winget` di mesin ini):
-   `curl.exe -o "$env:TEMP\gcloud.exe" https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe; & "$env:TEMP\gcloud.exe"`
-   lalu `gcloud auth login` dan `gcloud auth application-default login`.
-3. **Status tim di Devpost belum dipastikan.** Repo submission ada di akun
+1. **Billing Google Cloud BELUM aktif** — sempat dikira sudah (25 Agu malam),
+   tapi setelah `gcloud` CLI benar-benar terpasang dan dicek: `gcloud billing
+   accounts list` kosong (0 billing account di akun `rifqiahmad234a@gmail.com`),
+   dan `gcloud billing projects describe dudepercobaan` -> `billingEnabled:
+   false`. Rifqi sedang mengaktifkan sendiri lewat console.cloud.google.com
+   (tambah metode pembayaran / klaim $150 credit) — **status: ditunggu**.
+   Begitu dikonfirmasi, langkah selanjutnya ada di bawah ("Setelah billing
+   aktif").
+2. ~~`gcloud` belum terpasang.~~ **Selesai, 25 Agu malam** — Cloud SDK
+   581.0.0 terpasang di
+   `C:\Users\ASUS\AppData\Local\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd`
+   (belum masuk PATH proses lama, panggil pakai path lengkap kalau `gcloud`
+   polos tidak ketemu). `gcloud auth login` dan `gcloud auth
+   application-default login` sudah beres, akun `rifqiahmad234a@gmail.com`.
+3. **Project GCP: pakai `dudepercobaan`** (BUKAN project baru). Akun ini
+   sudah kena limit kuota 12 project (project pribadi lama Rifqi: Dude,
+   Dude2, Dude3, DudePercobaan, DudeSidang, PDF1, Rifqi UAS, Sepaturoda,
+   skpamel, dll — tidak berhubungan dengan Delividence). Sempat dihapus
+   `dude3-748bb` untuk buka slot (`gcloud projects undelete dude3-748bb`
+   bisa memulihkan dalam 30 hari kalau perlu), tapi kuota belum kebuka juga
+   setelahnya (soft-delete tidak langsung bebas kuota) — jadi diputuskan
+   pakai project lama `dudepercobaan` yang sudah ada, bukan bikin baru.
+   `gcloud config set project dudepercobaan` dan `gcloud auth
+   application-default set-quota-project dudepercobaan` sudah dijalankan.
+   **Rename display name project itu jadi "Delividence" di Console kalau
+   sempat** (masih bernama "DudePercobaan" sekarang, project ID-nya tidak
+   masalah tetap `dudepercobaan`).
+4. **Status tim di Devpost belum dipastikan.** Repo submission ada di akun
    partner. Itu sah untuk tim — tetapi hanya kalau keduanya terdaftar sebagai
    tim di Devpost dan undangannya sudah diterima.
-4. **Aturan kontes Emergent** (D-4) belum dicek soal benturan.
+5. **Aturan kontes Emergent** (D-4) belum dicek soal benturan.
 
-Begitu billing aktif: `.\deploy\01-setup-gcp.ps1 -ProjectId <id>` lalu
-`.\deploy\02-deploy.ps1 -ProjectId <id>`. Keduanya belum pernah dijalankan.
+### Setelah billing aktif
+
+1. `.\deploy\01-setup-gcp.ps1 -ProjectId dudepercobaan` — script ini SUDAH
+   ADA di repo dan mengasumsikan project sudah ada + billing aktif (bukan
+   bikin project baru). Mengaktifkan API (Vertex AI, Cloud Run, Pub/Sub,
+   Firestore, Secret Manager, Artifact Registry, Cloud Build), bikin
+   Firestore native, Artifact Registry, 3 service account dengan hak
+   minimum, topic + dead-letter Pub/Sub. Aman diulang.
+2. `.\deploy\02-deploy.ps1 -ProjectId dudepercobaan`.
+3. Set `GOOGLE_CLOUD_PROJECT=dudepercobaan` di env backend (lihat
+   `backend/.env.example`) supaya `config.LOCAL` jadi `False` dan
+   `app/agent.py`/Vertex AI benar-benar terpanggil, bukan mode lokal.
+4. Verifikasi ketersediaan `gemini-3.7-flash` di region `asia-southeast2`
+   sebelum bergantung penuh ke situ (06 §3 sudah mem-pin region ini, tapi
+   belum pernah dicek langsung ke API).
+5. Baru lanjut wiring `worker.py` ke `agent.extraction_agent` (item 6 di
+   atas) — ini baru bisa ditulis DAN diuji sampai selesai setelah titik ini.
 
 ---
 
