@@ -280,13 +280,22 @@ export default function Home() {
   );
 }
 
+type LinkPurpose = "CLARIFICATION" | "DELIVERY_REVIEW" | "NEW_REQUEST";
+
+const LINK_PATH: Record<LinkPurpose, (token: string) => string> = {
+  CLARIFICATION: (token) => `/client/${token}`,
+  DELIVERY_REVIEW: (token) => `/client/${token}/review`,
+  NEW_REQUEST: (token) => `/client/${token}/request`,
+};
+
 function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
-  const [clarificationLink, setClarificationLink] = useState<{ token: string; url: string } | null>(
-    null
-  );
-  const [reviewLink, setReviewLink] = useState<{ token: string; url: string } | null>(null);
+  const [links, setLinks] = useState<Record<LinkPurpose, { token: string; url: string } | null>>({
+    CLARIFICATION: null,
+    DELIVERY_REVIEW: null,
+    NEW_REQUEST: null,
+  });
   const [linkError, setLinkError] = useState<string | null>(null);
-  const [revoking, setRevoking] = useState<"CLARIFICATION" | "DELIVERY_REVIEW" | null>(null);
+  const [revoking, setRevoking] = useState<LinkPurpose | null>(null);
 
   const [criterionKey, setCriterionKey] = useState("");
   const [evidenceType, setEvidenceType] = useState<"url" | "text">("url");
@@ -297,33 +306,28 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
-  async function createLink(purpose: "CLARIFICATION" | "DELIVERY_REVIEW") {
+  async function createLink(purpose: LinkPurpose) {
     setLinkError(null);
     try {
       const { token } = await apiFetch<{ token: string }>(`/runs/${runId}/client-links`, {
         method: "POST",
         body: JSON.stringify({ purpose }),
       });
-      const url =
-        purpose === "CLARIFICATION"
-          ? `${origin}/client/${token}`
-          : `${origin}/client/${token}/review`;
-      if (purpose === "CLARIFICATION") setClarificationLink({ token, url });
-      else setReviewLink({ token, url });
+      const url = `${origin}${LINK_PATH[purpose](token)}`;
+      setLinks((s) => ({ ...s, [purpose]: { token, url } }));
     } catch (e) {
       setLinkError(e instanceof Error ? e.message : "Failed to create link.");
     }
   }
 
-  async function revokeLink(purpose: "CLARIFICATION" | "DELIVERY_REVIEW") {
-    const link = purpose === "CLARIFICATION" ? clarificationLink : reviewLink;
+  async function revokeLink(purpose: LinkPurpose) {
+    const link = links[purpose];
     if (!link) return;
     setRevoking(purpose);
     setLinkError(null);
     try {
       await apiFetch(`/runs/${runId}/client-links/${link.token}/revoke`, { method: "POST" });
-      if (purpose === "CLARIFICATION") setClarificationLink(null);
-      else setReviewLink(null);
+      setLinks((s) => ({ ...s, [purpose]: null }));
     } catch (e) {
       setLinkError(e instanceof Error ? e.message : "Failed to revoke link.");
     } finally {
@@ -373,9 +377,9 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
           >
             Create clarification link
           </button>
-          {clarificationLink && (
+          {links.CLARIFICATION && (
             <>
-              <code className="truncate text-xs text-neutral-500">{clarificationLink.url}</code>
+              <code className="truncate text-xs text-neutral-500">{links.CLARIFICATION.url}</code>
               <button
                 onClick={() => revokeLink("CLARIFICATION")}
                 disabled={revoking === "CLARIFICATION"}
@@ -402,15 +406,44 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
           >
             Create delivery review link
           </button>
-          {reviewLink && (
+          {links.DELIVERY_REVIEW && (
             <>
-              <code className="truncate text-xs text-neutral-500">{reviewLink.url}</code>
+              <code className="truncate text-xs text-neutral-500">{links.DELIVERY_REVIEW.url}</code>
               <button
                 onClick={() => revokeLink("DELIVERY_REVIEW")}
                 disabled={revoking === "DELIVERY_REVIEW"}
                 className="shrink-0 text-xs text-neutral-400 underline hover:text-red-600 disabled:opacity-40"
               >
                 {revoking === "DELIVERY_REVIEW" ? "Revoking…" : "Revoke"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          {hasBaseline
+            ? "Send this link so the client can ask for something new themselves, any time."
+            : "Available once the client confirms the project plan."}
+        </p>
+        <div className="mt-2 flex items-center gap-3">
+          <button
+            onClick={() => createLink("NEW_REQUEST")}
+            disabled={!hasBaseline}
+            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm disabled:opacity-40 dark:border-neutral-700"
+          >
+            Create new-request link
+          </button>
+          {links.NEW_REQUEST && (
+            <>
+              <code className="truncate text-xs text-neutral-500">{links.NEW_REQUEST.url}</code>
+              <button
+                onClick={() => revokeLink("NEW_REQUEST")}
+                disabled={revoking === "NEW_REQUEST"}
+                className="shrink-0 text-xs text-neutral-400 underline hover:text-red-600 disabled:opacity-40"
+              >
+                {revoking === "NEW_REQUEST" ? "Revoking…" : "Revoke"}
               </button>
             </>
           )}

@@ -14,12 +14,11 @@ from app.domain.canonical import payload_hash as compute_payload_hash
 from app.domain.enums import ACCEPTED, CHANGES_REQUESTED, FREELANCER_POLICY
 from app.domain.ledger import apply_client_answer
 
-# Action yang diizinkan tiap purpose client link -- portal new-request lewat
-# client link belum dibangun (submit request lewat client link, bukan cuma
-# lewat freelancer), lihat CATATAN-LANJUTAN.md.
+# Action yang diizinkan tiap purpose client link.
 _ACTIONS_BY_PURPOSE = {
     "CLARIFICATION": ["view", "answer", "confirm"],
     "DELIVERY_REVIEW": ["view", "submit_review"],
+    "NEW_REQUEST": ["view", "submit"],
 }
 
 app = FastAPI(title="Delividence API")
@@ -507,6 +506,50 @@ def submit_delivery_review(token: str, req: SubmitReviewRequest):
         "review_session_id": review_session_id,
         "decisions": [item.model_dump() for item, _ in prepared],
     }
+
+
+@app.get("/client/{token}/new-request")
+def view_new_request_link(token: str):
+    """01-PRD §5 langkah 7: "klien dapat mengirim request baru melalui
+    portal yang sama" -- purpose `NEW_REQUEST` sudah lama dicadangkan di
+    `app.domain.client_link.PURPOSES` tapi belum ada endpoint sama sekali
+    yang memakainya; sebelum ini klien cuma bisa lewat freelancer yang
+    mencatat manual dari kanal lain (`submitted_by="client"` di
+    `POST /runs/{id}/requests`, tapi itu endpoint owner-only)."""
+    record = _resolve_client_link(token, "NEW_REQUEST", "view")
+    deal_id = record["deal_id"]
+    run = store.get_run(deal_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="deal not found")
+    return {"brief": run["brief"]}
+
+
+class SubmitClientRequestRequest(BaseModel):
+    raw_text: str = Field(min_length=1)
+
+
+@app.post("/client/{token}/new-request", status_code=201)
+def submit_client_new_request(token: str, req: SubmitClientRequestRequest):
+    """Link TIDAK ditandai selesai setelah submit -- sama seperti
+    `/client/{token}/answers`, klien boleh mengirim beberapa request
+    terpisah lewat link yang sama sepanjang project berjalan, bukan
+    sekali pakai seperti `/review` (yang punya semantik review_session_id
+    per submit)."""
+    record = _resolve_client_link(token, "NEW_REQUEST", "submit")
+    deal_id = record["deal_id"]
+    run = store.get_run(deal_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="deal not found")
+    active_version, _ = _active_baseline_or_409(deal_id, run)
+
+    result = scope_requests.submit(deal_id, req.raw_text, "client")
+    actor_ref = client_links.actor_ref_for(token)
+    audit.append_event(
+        deal_id, "REQUEST_SUBMITTED", "client", active_version,
+        {"request_id": result["request_id"], "raw_text": req.raw_text},
+        actor_ref=actor_ref,
+    )
+    return result
 
 
 @app.get("/runs/{run_id}/proof")
