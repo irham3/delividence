@@ -424,15 +424,16 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
    dihapus — masih dipakai worker.py apa adanya, supaya tidak menyentuh test
    vertical slice yang sudah hijau. 1 test baru di `tests/test_slice.py`.
    Total 88 test hijau.
-6. **Sambungkan `agent.py` + `questions.py` ke `worker.py`** — ini yang masih
-   nyata-nyata diblokir billing GCP. `worker.py` masih stub "Belum ada logika
-   produk" dengan sengaja: memanggil Gemini sungguhan di sana baru jujur bisa
-   ditulis (dan diuji sampai selesai) setelah kredensial ada. Yang sudah siap
-   dipakai begitu billing aktif: isi `tool_context.state["artifacts"]` dari
-   `store.get_run(run_id)["brief"]` (pakai `artifact_ref="artifact:brief-1"`,
-   sama seperti yang ditulis `api.py`), jalankan `agent.extraction_agent` lewat
-   ADK `Runner`, ambil `ledger_draft` dari state, lalu tulis `LEDGER_DRAFT_SAVED`
-   ke `app/audit.py` dan rank pertanyaan lewat `questions.rank_questions()`.
+6. ~~**Sambungkan `agent.py` ke `worker.py`.**~~ **CATATAN INI USANG —
+   sudah selesai dan terverifikasi sukses lewat Gemini Developer API**
+   (bukan lagi diblokir billing GCP, lihat MILESTONE 25 Agu malam paling
+   atas dan blocker #1 di bawah: pindah ke Gemini Developer API). Baris
+   ini sengaja dibiarkan sebagai jejak sejarah, jangan dikerjakan ulang —
+   `app/worker.py: run_extraction()` sudah jalan pakai `gemini-3.6-flash`.
+   `questions.rank_questions()` belum disambungkan ke worker (belum ada
+   UI yang menampilkan pertanyaan terrank) — dicatat apa adanya, bukan
+   prioritas karena readiness gate & clarification portal sudah menutup
+   kebutuhan intinya tanpa itu.
 7. ~~**Client link** — opaque, scoped, expiring, tanpa akun (02 §8).~~
    **Selesai (mekanisme-nya saja)** — `backend/app/domain/client_link.py`:
    `check(link, now, purpose, action)`, murni, `now` selalu parameter (tidak
