@@ -16,7 +16,7 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Histori commit | 25 Agu 2026 malam: partner menghapus & membuat ulang repo `irham3/delividence` dari kosong. Seluruh histori (main + rifqi) sudah di-push ulang ke repo baru itu — **sudah tidak ada tulisan "Claude"/"Anthropic" di commit message maupun trailer** (lomba disponsori Google). Commit berikutnya juga MUST tetap begitu — jangan tambahkan atribusi AI apa pun. |
 | Repo cadangan (tidak dipush lagi) | <https://github.com/rifqiahmadpratama/dealready> (masih ada di GitHub, tapi remote `origin` sudah dilepas dari git lokal 25 Agu — fokus ke `delividence` saja) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **135 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **154 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 
 Tidak ada proses yang ditinggal jalan. Aman dimatikan.
 
@@ -187,22 +187,54 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
      `payload_hash` -> confirm -> baseline v1 aktif (`activated_seq` terisi
      benar) -> link dipakai lagi -> 403.
    - `tests/test_baseline.py` (5), `tests/test_baselines_store.py` (6),
-     `tests/test_confirm.py` (5). Total **135 test hijau**.
+     `tests/test_confirm.py` (5).
    - **Catatan untuk nanti**: `build_canonical_payload` menandai SEMUA
      criterion `introduced_in_version = <versi yang lagi dibuat>`. Itu benar
      untuk v1. Begitu ada jalur yang bikin v2 (change request/Guardrail),
      fungsi ini harus diperbarui supaya criterion yang sudah ada di v(n-1)
      mempertahankan `introduced_in_version` aslinya (09 §2.6 A-7) — jangan
      lupa, sudah ditandai juga di docstring-nya.
-10. Baru setelah itu: portal klien penuh (delivery review, new request),
-    Guardrail, Proof.
+10. ~~**Evidence + delivery review** (01-PRD §5 langkah 9-10).~~ **Selesai** —
+    `app/evidence.py`: `add()`/`list_for_deal()`/`list_for_criterion()`,
+    `type` dipersempit ke `"url"`/`"text"` saja (screenshot/file upload butuh
+    Cloud Storage, blocker sama dengan billing). `app/baselines.py` dapat
+    `get_all_up_to()` (riwayat versi buat `criteria.effective_status`).
+    Client link sekarang punya dua purpose: `_ACTIONS_BY_PURPOSE` di
+    `api.py` (`CLARIFICATION` vs `DELIVERY_REVIEW`), `POST
+    /runs/{id}/client-links` terima `{"purpose": ...}`.
+    - `POST /runs/{run_id}/evidence` — freelancer lampirkan evidence ke satu
+      `criterion_key`; ditolak 409 kalau belum ada baseline aktif, 404 kalau
+      `criterion_key` tidak ada di baseline aktif. Tulis `EVIDENCE_ADDED`.
+    - `GET /client/{token}/review` — daftar criterion baseline aktif +
+      `effective_status` (dihitung ulang lewat `app.domain.criteria`, bukan
+      disimpan) + evidence per criterion.
+    - `POST /client/{token}/review` — klien kirim Accept/Request changes
+      untuk beberapa criterion **dalam satu aksi submit** (semua item
+      divalidasi dulu — termasuk gate `can_record_decision` A-9 — sebelum
+      satu pun event ditulis). `CHANGES_REQUESTED` **wajib** `reason` ->
+      422 kalau kosong. Satu `review_session_id` per submit; tulis
+      `REVIEW_SESSION_OPENED` lalu satu `CRITERION_DECISION` per item. Link
+      **sengaja tidak** ditandai completed (bisa ada ronde review berikutnya).
+    - Diverifikasi end-to-end lewat `uvicorn` sungguhan: evidence ditambah
+      -> status `PENDING` -> klien ACCEPTED -> status berubah jadi
+      `ACCEPTED` di GET berikutnya.
+    - `tests/test_evidence.py` (6) + `tests/test_delivery_review.py` (12),
+      termasuk test A-9 (`ACCEPTED` tidak bisa ditimpa `CHANGES_REQUESTED`
+      lagi lewat endpoint ini). Total **154 test hijau**.
+11. Baru setelah itu: new request/Guardrail (scope comparison, classification
+    IN_SCOPE/AMBIGUOUS/CHANGE_REQUEST — bagian ini butuh Gemini untuk
+    proposal, jadi ikut diblokir billing/gcloud) dan Proof (export
+    Markdown/JSON acceptance record — tidak butuh Gemini, bisa dikerjakan
+    duluan kalau mau).
 
 ---
 
 ## Blocker yang tidak bisa diselesaikan dari sisi kode
 
-1. **Billing Google Cloud belum aktif.** Cutoff klaim $150 credit:
-   **28 Agustus, 12:00 PT**. Semua langkah cloud menunggu di belakang ini.
+1. **Billing Google Cloud sudah aktif** (dikonfirmasi Rifqi 25 Agu malam).
+   Yang MASIH menghambat: `gcloud` CLI belum terpasang & belum ada
+   Application Default Credentials di mesin ini (lihat butir 2). Begitu itu
+   selesai, langsung lanjut item 6 di atas (wiring `worker.py` ke Gemini).
 2. **`gcloud` belum terpasang** (tidak ada `winget` di mesin ini):
    `curl.exe -o "$env:TEMP\gcloud.exe" https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe; & "$env:TEMP\gcloud.exe"`
    lalu `gcloud auth login` dan `gcloud auth application-default login`.

@@ -43,3 +43,12 @@ def test_get_versi_tidak_ada_none():
 def test_deal_terpisah_tidak_saling_pengaruh():
     baselines.create("deal-a", 1, {}, "sha256:a", "client", "t", 1)
     assert baselines.get_active_version("deal-b") == 0
+
+
+def test_get_all_up_to_mengembalikan_semua_versi_sampai_batas():
+    baselines.create("deal-1", 1, {"v": 1}, "sha256:a", "client", "t1", 1)
+    baselines.create("deal-1", 2, {"v": 2}, "sha256:b", "client", "t2", 9)
+    all_versions = baselines.get_all_up_to("deal-1", 2)
+    assert set(all_versions) == {1, 2}
+    assert all_versions[1]["canonical_payload"] == {"v": 1}
+    assert all_versions[2]["canonical_payload"] == {"v": 2}

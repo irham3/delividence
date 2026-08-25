@@ -6,16 +6,19 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
-from app import audit, baselines, client_links, config, queue, store
-from app.domain import client_link, readiness, schemas
+from app import audit, baselines, client_links, config, evidence, queue, store
+from app.domain import client_link, criteria, readiness, schemas
 from app.domain.baseline import build_canonical_payload
 from app.domain.canonical import payload_hash as compute_payload_hash
+from app.domain.enums import ACCEPTED, CHANGES_REQUESTED
 from app.domain.ledger import apply_client_answer
 
-# Purpose tunggal yang didukung endpoint klien untuk saat ini -- lihat
-# CATATAN-LANJUTAN.md, portal klien penuh (approval/delivery review/new
-# request) belum dibangun.
-_CLARIFICATION_ACTIONS = ["view", "answer", "confirm"]
+# Action yang diizinkan tiap purpose client link -- portal new-request/
+# Guardrail belum dibangun, lihat CATATAN-LANJUTAN.md.
+_ACTIONS_BY_PURPOSE = {
+    "CLARIFICATION": ["view", "answer", "confirm"],
+    "DELIVERY_REVIEW": ["view", "submit_review"],
+}
 
 app = FastAPI(title="Delividence API")
 
@@ -79,22 +82,33 @@ def get_run(run_id: str):
     return run
 
 
+class CreateClientLinkRequest(BaseModel):
+    purpose: str = "CLARIFICATION"
+
+    @field_validator("purpose")
+    @classmethod
+    def _known_purpose(cls, v):
+        if v not in _ACTIONS_BY_PURPOSE:
+            raise ValueError("purpose must be one of %s" % (", ".join(_ACTIONS_BY_PURPOSE),))
+        return v
+
+
 @app.post("/runs/{run_id}/client-links", status_code=201)
-def create_client_link(run_id: str):
-    """Freelancer menerbitkan client link untuk klarifikasi (02 §8). Token
-    mentah HANYA muncul di response ini -- pemanggil bertanggung jawab
-    mengirimkannya ke klien lewat kanal apa pun (chat/email), sistem tidak
-    menyimpannya lagi setelah ini."""
+def create_client_link(run_id: str, req: CreateClientLinkRequest = CreateClientLinkRequest()):
+    """Freelancer menerbitkan client link (02 §8). Token mentah HANYA muncul
+    di response ini -- pemanggil bertanggung jawab mengirimkannya ke klien
+    lewat kanal apa pun (chat/email), sistem tidak menyimpannya lagi setelah
+    ini."""
     if store.get_run(run_id) is None:
         raise HTTPException(status_code=404, detail="run not found")
 
-    token = client_links.issue(run_id, "CLARIFICATION", _CLARIFICATION_ACTIONS)
-    return {"token": token, "purpose": "CLARIFICATION"}
+    token = client_links.issue(run_id, req.purpose, _ACTIONS_BY_PURPOSE[req.purpose])
+    return {"token": token, "purpose": req.purpose}
 
 
-def _resolve_client_link(token: str, action: str):
+def _resolve_client_link(token: str, purpose: str, action: str):
     record = client_links.resolve(token)
-    ok, reason = client_link.check(record, datetime.now(timezone.utc), "CLARIFICATION", action)
+    ok, reason = client_link.check(record, datetime.now(timezone.utc), purpose, action)
     if not ok:
         raise HTTPException(status_code=403, detail=reason)
     return record
@@ -113,7 +127,7 @@ def _next_baseline_preview(deal_id, ledger):
 
 @app.get("/client/{token}")
 def view_client_link(token: str):
-    record = _resolve_client_link(token, "view")
+    record = _resolve_client_link(token, "CLARIFICATION", "view")
     deal_id = record["deal_id"]
     run = store.get_run(deal_id)
     if run is None:
@@ -146,7 +160,7 @@ def submit_client_answers(token: str, req: SubmitAnswersRequest):
     SENGAJA tidak ditandai selesai di sini -- klien boleh mengirim beberapa
     ronde koreksi sebelum "Confirm project plan" (baseline approval, belum
     dibangun; lihat CATATAN-LANJUTAN.md) menutup link ini."""
-    record = _resolve_client_link(token, "answer")
+    record = _resolve_client_link(token, "CLARIFICATION", "answer")
     deal_id = record["deal_id"]
     run = store.get_run(deal_id)
     if run is None:
@@ -191,7 +205,7 @@ def confirm_project_plan(token: str, req: ConfirmProjectPlanRequest):
     baseline versi baru. Readiness gate MUST lolos; endpoint ini tidak bisa
     melewatinya (readiness.evaluate adalah satu-satunya sumber kebenaran,
     sama seperti di view_client_link/submit_client_answers)."""
-    record = _resolve_client_link(token, "confirm")
+    record = _resolve_client_link(token, "CLARIFICATION", "confirm")
     deal_id = record["deal_id"]
     run = store.get_run(deal_id)
     if run is None:
@@ -231,3 +245,163 @@ def confirm_project_plan(token: str, req: ConfirmProjectPlanRequest):
     client_links.mark_completed(token)
 
     return {"version": next_version, "payload_hash": hash_, "baseline": baseline}
+
+
+class AddEvidenceRequest(BaseModel):
+    criterion_key: str = Field(min_length=1)
+    type: str
+    uri: str = Field(min_length=1)
+    caption: str | None = None
+
+    @field_validator("type")
+    @classmethod
+    def _known_type(cls, v):
+        if v not in evidence.EVIDENCE_TYPES:
+            raise ValueError("type must be one of %s" % (", ".join(sorted(evidence.EVIDENCE_TYPES)),))
+        return v
+
+
+def _active_baseline_or_409(run_id, run):
+    active_version = run.get("active_baseline_version")
+    if not active_version:
+        raise HTTPException(status_code=409, detail="No active baseline yet.")
+    return active_version, baselines.get(run_id, active_version)
+
+
+@app.post("/runs/{run_id}/evidence", status_code=201)
+def add_evidence(run_id: str, req: AddEvidenceRequest):
+    """Freelancer melampirkan evidence ke satu acceptance criterion (01-PRD
+    §5 langkah 9). criterion_key MUST ada di baseline aktif."""
+    run = store.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run not found")
+
+    active_version, baseline = _active_baseline_or_409(run_id, run)
+    if req.criterion_key not in baseline["canonical_payload"]["criteria"]:
+        raise HTTPException(status_code=404, detail="criterion_key not found in active baseline")
+
+    record = evidence.add(run_id, req.criterion_key, req.type, req.uri, req.caption)
+    audit.append_event(
+        run_id, "EVIDENCE_ADDED", "freelancer", active_version,
+        {"evidence_id": record["evidence_id"], "criterion_key": req.criterion_key, "type": req.type},
+    )
+    return record
+
+
+def _decisions_for(deal_id):
+    """Proyeksi event CRITERION_DECISION -> bentuk `decisions` yang
+    dikonsumsi app.domain.criteria.effective_status/can_record_decision."""
+    out = []
+    for e in audit.list_events(deal_id):
+        if e["type"] != "CRITERION_DECISION":
+            continue
+        p = e["payload"]
+        out.append({
+            "criterion_key": p["criterion_key"],
+            "decision": p["decision"],
+            "baseline_version": e["baseline_version"],
+            "criterion_text_hash": p["criterion_text_hash"],
+            "seq": e["seq"],
+        })
+    return out
+
+
+@app.get("/client/{token}/review")
+def view_delivery_review(token: str):
+    record = _resolve_client_link(token, "DELIVERY_REVIEW", "view")
+    deal_id = record["deal_id"]
+    run = store.get_run(deal_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="deal not found")
+
+    active_version, active_baseline = _active_baseline_or_409(deal_id, run)
+    all_baselines = baselines.get_all_up_to(deal_id, active_version)
+    decisions = _decisions_for(deal_id)
+
+    criteria_view = [
+        {
+            "criterion_key": key,
+            "text": crit["text"],
+            "status": criteria.effective_status(key, active_version, all_baselines, decisions),
+            "evidence": evidence.list_for_criterion(deal_id, key),
+        }
+        for key, crit in active_baseline["canonical_payload"]["criteria"].items()
+    ]
+    return {"baseline_version": active_version, "criteria": criteria_view}
+
+
+class CriterionDecisionItem(BaseModel):
+    criterion_key: str = Field(min_length=1)
+    decision: str
+    reason: str | None = None
+
+    @field_validator("decision")
+    @classmethod
+    def _known_decision(cls, v):
+        if v not in (ACCEPTED, CHANGES_REQUESTED):
+            raise ValueError("decision must be ACCEPTED or CHANGES_REQUESTED")
+        return v
+
+
+class SubmitReviewRequest(BaseModel):
+    decisions: list[CriterionDecisionItem] = Field(min_length=1)
+
+
+@app.post("/client/{token}/review")
+def submit_delivery_review(token: str, req: SubmitReviewRequest):
+    """Klien mengirim Accept/Request changes untuk sekumpulan criterion dalam
+    SATU aksi submit (01-PRD §5 langkah 10) -- satu review_session_id untuk
+    seluruh keputusan di request ini. Semua item divalidasi dulu sebelum satu
+    pun event ditulis, supaya tidak ada submission yang setengah tersimpan."""
+    record = _resolve_client_link(token, "DELIVERY_REVIEW", "submit_review")
+    deal_id = record["deal_id"]
+    run = store.get_run(deal_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="deal not found")
+
+    active_version, active_baseline = _active_baseline_or_409(deal_id, run)
+    active_criteria = active_baseline["canonical_payload"]["criteria"]
+    all_baselines = baselines.get_all_up_to(deal_id, active_version)
+    decisions_so_far = _decisions_for(deal_id)
+
+    prepared = []
+    for item in req.decisions:
+        if item.decision == CHANGES_REQUESTED and not (item.reason or "").strip():
+            raise HTTPException(
+                status_code=422,
+                detail="reason is required when requesting changes for %r" % item.criterion_key,
+            )
+        if item.criterion_key not in active_criteria:
+            raise HTTPException(
+                status_code=404, detail="criterion_key not found: %r" % item.criterion_key
+            )
+        allowed, why = criteria.can_record_decision(
+            item.criterion_key, active_version, all_baselines, decisions_so_far, item.decision
+        )
+        if not allowed:
+            raise HTTPException(status_code=409, detail=why)
+        prepared.append((item, active_criteria[item.criterion_key]["text_hash"]))
+
+    review_session_id = uuid.uuid4().hex
+    actor_ref = client_links.actor_ref_for(token)
+    audit.append_event(
+        deal_id, "REVIEW_SESSION_OPENED", "client", active_version,
+        {"review_session_id": review_session_id}, actor_ref=actor_ref,
+    )
+    for item, text_hash in prepared:
+        audit.append_event(
+            deal_id, "CRITERION_DECISION", "client", active_version,
+            {
+                "criterion_key": item.criterion_key,
+                "decision": item.decision,
+                "criterion_text_hash": text_hash,
+                "reason": item.reason,
+                "review_session_id": review_session_id,
+            },
+            actor_ref=actor_ref,
+        )
+
+    return {
+        "review_session_id": review_session_id,
+        "decisions": [item.model_dump() for item, _ in prepared],
+    }

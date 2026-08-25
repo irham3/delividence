@@ -97,3 +97,10 @@ def get(deal_id, version):
         .get()
     )
     return snap.to_dict() if snap.exists else None
+
+
+def get_all_up_to(deal_id, version):
+    """{version: record} untuk versi 1..version -- bentuk `baselines` yang
+    dibutuhkan app.domain.criteria.effective_status (perlu riwayat versi
+    lama untuk aturan jeda WITHDRAWN->SUPERSEDED, 09 §2.5)."""
+    return {v: get(deal_id, v) for v in range(1, version + 1)}
