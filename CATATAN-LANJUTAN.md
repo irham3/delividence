@@ -16,7 +16,112 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Histori commit | 25 Agu 2026 malam: partner menghapus & membuat ulang repo `irham3/delividence` dari kosong. Seluruh histori (main + rifqi) sudah di-push ulang ke repo baru itu — **bersih dari trailer/atribusi tooling apa pun di commit message** (lomba disponsori Google, wajib Gemini). Commit berikutnya juga MUST tetap begitu. |
 | Repo cadangan (tidak dipush lagi) | <https://github.com/rifqiahmadpratama/dealready> (masih ada di GitHub, tapi remote `origin` sudah dilepas dari git lokal 25 Agu — fokus ke `delividence` saja) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
-| Test | **215 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Test | **220 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+
+## MILESTONE 26 Agu (lanjutan #7) — Gemini akhirnya sukses sungguhan, dan Guardrail sekarang model-assisted
+
+Sesi baru setelah "penutup sesi" sebelumnya. Tiga hal sekaligus, saling
+bergantung satu sama lain.
+
+### 1. Root cause ekstraksi Gemini gagal ditemukan — bukan kuota, env tidak pernah ke-load
+
+Waktu server dinyalakan ulang sesi ini (`uvicorn app.main:app ...` persis
+seperti instruksi README), ekstraksi langsung gagal dengan
+`ValueError: No API key was provided`. Ditelusuri: **proyek ini tidak
+pernah punya `load_dotenv()` di kode manapun** — `backend/.env` selama ini
+dianggap harus di-*source* manual ke environment sebelum start (itu
+sebabnya instruksi lama pakai `$env:GEMINI_API_KEY = ...` per variabel,
+bukan file). Command README/CATATAN sebelumnya yang cuma
+`uvicorn app.main:app --host ... --port ...` tanpa apa-apa lagi TIDAK
+pernah benar-benar membaca `.env`.
+
+**Fix**: tambahkan `--env-file .env` ke command uvicorn (paket
+`python-dotenv` kebetulan sudah ke-install sebagai dependency transitif,
+uvicorn CLI punya flag ini bawaan, tidak ada kode aplikasi yang diubah
+sama sekali). Command lokal yang benar sekarang:
+
+```powershell
+$env:ROLE = "worker"; ..\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8081 --env-file .env
+$env:ROLE = "api"; $env:WORKER_URL = "http://127.0.0.1:8081"; ..\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8080 --env-file .env
+```
+
+Diverifikasi lewat "Retry extraction" di run test: worker log bersih tanpa
+exception, audit trail tertulis "Brief diekstrak lewat Gemini -- 2 field
+ledger terisi." — ekstraksi ASLI, bukan stub. **Item 13 & blocker
+GEMINI_API_KEY di bawah sekarang benar-benar selesai**, bukan lagi
+"tinggal tunggu demand mereda".
+
+### 2. Guardrail — classification+citation otomatis lewat Gemini (item 12/14, akhirnya selesai)
+
+Instruksi Rifqi setelah fix di atas: "coba fix biar Gemini extraction bisa
+jalan" lalu "lanjutkan" — diteruskan ke item yang sejak awal dicatat
+"baru dikerjakan setelah ekstraksi sukses sekali secara nyata".
+
+- `app/agent.py`: agent ADK baru `guardrail_agent` + tool
+  `propose_classification` — pola PERSIS `save_ledger_draft`: usulan model
+  divalidasi tanpa syarat lewat `guardrail.classify()` yang sudah ada
+  sejak lama (IN_SCOPE/CHANGE_REQUEST tanpa kutipan yang benar-benar valid
+  turun AMBIGUOUS), tidak pernah dipercaya mentah-mentah.
+- `app/api.py`: `POST /runs/{id}/requests` sekarang memanggil agent ini
+  SEKALI setelah request tercatat, hasilnya disimpan sebagai
+  `proposed_classification`/`proposed_citations` -- terpisah dari
+  `confirmed_classification` (freelancer tetap satu-satunya yang berwenang
+  konfirmasi, 09-DOMAIN-RULES §8, model tidak pernah otomatis
+  memutuskan). Kegagalan Gemini tidak menggagalkan pencatatan request itu
+  sendiri, non-fatal, pola sama dengan worker ekstraksi. Menulis
+  `SCOPE_ANALYSIS_PROPOSED` -- enum ini sudah dicadangkan sejak
+  `enums.py` pertama kali ditulis, baru sekarang benar-benar dipakai.
+- `app/scope_requests.py`: field baru `proposed_classification`/
+  `proposed_citations` + `save_proposal()`, tidak menyentuh
+  `mark_classified()`.
+- Frontend (`page.tsx`, `RequestCard`): form klasifikasi pre-fill dari
+  usulan model + hint "Model suggested: ..." -- tombol "Confirm
+  classification" tetap wajib diklik manual.
+- Test baru: 3 bypass-LLM di `test_agent.py` (pola sama
+  `test_agent.py` yang sudah ada), 2 di `test_guardrail_endpoint.py`
+  (sukses + kegagalan Gemini tidak menggagalkan submit). **220 test
+  hijau.**
+
+**Diverifikasi dengan Gemini ASLI (bukan stub test suite)** lewat Chrome
+sungguhan: run baru -> baseline v1 dikonfirmasi -> log request "Does the
+fix also need to survive a full VM reboot, not just a process restart?"
+-> Gemini balas **IN_SCOPE** dengan kutipan verbatim `deliverables[0]`
+yang benar-benar cocok -> freelancer confirm -> tersimpan sebagai
+keputusan final. Tidak ada exception di log API maupun worker.
+
+Ini menutup **satu-satunya item fitur (non-deploy) yang masih "sengaja
+belum"** di seluruh catatan ini. Sisa cuma deploy Cloud Run (blocker
+billing, lihat di bawah, tidak berubah).
+
+### 3. Sebelum dua hal di atas: sinkron dengan kerjaan UI partner + dark/light mode + beres-beres desain
+
+- Ditarik 7 commit dari `delividence/main` (partner sudah merge `rifqi`
+  lalu menambah redesign penuh: `app-shell.tsx`, `landing.tsx`,
+  `client-frame.tsx`, sistem desain "paper" berbasis CSS variable,
+  gsap+lucide-react) -- fast-forward bersih, tidak ada konflik, langsung
+  di-push balik ke `rifqi` supaya kedua branch sinkron.
+- **Instruksi Rifqi**: cek konsistensi desain + tambahkan dark/light mode.
+  Temuan: shell baru sudah pakai token CSS (`--rule`/`--muted`/`--accent`
+  dst), tapi banyak panel di dalamnya (Guardrail, Propose Scope Change,
+  form `ListField` portal klien, `ReadinessBanner`, status pill review)
+  masih pakai class Tailwind mentah (`neutral-300`, `green-50`,
+  `dark:border-neutral-700` dst) peninggalan sebelum redesign -- disatukan
+  semua ke token yang sama, termasuk token status baru (`--status-ok-*`,
+  `--status-warn-*`, `--status-neutral-*`).
+- Dark/light mode dibangun dari nol: token warna dapat varian dark di
+  `globals.css`, toggle manual (`ThemeToggle`, ikon sun/moon) di dashboard
+  freelancer + landing page + semua halaman portal klien, persist
+  `localStorage`, default ke preferensi sistem di kunjungan pertama, tanpa
+  flash warna salah (`next/script` `beforeInteractive` +
+  `suppressHydrationWarning` di `<html>`).
+- Lolos `tsc --noEmit`, `eslint`, `next build`. Diverifikasi visual lewat
+  Chrome sungguhan (light & dark, dashboard + portal klien).
+
+**Commit** (branch `rifqi`, di-push): `564355e` (theme + konsistensi
+desain), `9744b6e` (Guardrail agent). Total sesi ini: **220 test hijau**,
+tidak ada satu pun perubahan yang menyentuh kode deploy/billing.
+
+---
 
 ## MILESTONE 25 Agu malam — alur inti terbukti jalan end-to-end di browser
 
@@ -799,11 +904,12 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
     yang benar. `tests/test_proof.py` (5) + `tests/test_proof_endpoint.py`
     (6).
 12. ~~**Guardrail — klasifikasi request baru** (scope comparison, IN_SCOPE/
-    AMBIGUOUS/CHANGE_REQUEST).~~ **Selesai sebagian, sengaja** — bagian yang
-    tidak butuh Gemini sudah jadi, bagian yang butuh Gemini (model
-    mengusulkan classification+citation otomatis) belum, sama polanya dengan
-    ekstraksi (item 3): model diusulkan lewat `agent.py` nanti, tapi validasi
-    & keputusan akhir selalu deterministik di sini.
+    AMBIGUOUS/CHANGE_REQUEST).~~ **Selesai penuh, 26 Agu** — bagian
+    deterministik (di bawah) dari sesi awal, bagian model
+    (`agent.guardrail_agent`, lihat MILESTONE 26 Agu lanjutan #7 di atas)
+    menyusul setelah ekstraksi Gemini terbukti sukses sungguhan. Validasi
+    & keputusan akhir tetap selalu deterministik di sini — usulan model
+    lewat tempat yang sama persis, tidak ada jalur pintas baru.
     - `app/domain/guardrail.py`: `citable_text(baseline)` (kumpulkan teks
       yang boleh dikutip dari criteria + out_of_scope + deliverables) dan
       `classify(proposed, citations, text_by_ref)` — tiap citation
@@ -832,17 +938,21 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
       otomatis turun `AMBIGUOUS`.
     - `tests/test_guardrail.py` (9) + `tests/test_scope_requests.py` (7) +
       `tests/test_guardrail_endpoint.py` (8). Total **189 test hijau**.
-    - **Sengaja belum**: model benar-benar mengusulkan classification+citation
-      (butuh Gemini, sama seperti item 6). CHANGE_REQUEST -> baseline v2
-      **SELESAI**, lihat MILESTONE 25 Agu malam (lanjutan #3) di atas.
+    - ~~**Sengaja belum**: model benar-benar mengusulkan
+      classification+citation (butuh Gemini, sama seperti item 6).~~
+      **SELESAI, 26 Agu** — `agent.guardrail_agent` +
+      `propose_classification`, lihat MILESTONE 26 Agu (lanjutan #7) di
+      atas. CHANGE_REQUEST -> baseline v2 **SELESAI** duluan, lihat
+      MILESTONE 25 Agu malam (lanjutan #3) di atas.
 13. ~~**Wiring `worker.py` ke `agent.extraction_agent`, Gemini sungguhan.**~~
-    **Kode selesai, terverifikasi end-to-end, TAPI belum pernah sukses
-    ekstraksi sungguhan** — `GEMINI_API_KEY` valid dan jalan (dibuktikan
-    lewat panggilan sederhana: `generate_content(..., "Balas satu kata:
-    OK")` -> `"OK"`), tapi `gemini-3.7-flash` konsisten balas **503
-    "This model is currently experiencing high demand"** setiap kali
-    dipanggil lewat `extraction_agent` (dicoba 3x, langsung dan lewat HTTP
-    penuh). Ini murni kapasitas server Google saat ini, bukan bug di kode.
+    **SELESAI, benar-benar sukses ekstraksi sungguhan, 26 Agu** — root
+    cause kegagalan sebelumnya BUKAN kuota/demand seperti dugaan awal,
+    tapi `backend/.env` yang tidak pernah ke-load sama sekali (proyek ini
+    tidak punya `load_dotenv()` di kode manapun). Fix: jalankan uvicorn
+    dengan `--env-file .env`, lihat MILESTONE 26 Agu (lanjutan #7) untuk
+    command lengkapnya. Catatan lama di bawah ini (soal 503 "high demand")
+    dibiarkan sebagai jejak sejarah — itu observasi asli sebelum root
+    cause sebenarnya ketemu, bukan diagnosis final.
     - `app/worker.py`: `run_extraction(run_id, brief)` — `InMemoryRunner`
       + `session_service.create_session(state={"artifacts": {...}})` +
       `run_async(new_message=...)`, baca `ledger_draft` dari
@@ -862,14 +972,13 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
     - `tests/conftest.py`: fixture `stub_extraction` (autouse) — semua 189
       test TIDAK memanggil Gemini sungguhan (cepat, deterministik, tidak
       butuh API key). Wiring sungguhan hanya diverifikasi manual.
-    - **Coba lagi nanti**: jalankan ulang verifikasi manual (perintah ada
-      di riwayat commit/sesi) begitu demand `gemini-3.7-flash` mereda, atau
-      coba model Gemini lain sebentar buat isolasi masalah (`gemini-2.5-
-      flash` misalnya) — TAPI jangan ganti `GEMINI_MODEL` default tanpa
-      alasan baru, itu keputusan terkunci (lihat bawah).
-14. Baru setelah ini semua sukses sekali secara nyata: perluas `agent.py`
+    - ~~**Coba lagi nanti**: jalankan ulang verifikasi manual ... begitu
+      demand `gemini-3.7-flash` mereda ...~~ **Sudah, 26 Agu** — lihat di
+      atas, ternyata bukan soal demand model.
+14. ~~Baru setelah ini semua sukses sekali secara nyata: perluas `agent.py`
     untuk juga mengusulkan classification Guardrail (item 12), bukan cuma
-    ekstraksi ledger.
+    ekstraksi ledger.~~ **SELESAI, 26 Agu** — lihat item 12 dan MILESTONE
+    26 Agu (lanjutan #7) di atas.
 
 ---
 
@@ -912,17 +1021,20 @@ Test Modul A menutup A-T1 sampai A-T11 dari §2.8.
    tim di Devpost dan undangannya sudah diterima.
 5. **Aturan kontes Emergent** (D-4) belum dicek soal benturan.
 
-### GEMINI_API_KEY — status: SUDAH DIISI, wiring selesai, tinggal tunggu demand mereda
+### GEMINI_API_KEY — status: SELESAI TOTAL, ekstraksi & Guardrail sukses sungguhan (26 Agu)
 
 ~~1. Isi GEMINI_API_KEY~~ **selesai** — key digenerate dari akun Google lain
 (akun pertama, `rifqiahmad234a@gmail.com`, sempat gagal "request is
 suspicious" 2x waktu generate key; akun kedua berhasil). Ada di
 `backend/.env` (gitignored, tidak ke-commit).
 
-~~2. Wiring worker.py~~ **selesai, lihat item 13 di atas** — kodenya benar
-dan sudah diverifikasi jalan end-to-end sampai titik panggilan Gemini;
-panggilan sungguhan-nya sendiri belum pernah sukses gara-gara 503 dari
-Google. Coba lagi nanti, tidak perlu menulis ulang kode apa pun.
+~~2. Wiring worker.py~~ **selesai, dan sekarang benar-benar sukses
+memanggil Gemini, lihat item 13 & MILESTONE 26 Agu (lanjutan #7) di
+atas** — kegagalan sebelumnya bukan 503 dari Google, tapi
+`backend/.env` yang tidak pernah ke-load oleh proses Python sama sekali
+(tidak ada `load_dotenv()` di kode manapun). Jalankan `uvicorn` dengan
+`--env-file .env` dan panggilan Gemini sungguhan langsung jalan, baik
+untuk ekstraksi ledger maupun classification Guardrail.
 
 3. Setelah item 13 sukses sekali: perluas `agent.py`/tool baru untuk juga
    mengusulkan classification+citation Guardrail (item 12/14).
