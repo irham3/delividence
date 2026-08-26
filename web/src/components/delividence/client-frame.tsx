@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { LockKeyhole } from "lucide-react";
+import { ThemeToggle } from "@/components/delividence/theme-toggle";
 
 export function ClientFrame({
   title,
@@ -21,9 +22,12 @@ export function ClientFrame({
             <h1 className="mt-6 text-4xl font-semibold tracking-tight">{title}</h1>
             {description && <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--muted)]">{description}</p>}
           </div>
-          <div className="inline-flex w-fit items-center gap-2 rounded-[6px] border border-[var(--rule)] bg-white/60 px-3 py-2 text-sm text-[var(--muted)]">
-            <LockKeyhole size={16} strokeWidth={1.8} />
-            Secure client link
+          <div className="flex items-center gap-3">
+            <div className="inline-flex w-fit items-center gap-2 rounded-[6px] border border-[var(--rule)] surface-o60 px-3 py-2 text-sm text-[var(--muted)]">
+              <LockKeyhole size={16} strokeWidth={1.8} />
+              Secure client link
+            </div>
+            <ThemeToggle />
           </div>
         </header>
         {children}

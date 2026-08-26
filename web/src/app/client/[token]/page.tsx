@@ -175,13 +175,13 @@ export default function ClientClarificationPage({
                 value={item.id}
                 onChange={(e) => onEdit({ ...item, id: e.target.value })}
                 placeholder="id (e.g. d1)"
-                className="w-24 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                className="w-24 rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-sm"
               />
               <input
                 value={item.title}
                 onChange={(e) => onEdit({ ...item, title: e.target.value })}
                 placeholder="Title, e.g. Landing page"
-                className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                className="flex-1 rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-sm"
               />
             </>
           )}
@@ -197,7 +197,7 @@ export default function ClientClarificationPage({
               <select
                 value={item.deliverable_id}
                 onChange={(e) => onEdit({ ...item, deliverable_id: e.target.value })}
-                className="w-32 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                className="w-32 rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-sm"
               >
                 <option value="">deliverable</option>
                 {deliverables.map((d) => (
@@ -210,13 +210,13 @@ export default function ClientClarificationPage({
                 value={item.criterion_key}
                 onChange={(e) => onEdit({ ...item, criterion_key: e.target.value })}
                 placeholder="key (e.g. mobile-breakpoints)"
-                className="w-40 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                className="w-40 rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-sm"
               />
               <input
                 value={item.text}
                 onChange={(e) => onEdit({ ...item, text: e.target.value })}
                 placeholder="What must be true for this to be done?"
-                className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                className="flex-1 rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-sm"
               />
             </>
           )}
@@ -232,7 +232,7 @@ export default function ClientClarificationPage({
               value={item}
               onChange={(e) => onEdit(e.target.value)}
               placeholder="Something explicitly excluded"
-              className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+              className="flex-1 rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-sm"
             />
           )}
         />
@@ -258,7 +258,7 @@ export default function ClientClarificationPage({
               onChange={(e) => setRoundsTotal(e.target.value)}
               className="focus-ring w-24 rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] px-3 py-2 text-sm disabled:opacity-40"
             />
-            <label className="flex items-center gap-1 text-xs text-neutral-500">
+            <label className="flex items-center gap-1 text-xs text-[var(--muted)]">
               <input
                 type="checkbox"
                 checked={roundsNotSet}
@@ -269,9 +269,9 @@ export default function ClientClarificationPage({
           </div>
         </div>
 
-        <div className="border-t border-neutral-200 pt-6 dark:border-neutral-800">
+        <div className="border-t border-[var(--rule)] pt-6">
           <p className="text-sm font-medium">Additional context</p>
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1 text-xs text-[var(--muted)]">
             Not required to confirm the plan, but helps avoid surprises later.
           </p>
           <div className="mt-4 space-y-6">
@@ -285,7 +285,7 @@ export default function ClientClarificationPage({
                   value={item}
                   onChange={(e) => onEdit(e.target.value)}
                   placeholder="Something explicitly included"
-                  className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                  className="flex-1 rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-sm"
                 />
               )}
             />
@@ -299,7 +299,7 @@ export default function ClientClarificationPage({
                   value={item}
                   onChange={(e) => onEdit(e.target.value)}
                   placeholder="Something the client needs to provide"
-                  className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                  className="flex-1 rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-sm"
                 />
               )}
             />
@@ -313,7 +313,7 @@ export default function ClientClarificationPage({
                   value={item}
                   onChange={(e) => onEdit(e.target.value)}
                   placeholder="Something being assumed true"
-                  className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                  className="flex-1 rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-sm"
                 />
               )}
             />
@@ -327,7 +327,7 @@ export default function ClientClarificationPage({
                   value={item}
                   onChange={(e) => onEdit(e.target.value)}
                   placeholder="Something still unclear"
-                  className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                  className="flex-1 rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-sm"
                 />
               )}
             />
@@ -335,13 +335,13 @@ export default function ClientClarificationPage({
         </div>
       </section>
 
-      {saveError && <p className="mt-4 text-sm text-red-700">{saveError}</p>}
+      {saveError && <p className="mt-4 text-sm text-[var(--danger)]">{saveError}</p>}
 
-      <div className="mt-8 flex items-center gap-3 border-t border-neutral-200 pt-6 dark:border-neutral-800">
+      <div className="mt-8 flex items-center gap-3 border-t border-[var(--rule)] pt-6">
         <button
           onClick={saveAnswers}
           disabled={saving}
-          className="tap focus-ring rounded-[6px] border border-[var(--rule)] bg-white/55 px-4 py-2 text-sm disabled:opacity-40"
+          className="tap focus-ring rounded-[6px] border border-[var(--rule)] surface-o55 px-4 py-2 text-sm disabled:opacity-40"
         >
           {saving ? "Saving..." : "Save changes"}
         </button>
@@ -354,7 +354,7 @@ export default function ClientClarificationPage({
           {confirming ? "Confirming..." : "Confirm project plan"}
         </button>
       </div>
-      {confirmError && <p className="mt-3 text-sm text-red-700">{confirmError}</p>}
+      {confirmError && <p className="mt-3 text-sm text-[var(--danger)]">{confirmError}</p>}
       </ClientCard>
     </ClientFrame>
   );
@@ -369,13 +369,13 @@ function ReadinessBanner({
 }) {
   if (ready) {
     return (
-      <p className="mt-6 rounded-md bg-green-50 p-3 text-sm text-green-800">
+      <p className="mt-6 rounded-md status-ok p-3 text-sm">
         Everything critical is filled in. You can confirm the project plan.
       </p>
     );
   }
   return (
-    <div className="mt-6 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+    <div className="mt-6 rounded-md status-warn p-3 text-sm">
       <p className="font-medium">A few things still need your input:</p>
       <ul className="mt-2 list-disc space-y-1 pl-5">
         {blockers.map((b, i) => (
@@ -408,7 +408,7 @@ function ListField<T>({
         <button
           type="button"
           onClick={() => onChange([...items, empty])}
-          className="text-xs text-neutral-500 underline"
+          className="text-xs text-[var(--muted)] underline"
         >
           + add
         </button>
@@ -420,14 +420,14 @@ function ListField<T>({
             <button
               type="button"
               onClick={() => onChange(items.filter((_, j) => j !== i))}
-              className="shrink-0 text-xs text-neutral-400 hover:text-red-600"
+              className="shrink-0 text-xs text-[var(--faint)] hover:text-[var(--danger)]"
             >
               remove
             </button>
           </div>
         ))}
         {items.length === 0 && (
-          <p className="text-xs text-neutral-400">Nothing yet - add one above.</p>
+          <p className="text-xs text-[var(--faint)]">Nothing yet - add one above.</p>
         )}
       </div>
     </div>

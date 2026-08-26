@@ -105,9 +105,9 @@ export default function NewRequestPage({
           {submitting ? "Sending..." : "Send request"}
         </button>
       </form>
-      {submitError && <p className="mt-3 text-sm text-red-700">{submitError}</p>}
+      {submitError && <p className="mt-3 text-sm text-[var(--danger)]">{submitError}</p>}
       {submittedCount > 0 && (
-        <p className="mt-3 text-sm text-green-800">
+        <p className="mt-3 text-sm text-[var(--accepted)]">
           Sent. Your freelancer will review it against the confirmed plan
           {submittedCount > 1 ? ` (${submittedCount} sent so far)` : ""}. You can send another one
           below if needed.

@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* `dark:` utilities respond to an explicit [data-theme="dark"] on <html>
+   (set by the inline script in layout.tsx + ThemeToggle), not just OS
+   preference -- this is Tailwind v4's documented manual-toggle pattern. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
   --canvas: #f4f1ea;
   --surface: #fcfbf8;
@@ -17,6 +22,41 @@
   --shadow: 0 24px 70px rgb(32 33 31 / 0.08);
   --background: var(--canvas);
   --foreground: var(--ink);
+
+  --status-ok-bg: #eaf3ec;
+  --status-ok-fg: #2f5d3a;
+  --status-ok-border: #4f8a5e;
+  --status-warn-bg: #fdf1de;
+  --status-warn-fg: #8a5a12;
+  --status-warn-border: #c98a2c;
+  --status-neutral-bg: #efece4;
+  --status-neutral-fg: #6c6b66;
+}
+
+:root[data-theme="dark"] {
+  --canvas: #1c1b18;
+  --surface: #242320;
+  --surface-strong: #2b2a26;
+  --ink: #f0eee7;
+  --muted: #a9a69d;
+  --faint: #7d7a72;
+  --rule: #3a3833;
+  --rule-strong: #4c493f;
+  --accent: #d99b2b;
+  --accent-dark: #b97f1c;
+  --accent-soft: #3a2f16;
+  --accepted: #7fae86;
+  --danger: #d3766a;
+  --shadow: 0 24px 70px rgb(0 0 0 / 0.45);
+
+  --status-ok-bg: #1f3226;
+  --status-ok-fg: #9bd6a6;
+  --status-ok-border: #3f6b49;
+  --status-warn-bg: #3a2c12;
+  --status-warn-fg: #f0c581;
+  --status-warn-border: #8a6423;
+  --status-neutral-bg: #2f2e2a;
+  --status-neutral-fg: #a9a69d;
 }
 
 @theme inline {
@@ -31,6 +71,7 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   text-rendering: geometricPrecision;
+  transition: background 180ms ease, color 180ms ease;
 }
 
 ::selection {
@@ -68,10 +109,24 @@ button:disabled {
   background-size: auto, auto, 64px 64px, 64px 64px, auto;
 }
 
+:root[data-theme="dark"] .paper-texture {
+  background:
+    radial-gradient(circle at 18% 12%, rgb(255 255 255 / 0.05), transparent 34rem),
+    radial-gradient(circle at 86% 8%, rgb(255 249 236 / 0.04), transparent 28rem),
+    linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px),
+    linear-gradient(180deg, rgb(255 255 255 / 0.025) 1px, transparent 1px),
+    var(--canvas);
+  background-size: auto, auto, 64px 64px, 64px 64px, auto;
+}
+
 .paper-card {
   border: 1px solid var(--rule);
-  background: color-mix(in srgb, var(--surface) 92%, white);
+  background: color-mix(in srgb, var(--surface) 92%, var(--surface-strong));
   box-shadow: 0 12px 36px rgb(32 33 31 / 0.07);
+}
+
+:root[data-theme="dark"] .paper-card {
+  box-shadow: 0 12px 36px rgb(0 0 0 / 0.35);
 }
 
 .record-shadow {
@@ -98,6 +153,28 @@ button:disabled {
 .tap:active {
   transform: translateY(1px);
 }
+
+/* Theme-aware stand-ins for the old bg-white/NN overlays, which stayed
+   pale in dark mode because "white" doesn't adapt. Same opacity levels
+   the app already used, mixed against the current surface color instead. */
+.surface-o35 { background-color: color-mix(in srgb, var(--surface-strong) 35%, transparent); }
+.surface-o45 { background-color: color-mix(in srgb, var(--surface-strong) 45%, transparent); }
+.surface-o50 { background-color: color-mix(in srgb, var(--surface-strong) 50%, transparent); }
+.surface-o55 { background-color: color-mix(in srgb, var(--surface-strong) 55%, transparent); }
+.surface-o60 { background-color: color-mix(in srgb, var(--surface-strong) 60%, transparent); }
+.surface-o70 { background-color: color-mix(in srgb, var(--surface-strong) 70%, transparent); }
+.surface-o72 { background-color: color-mix(in srgb, var(--surface-strong) 72%, transparent); }
+.surface-o75 { background-color: color-mix(in srgb, var(--surface-strong) 75%, transparent); }
+.canvas-o88 { background-color: color-mix(in srgb, var(--canvas) 88%, transparent); }
+.surface-hover-o60:hover { background-color: color-mix(in srgb, var(--surface-strong) 60%, transparent); }
+
+/* Status pills/badges (criterion decisions, banners) -- same tokens used
+   everywhere a criterion/decision status is shown, light and dark alike. */
+.status-ok { background: var(--status-ok-bg); color: var(--status-ok-fg); }
+.status-ok-border { border-color: var(--status-ok-border); }
+.status-warn { background: var(--status-warn-bg); color: var(--status-warn-fg); }
+.status-warn-border { border-color: var(--status-warn-border); }
+.status-neutral { background: var(--status-neutral-bg); color: var(--status-neutral-fg); }
 
 @media (prefers-reduced-motion: reduce) {
   *,

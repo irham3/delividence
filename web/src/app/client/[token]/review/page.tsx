@@ -99,7 +99,7 @@ export default function DeliveryReviewPage({
       </p>
 
       {submitted && (
-        <p className="mt-4 rounded-md bg-green-50 p-3 text-sm text-green-800">
+        <p className="mt-4 rounded-md status-ok p-3 text-sm">
           Your review was submitted.
         </p>
       )}
@@ -117,9 +117,9 @@ export default function DeliveryReviewPage({
         ))}
       </div>
 
-      {submitError && <p className="mt-4 text-sm text-red-700">{submitError}</p>}
+      {submitError && <p className="mt-4 text-sm text-[var(--danger)]">{submitError}</p>}
 
-      <div className="mt-8 border-t border-neutral-200 pt-6 dark:border-neutral-800">
+      <div className="mt-8 border-t border-[var(--rule)] pt-6">
         <button
           onClick={submit}
           disabled={submitting || Object.keys(decisions).length === 0}
@@ -128,7 +128,7 @@ export default function DeliveryReviewPage({
           {submitting ? "Submitting..." : "Submit review"}
         </button>
         {pending.length === 0 && (
-          <p className="mt-2 text-xs text-neutral-500">
+          <p className="mt-2 text-xs text-[var(--muted)]">
             All criteria are already accepted.
           </p>
         )}
@@ -153,16 +153,16 @@ function CriterionCard({
 }) {
   const locked = criterion.status === "ACCEPTED";
   return (
-    <div className="rounded-[8px] border border-[var(--rule)] bg-white/45 p-4">
+    <div className="rounded-[8px] border border-[var(--rule)] surface-o45 p-4">
       <div className="flex items-baseline justify-between gap-4">
-        <span className="font-mono text-xs text-neutral-500">{criterion.criterion_key}</span>
+        <span className="font-mono text-xs text-[var(--muted)]">{criterion.criterion_key}</span>
         <span
           className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${
             criterion.status === "ACCEPTED"
-              ? "bg-green-100 text-green-800"
+              ? "status-ok"
               : criterion.status === "CHANGES_REQUESTED"
-              ? "bg-amber-100 text-amber-800"
-              : "bg-neutral-100 text-neutral-600"
+              ? "status-warn"
+              : "status-neutral"
           }`}
         >
           {criterion.status}
@@ -173,7 +173,7 @@ function CriterionCard({
       {criterion.evidence.length > 0 && (
         <ul className="mt-3 space-y-1">
           {criterion.evidence.map((e) => (
-            <li key={e.evidence_id} className="text-xs text-neutral-500">
+            <li key={e.evidence_id} className="text-xs text-[var(--muted)]">
               [{e.type}]{" "}
               {e.type === "url" ? (
                 <a href={e.uri} target="_blank" rel="noreferrer" className="underline">
@@ -188,11 +188,11 @@ function CriterionCard({
         </ul>
       )}
       {criterion.evidence.length === 0 && (
-        <p className="mt-3 text-xs text-neutral-400">No evidence attached yet.</p>
+        <p className="mt-3 text-xs text-[var(--faint)]">No evidence attached yet.</p>
       )}
 
       {locked ? (
-        <p className="mt-3 text-xs text-neutral-400">
+        <p className="mt-3 text-xs text-[var(--faint)]">
           Already accepted. Further changes go through a new request instead.
         </p>
       ) : (
@@ -201,8 +201,8 @@ function CriterionCard({
             onClick={() => onDecision("ACCEPTED")}
             className={`tap focus-ring rounded-[6px] border px-3 py-1 text-xs ${
               decision === "ACCEPTED"
-                ? "border-green-600 bg-green-50 text-green-800"
-                : "border-neutral-300 dark:border-neutral-700"
+                ? "status-ok-border status-ok"
+                : "border-[var(--rule)]"
             }`}
           >
             Accept
@@ -211,8 +211,8 @@ function CriterionCard({
             onClick={() => onDecision("CHANGES_REQUESTED")}
             className={`tap focus-ring rounded-[6px] border px-3 py-1 text-xs ${
               decision === "CHANGES_REQUESTED"
-                ? "border-amber-600 bg-amber-50 text-amber-900"
-                : "border-neutral-300 dark:border-neutral-700"
+                ? "status-warn-border status-warn"
+                : "border-[var(--rule)]"
             }`}
           >
             Request changes
@@ -222,7 +222,7 @@ function CriterionCard({
               value={reason}
               onChange={(e) => onReason(e.target.value)}
               placeholder="Why? (required)"
-              className="flex-1 rounded border border-neutral-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+              className="flex-1 rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-xs"
             />
           )}
         </div>

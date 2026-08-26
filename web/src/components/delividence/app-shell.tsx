@@ -17,6 +17,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { ThemeToggle } from "@/components/delividence/theme-toggle";
 
 type AppShellProps = {
   email?: string | null;
@@ -38,7 +39,7 @@ export function AppShell({ email, onSignOut, onNewRecord, children, rightRail }:
   return (
     <div className="paper-texture min-h-[100dvh]">
       <div className="grid min-h-[100dvh] lg:grid-cols-[224px_1fr]">
-        <aside className="hidden border-r border-[var(--rule)] bg-[rgb(252_251_248_/_0.72)] px-5 py-6 backdrop-blur-xl lg:block">
+        <aside className="hidden border-r border-[var(--rule)] surface-o72 px-5 py-6 backdrop-blur-xl lg:block">
           <div className="text-lg font-semibold tracking-tight">Delividence</div>
           <nav className="mt-10 space-y-1">
             {navItems.map(([label, Icon], index) => (
@@ -47,7 +48,7 @@ export function AppShell({ email, onSignOut, onNewRecord, children, rightRail }:
                 className={`focus-ring tap flex w-full items-center gap-3 rounded-[6px] px-3 py-2.5 text-left text-sm ${
                   index === 0
                     ? "bg-[var(--accent-soft)] text-[var(--ink)]"
-                    : "text-[var(--muted)] hover:bg-white/60 hover:text-[var(--ink)]"
+                    : "text-[var(--muted)] surface-hover-o60 hover:text-[var(--ink)]"
                 }`}
               >
                 <Icon size={17} strokeWidth={1.8} />
@@ -56,11 +57,11 @@ export function AppShell({ email, onSignOut, onNewRecord, children, rightRail }:
             ))}
           </nav>
           <div className="mt-12 border-t border-[var(--rule)] pt-5">
-            <button className="focus-ring tap flex w-full items-center gap-3 rounded-[6px] px-3 py-2.5 text-left text-sm text-[var(--muted)] hover:bg-white/60 hover:text-[var(--ink)]">
+            <button className="focus-ring tap flex w-full items-center gap-3 rounded-[6px] px-3 py-2.5 text-left text-sm text-[var(--muted)] surface-hover-o60 hover:text-[var(--ink)]">
               <Settings size={17} strokeWidth={1.8} />
               Policies
             </button>
-            <button className="focus-ring tap flex w-full items-center gap-3 rounded-[6px] px-3 py-2.5 text-left text-sm text-[var(--muted)] hover:bg-white/60 hover:text-[var(--ink)]">
+            <button className="focus-ring tap flex w-full items-center gap-3 rounded-[6px] px-3 py-2.5 text-left text-sm text-[var(--muted)] surface-hover-o60 hover:text-[var(--ink)]">
               <HelpCircle size={17} strokeWidth={1.8} />
               Help
             </button>
@@ -68,11 +69,11 @@ export function AppShell({ email, onSignOut, onNewRecord, children, rightRail }:
         </aside>
 
         <div>
-          <header className="sticky top-0 z-20 border-b border-[var(--rule)] bg-[rgb(244_241_234_/_0.88)] backdrop-blur-xl">
+          <header className="sticky top-0 z-20 border-b border-[var(--rule)] canvas-o88 backdrop-blur-xl">
             <div className="flex h-16 items-center justify-between gap-4 px-5 sm:px-8">
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <div className="lg:hidden text-lg font-semibold tracking-tight">Delividence</div>
-                <label className="focus-within:ring-2 focus-within:ring-[var(--accent)]/45 hidden min-w-80 items-center gap-2 rounded-[6px] border border-[var(--rule)] bg-white/60 px-3 py-2 sm:flex">
+                <label className="focus-within:ring-2 focus-within:ring-[var(--accent)]/45 hidden min-w-80 items-center gap-2 rounded-[6px] border border-[var(--rule)] surface-o60 px-3 py-2 sm:flex">
                   <Search size={16} strokeWidth={1.8} className="text-[var(--muted)]" />
                   <span className="sr-only">Search records</span>
                   <input
@@ -88,9 +89,10 @@ export function AppShell({ email, onSignOut, onNewRecord, children, rightRail }:
                 <Plus size={16} strokeWidth={1.9} />
                 New record
               </button>
-              <button className="focus-ring tap hidden rounded-[6px] border border-[var(--rule)] bg-white/60 p-2 text-[var(--muted)] sm:inline-flex" title="Notifications">
+              <button className="focus-ring tap surface-o60 hidden rounded-[6px] border border-[var(--rule)] p-2 text-[var(--muted)] sm:inline-flex" title="Notifications">
                 <Bell size={17} strokeWidth={1.8} />
               </button>
+              <ThemeToggle />
               <div className="hidden min-w-0 text-right md:block">
                 <p className="truncate text-sm font-medium">{email ?? "Signed in"}</p>
                 <button onClick={onSignOut} className="focus-ring tap inline-flex items-center gap-1 text-xs text-[var(--muted)] hover:text-[var(--ink)]">

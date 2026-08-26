@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Video,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/delividence/theme-toggle";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -105,7 +106,7 @@ export function LandingPage({ onSignIn, onSample, error }: LandingPageProps) {
 
   return (
     <main ref={root} className="paper-texture min-h-[100dvh]">
-      <header className="sticky top-0 z-30 border-b border-[var(--rule)] bg-[rgb(244_241_234_/_0.88)] backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-[var(--rule)] canvas-o88 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
           <a href="#" className="focus-ring text-lg font-semibold tracking-tight">
             Delividence
@@ -131,6 +132,7 @@ export function LandingPage({ onSignIn, onSample, error }: LandingPageProps) {
             >
               Create a record
             </button>
+            <ThemeToggle />
           </div>
         </div>
       </header>
@@ -160,7 +162,7 @@ export function LandingPage({ onSignIn, onSample, error }: LandingPageProps) {
               See a sample <ArrowRight size={15} strokeWidth={1.8} />
             </button>
           </div>
-          {error && <p className="mt-5 max-w-xl rounded-[6px] border border-[var(--danger)]/20 bg-white/70 p-3 text-sm text-[var(--danger)]">{error}</p>}
+          {error && <p className="mt-5 max-w-xl rounded-[6px] border border-[var(--danger)]/20 surface-o70 p-3 text-sm text-[var(--danger)]">{error}</p>}
         </div>
 
         <HeroArtifacts />
@@ -206,8 +208,8 @@ export function LandingPage({ onSignIn, onSample, error }: LandingPageProps) {
                   Should the hero video be 20 seconds or 30 seconds?
                 </h3>
                 <div className="mt-7 space-y-3 text-sm text-[var(--muted)]">
-                  <p className="rounded-[6px] border border-[var(--rule)] bg-white/50 p-3">S-02 Call: “keep the intro short”</p>
-                  <p className="rounded-[6px] border border-[var(--rule)] bg-white/50 p-3">S-04 Email: “give us a slightly longer cut”</p>
+                  <p className="rounded-[6px] border border-[var(--rule)] surface-o50 p-3">S-02 Call: “keep the intro short”</p>
+                  <p className="rounded-[6px] border border-[var(--rule)] surface-o50 p-3">S-04 Email: “give us a slightly longer cut”</p>
                 </div>
               </div>
               <div className="rounded-[8px] border border-[var(--rule)] bg-[var(--surface-strong)] p-5">
@@ -325,7 +327,7 @@ function HeroArtifacts() {
         <p className="mono text-[10px] uppercase tracking-[0.12em] text-[var(--muted)]">Hero reference</p>
         <h3 className="mt-4 text-2xl font-semibold tracking-tight">Work that moves people.</h3>
         <div className="mt-5 flex h-28 items-center justify-center rounded-[4px] bg-[linear-gradient(135deg,#d7d1c5,#87928d)]">
-          <span className="rounded-full bg-white/75 px-3 py-2 text-xs">Play</span>
+          <span className="rounded-full surface-o75 px-3 py-2 text-xs">Play</span>
         </div>
       </div>
       <div className="hero-artifact paper-card absolute bottom-8 right-2 w-[42%] rotate-[-1deg] rounded-[6px] p-5">
