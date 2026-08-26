@@ -1,8 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Image from "next/image";
 import { LockKeyhole } from "lucide-react";
-import { ThemeToggle } from "@/components/delividence/theme-toggle";
 
 export function ClientFrame({
   title,
@@ -18,7 +18,7 @@ export function ClientFrame({
       <div className="mx-auto max-w-5xl">
         <header className="mb-8 flex flex-col justify-between gap-4 border-b border-[var(--rule)] pb-6 sm:flex-row sm:items-center">
           <div>
-            <p className="text-lg font-semibold tracking-tight">Delividence</p>
+            <p className="flex items-center gap-2 text-lg font-semibold tracking-tight"><Image src="/assets/delividence-mark.svg" alt="" aria-hidden="true" width={24} height={24} />Delividence</p>
             <h1 className="mt-6 text-4xl font-semibold tracking-tight">{title}</h1>
             {description && <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--muted)]">{description}</p>}
           </div>
@@ -27,7 +27,6 @@ export function ClientFrame({
               <LockKeyhole size={16} strokeWidth={1.8} />
               Secure client link
             </div>
-            <ThemeToggle />
           </div>
         </header>
         {children}

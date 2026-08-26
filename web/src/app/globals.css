@@ -62,14 +62,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
   text-rendering: geometricPrecision;
   transition: background 180ms ease, color 180ms ease;
 }
@@ -101,22 +101,36 @@ button:disabled {
 
 .paper-texture {
   background:
+    url('/assets/paper-noise.svg'),
     radial-gradient(circle at 18% 12%, rgb(255 255 255 / 0.72), transparent 34rem),
     radial-gradient(circle at 86% 8%, rgb(255 249 236 / 0.8), transparent 28rem),
     linear-gradient(90deg, rgb(32 33 31 / 0.025) 1px, transparent 1px),
     linear-gradient(180deg, rgb(32 33 31 / 0.02) 1px, transparent 1px),
     var(--canvas);
-  background-size: auto, auto, 64px 64px, 64px 64px, auto;
+  background-size: 180px 180px, auto, auto, 64px 64px, 64px 64px, auto;
+  background-blend-mode: multiply, normal, normal, normal, normal, normal;
+}
+
+.landing-canvas {
+  background:
+    url('/assets/paper-noise.svg'),
+    radial-gradient(circle at 16% 8%, rgb(255 255 255 / 0.82), transparent 38rem),
+    radial-gradient(circle at 82% 12%, rgb(255 250 239 / 0.72), transparent 32rem),
+    #f4f1ea;
+  background-size: 180px 180px, auto, auto, auto;
+  background-blend-mode: multiply, normal, normal, normal;
 }
 
 :root[data-theme="dark"] .paper-texture {
   background:
+    url('/assets/paper-noise.svg'),
     radial-gradient(circle at 18% 12%, rgb(255 255 255 / 0.05), transparent 34rem),
     radial-gradient(circle at 86% 8%, rgb(255 249 236 / 0.04), transparent 28rem),
     linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px),
     linear-gradient(180deg, rgb(255 255 255 / 0.025) 1px, transparent 1px),
     var(--canvas);
-  background-size: auto, auto, 64px 64px, 64px 64px, auto;
+  background-size: 180px 180px, auto, auto, 64px 64px, 64px 64px, auto;
+  background-blend-mode: screen, normal, normal, normal, normal, normal;
 }
 
 .paper-card {
@@ -135,6 +149,71 @@ button:disabled {
 
 .mono {
   font-family: var(--font-geist-mono), "SFMono-Regular", Consolas, monospace;
+}
+
+.hero-document {
+  border: 1px solid #d6d1c8;
+  border-radius: 2px;
+  background:
+    linear-gradient(rgb(252 250 246 / 0.96), rgb(249 247 242 / 0.96)),
+    url('/assets/paper-noise.svg');
+  box-shadow:
+    0 1px 2px rgb(32 33 31 / 0.08),
+    0 7px 17px rgb(32 33 31 / 0.07);
+}
+
+.handwritten {
+  font-family: var(--font-hand), "Segoe Print", cursive;
+}
+
+.decision-paper {
+  border-radius: 2px;
+  color: #252621;
+  box-shadow:
+    0 1px 2px rgb(32 33 31 / 0.1),
+    0 12px 24px rgb(32 33 31 / 0.07);
+}
+
+.paper-ruled {
+  background:
+    linear-gradient(90deg, transparent 0 42px, rgb(184 83 62 / 0.24) 42px 43px, transparent 43px),
+    repeating-linear-gradient(180deg, transparent 0 31px, rgb(87 139 164 / 0.2) 31px 32px),
+    linear-gradient(rgb(249 246 237 / 0.96), rgb(247 244 235 / 0.96)),
+    url('/assets/paper-noise.svg');
+}
+
+.paper-grid {
+  background:
+    linear-gradient(rgb(72 78 70 / 0.065) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(72 78 70 / 0.065) 1px, transparent 1px),
+    linear-gradient(rgb(249 246 237 / 0.96), rgb(247 244 235 / 0.96)),
+    url('/assets/paper-noise.svg');
+  background-size: 18px 18px, 18px 18px, auto, 180px 180px;
+}
+
+.paper-decision {
+  background:
+    linear-gradient(rgb(250 247 240 / 0.97), rgb(247 244 237 / 0.97)),
+    url('/assets/paper-noise.svg');
+}
+
+.editorial-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #a9a69f transparent;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.editorial-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.editorial-scroll::-webkit-scrollbar-track {
+  background: rgb(32 33 31 / 0.06);
+}
+
+.editorial-scroll::-webkit-scrollbar-thumb {
+  background: #a9a69f;
 }
 
 .focus-ring {
