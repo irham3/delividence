@@ -1,0 +1,6 @@
+# Kalau ada yang mengunduh service-account key ke folder ini saat setup GCP,
+# jangan sampai ikut ter-commit.
+*.json
+*-key.json
+service-account*.json
+*.log

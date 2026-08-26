@@ -1,0 +1,14 @@
+# Rahasia -- lihat .env.example untuk daftar variabel yang dibutuhkan
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# State lokal (mode tanpa Firestore/Pub/Sub -- lihat app/config.py)
+.localdata/
