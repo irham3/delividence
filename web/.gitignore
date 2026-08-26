@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Next.js auto-generated agent-rules stubs (nama file menyebut tool AI tertentu -- lomba ini wajib Gemini/Google only)
+/AGENTS.md
+/CLAUDE.md
