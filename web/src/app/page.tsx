@@ -1,17 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import type { User } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   AlertCircle,
   Clock3,
+  FileText,
+  Image as ImageIcon,
   RotateCcw,
   Send,
   ShieldCheck,
 } from "lucide-react";
-import { AppShell, RailPanel, WorkspaceHeader } from "@/components/delividence/app-shell";
-import { LandingPage } from "@/components/delividence/landing";
+import type { LucideIcon } from "lucide-react";
+import { AppShell, RailPanel, WorkspaceHeader } from "../components/delividence/app-shell";
+import { LandingPage } from "../components/delividence/landing";
 import {
   ApiError,
   apiFetch,
@@ -40,6 +44,11 @@ type Run = {
 };
 
 const RUN_ID_STORAGE_KEY = "delividence_run_id";
+const incomingMaterial: Array<[string, string, LucideIcon]> = [
+  ["Brief", "Paste text, email exports, or chat notes.", FileText],
+  ["Media", "Attach screenshot, audio, video, or a file URL.", ImageIcon],
+  ["Proof", "Link evidence to a confirmed criterion.", ShieldCheck],
+];
 
 export default function Home() {
   const [brief, setBrief] = useState("");
@@ -58,10 +67,17 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
 
-  useEffect(() => onAuthStateChanged(auth, (u) => {
-    setUser(u);
-    setAuthReady(true);
-  }), []);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthReady(true);
+    });
+    const fallback = window.setTimeout(() => setAuthReady(true), 1500);
+    return () => {
+      window.clearTimeout(fallback);
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -176,15 +192,16 @@ export default function Home() {
       rightRail={
         <>
           <RailPanel title="Incoming material">
+            <div className="mb-4 rounded-[6px] border border-[var(--rule)] surface-o45 p-3">
+              <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.12em] text-[var(--muted)]"><span>Latest call</span><span>09:02 AM</span></div>
+              <Image src="/assets/waveform-sample.svg" alt="" aria-hidden="true" width={320} height={52} className="mt-3 h-9 w-full text-[var(--ink)] opacity-65" />
+              <p className="mt-2 text-xs text-[var(--muted)]">call_0429.mp3 · transcript ready</p>
+            </div>
             <div className="space-y-3 text-sm">
-              {[
-                ["Brief", "Paste text, email exports, or chat notes."],
-                ["Media", "Attach screenshot, audio, video, or a file URL."],
-                ["Proof", "Link evidence to a confirmed criterion."],
-              ].map(([title, body]) => (
+              {incomingMaterial.map(([title, description, Icon]) => (
                 <div key={title} className="rounded-[6px] border border-[var(--rule)] surface-o45 p-3">
-                  <p className="font-medium">{title}</p>
-                  <p className="mt-1 leading-5 text-[var(--muted)]">{body}</p>
+                  <div className="flex items-center gap-2 font-medium"><span className="text-[var(--accent)]"><Icon size={15} strokeWidth={1.8} /></span>{title}</div>
+                  <p className="mt-1 leading-5 text-[var(--muted)]">{description}</p>
                 </div>
               ))}
             </div>
@@ -200,6 +217,8 @@ export default function Home() {
       }
     >
       <WorkspaceHeader status={run?.status ?? (runId ? "queued" : "Ready")} runId={runId} />
+
+      <WorkspaceQueue run={run} runId={runId} />
 
       <section className="paper-card record-shadow rounded-[8px] p-5 sm:p-6">
         <div className="flex flex-col justify-between gap-4 border-b border-[var(--rule)] pb-5 sm:flex-row sm:items-center">
@@ -321,7 +340,58 @@ export default function Home() {
       )}
 
       {runId && <FreelancerActions runId={runId} run={run} />}
+      {run && <ActivityStrip run={run} />}
     </AppShell>
+  );
+}
+
+function WorkspaceQueue({ run, runId }: { run: Run | null; runId: string | null }) {
+  const criteriaCount = run?.ledger?.acceptance_criteria?.value.length ?? 0;
+  const status = run?.status ?? (runId ? "queued" : "ready");
+  const statusLabel = status === "done" ? "Ready for review" : status === "failed" ? "Needs attention" : runId ? "Processing" : "No active record";
+
+  return (
+    <section className="paper-card mb-8 overflow-hidden rounded-[8px]">
+      <div className="flex flex-col justify-between gap-3 border-b border-[var(--rule)] px-5 py-5 sm:flex-row sm:items-center sm:px-6">
+        <div>
+          <p className="mono text-xs uppercase tracking-[0.12em] text-[var(--muted)]">Work queue</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight">The next decision is the work.</h2>
+        </div>
+        <span className="text-sm text-[var(--muted)]">{runId ? "1 record in focus" : "Start with a brief"}</span>
+      </div>
+      <div className="hidden grid-cols-[72px_minmax(180px,1.3fr)_160px_90px_minmax(160px,1fr)] gap-4 border-b border-[var(--rule)] px-5 py-3 text-[10px] uppercase tracking-[0.12em] text-[var(--muted)] sm:grid sm:px-6">
+        <span>Index</span><span>Record</span><span>Status</span><span>Criteria</span><span>Next action</span>
+      </div>
+      <div className="grid gap-4 px-5 py-5 sm:grid-cols-[72px_minmax(180px,1.3fr)_160px_90px_minmax(160px,1fr)] sm:items-center sm:gap-4 sm:px-6">
+        <span className="mono text-2xl text-[var(--accent)]">01</span>
+        <div>
+          <p className="font-medium">{runId ? "Current project record" : "No record yet"}</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">{runId ? runId : "Paste a client brief below to begin."}</p>
+        </div>
+        <span className={`w-fit rounded-[6px] border border-[var(--rule)] px-3 py-1.5 text-sm ${status === "failed" ? "text-[var(--danger)]" : "text-[var(--muted)]"}`}>{statusLabel}</span>
+        <span className="text-sm text-[var(--muted)]">{criteriaCount || "-"}</span>
+        <span className="inline-flex items-center gap-2 text-sm text-[var(--ink)]">{runId ? "Open record below" : "Create a record"}<span className="text-[var(--accent)]">→</span></span>
+      </div>
+    </section>
+  );
+}
+
+function ActivityStrip({ run }: { run: Run }) {
+  const events = run.audit_trail.slice(-4).reverse();
+  return (
+    <section className="mt-8 border-y border-[var(--rule)] py-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+        <p className="shrink-0 text-sm font-medium">Latest activity</p>
+        <div className="grid min-w-0 flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {events.length > 0 ? events.map((event) => (
+            <div key={`${event.at}-${event.step}`} className="border-l border-[var(--rule)] pl-4">
+              <p className="truncate text-sm font-medium">{event.step}</p>
+              <p className="mt-1 truncate text-xs text-[var(--muted)]">{event.detail}</p>
+            </div>
+          )) : <p className="text-sm text-[var(--muted)]">The worker has not recorded an event yet.</p>}
+        </div>
+      </div>
+    </section>
   );
 }
 
