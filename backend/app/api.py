@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
-from app import audit, auth, baselines, client_links, config, evidence, queue, scope_requests, store
+from app import agent, audit, auth, baselines, client_links, config, evidence, queue, scope_requests, store
 from app.domain import client_link, criteria, guardrail, proof, readiness, schemas
 from app.domain.baseline import build_canonical_payload
 from app.domain.canonical import payload_hash as compute_payload_hash
@@ -602,21 +602,74 @@ class SubmitScopeRequestRequest(BaseModel):
         return v
 
 
+async def propose_scope_classification(raw_text, text_by_ref):
+    """Jalankan agent.guardrail_agent lewat Gemini sungguhan untuk satu
+    scope request. None kalau model tidak pernah memanggil
+    propose_classification.
+
+    Fungsi terpisah (bukan inline di submit_scope_request) supaya test bisa
+    memonkeypatch-nya -- lihat conftest.stub_guardrail_agent (autouse),
+    persis pola worker.run_extraction. Wiring ini diverifikasi manual lewat
+    uvicorn (CATATAN-LANJUTAN.md), bukan di test suite.
+    """
+    from google.adk.runners import InMemoryRunner
+    from google.genai import types as genai_types
+
+    session_id = uuid.uuid4().hex
+    runner = InMemoryRunner(agent=agent.guardrail_agent, app_name="delividence")
+    await runner.session_service.create_session(
+        app_name="delividence", user_id="api", session_id=session_id,
+        state={"citable_text": text_by_ref},
+    )
+    citable_lines = "\n".join("- %s: %s" % (ref, text) for ref, text in text_by_ref.items())
+    message = genai_types.Content(
+        role="user",
+        parts=[genai_types.Part(text=(
+            'Client request to classify:\n"%s"\n\n'
+            "Citable text (ref -> text):\n%s" % (raw_text, citable_lines or "(none)")
+        ))],
+    )
+    async for _ in runner.run_async(user_id="api", session_id=session_id, new_message=message):
+        pass
+
+    session = await runner.session_service.get_session(
+        app_name="delividence", user_id="api", session_id=session_id
+    )
+    return session.state.get("classification_proposal")
+
+
 @app.post("/runs/{run_id}/requests", status_code=201)
-def submit_scope_request(
+async def submit_scope_request(
     run_id: str, req: SubmitScopeRequestRequest, owner_id: str = Depends(auth.require_owner)
 ):
     """Freelancer mencatat request baru dari kanal lain, atau klien
     mengirimkannya (01-PRD §5 langkah 7). Guardrail baru bermakna kalau
     sudah ada baseline untuk dibandingkan."""
     run = _owned_run_or_404(run_id, owner_id)
-    active_version, _ = _active_baseline_or_409(run_id, run)
+    active_version, active_baseline = _active_baseline_or_409(run_id, run)
 
     record = scope_requests.submit(run_id, req.raw_text, req.submitted_by)
     audit.append_event(
         run_id, "REQUEST_SUBMITTED", req.submitted_by, active_version,
         {"request_id": record["request_id"], "raw_text": req.raw_text},
     )
+
+    # Kegagalan Gemini TIDAK BOLEH menggagalkan pencatatan request itu
+    # sendiri -- request sudah tersimpan di atas terlepas dari ini berhasil
+    # atau tidak, sama seperti kegagalan ekstraksi tidak menjatuhkan worker.
+    try:
+        text_by_ref = guardrail.citable_text(active_baseline)
+        proposal = await propose_scope_classification(req.raw_text, text_by_ref)
+    except Exception:
+        proposal = None
+    if proposal:
+        record = scope_requests.save_proposal(
+            run_id, record["request_id"], proposal["classification"], proposal["citations"]
+        )
+        audit.append_event(
+            run_id, "SCOPE_ANALYSIS_PROPOSED", "model", active_version,
+            {"request_id": record["request_id"], "classification": proposal["classification"]},
+        )
     return record
 
 

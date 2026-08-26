@@ -46,3 +46,15 @@ def stub_extraction(monkeypatch):
         return None
 
     monkeypatch.setattr(worker, "run_extraction", _stub)
+
+
+@pytest.fixture(autouse=True)
+def stub_guardrail_agent(monkeypatch):
+    """Test lewat POST /runs/{id}/requests TIDAK memanggil Gemini sungguhan
+    -- sama alasan dan pola persis dengan stub_extraction di atas."""
+    from app import api
+
+    async def _stub(raw_text, text_by_ref):
+        return None
+
+    monkeypatch.setattr(api, "propose_scope_classification", _stub)

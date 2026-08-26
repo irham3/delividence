@@ -78,3 +78,43 @@ def test_save_ledger_draft_kutipan_karangan_tidak_lolos_walau_model_mengklaim():
     result = agent.save_ledger_draft(candidates, ctx)
 
     assert result["timeline"]["final_deadline"]["state"] != CLIENT_STATED
+
+
+def test_guardrail_agent_konstruksi_dengan_model_dan_satu_tool():
+    assert agent.guardrail_agent.model == config.GEMINI_MODEL
+    assert len(agent.guardrail_agent.tools) == 1
+    assert agent.propose_classification in agent.guardrail_agent.tools
+
+
+def test_propose_classification_in_scope_dengan_kutipan_valid():
+    ctx = _FakeToolContext()
+    ctx.state["citable_text"] = {"mobile-breakpoints": "Renders at 375px."}
+
+    result = agent.propose_classification(
+        "IN_SCOPE",
+        [agent.CitationCandidate(ref="mobile-breakpoints", quote="Renders at 375px.")],
+        ctx,
+    )
+
+    assert result == {
+        "classification": "IN_SCOPE",
+        "citations": [{"ref": "mobile-breakpoints", "quote": "Renders at 375px."}],
+    }
+    assert ctx.state["classification_proposal"] is result
+
+
+def test_propose_classification_tanpa_kutipan_valid_turun_ambiguous():
+    """Model tidak bisa memaksakan IN_SCOPE/CHANGE_REQUEST hanya dengan
+    mengklaim -- propose_classification memvalidasi ulang sendiri, persis
+    save_ledger_draft."""
+    ctx = _FakeToolContext()
+    ctx.state["citable_text"] = {"mobile-breakpoints": "Renders at 375px."}
+
+    result = agent.propose_classification(
+        "IN_SCOPE",
+        [agent.CitationCandidate(ref="mobile-breakpoints", quote="kutipan karangan")],
+        ctx,
+    )
+
+    assert result["classification"] == "AMBIGUOUS"
+    assert result["citations"] == []

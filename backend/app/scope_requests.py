@@ -61,6 +61,10 @@ def submit(deal_id, raw_text, submitted_by):
         "submitted_by": submitted_by,
         "confirmed_classification": None,
         "citations": [],
+        # Usulan model (Guardrail, agent.guardrail_agent) -- bukan keputusan
+        # final, freelancer tetap yang mengonfirmasi lewat mark_classified.
+        "proposed_classification": None,
+        "proposed_citations": [],
         "created_at": _now(),
         "decided_at": None,
     }
@@ -93,6 +97,17 @@ def mark_classified(deal_id, request_id, classification, citations):
     record["confirmed_classification"] = classification
     record["citations"] = citations
     record["decided_at"] = _now()
+    return _write(deal_id, record)
+
+
+def save_proposal(deal_id, request_id, classification, citations):
+    """Simpan usulan Guardrail dari model -- tidak menyentuh
+    confirmed_classification/decided_at, itu murni milik mark_classified."""
+    record = get(deal_id, request_id)
+    if record is None:
+        return None
+    record["proposed_classification"] = classification
+    record["proposed_citations"] = citations
     return _write(deal_id, record)
 
 

@@ -26,7 +26,7 @@ from google.adk.tools.tool_context import ToolContext
 from pydantic import BaseModel
 
 from app import config
-from app.domain import extraction
+from app.domain import extraction, guardrail
 from app.domain.canonical import validate_quote
 from app.domain.enums import CRITICAL_FIELDS
 
@@ -124,4 +124,70 @@ extraction_agent = LlmAgent(
     model=config.GEMINI_MODEL,
     instruction=_INSTRUCTION,
     tools=[validate_quote_candidate, save_ledger_draft],
+)
+
+
+class CitationCandidate(BaseModel):
+    ref: str
+    quote: str
+
+
+def propose_classification(
+    classification: str, citations: list[CitationCandidate], tool_context: ToolContext
+) -> dict:
+    """Simpan usulan classification + citation untuk satu scope request
+    (Guardrail, 02 §4.5).
+
+    Divalidasi tanpa syarat lewat app.domain.guardrail.classify sebelum
+    ditulis -- persis pola save_ledger_draft. Usulan ini TIDAK OTORITATIF:
+    09-DOMAIN-RULES §8 mewajibkan hanya freelancer yang berwenang
+    mengonfirmasi klasifikasi lewat POST .../classify, yang memvalidasi
+    ulang dari nol dan tidak pernah membaca tool_context.state di sini
+    secara langsung.
+    """
+    text_by_ref = tool_context.state.get("citable_text", {})
+    final_classification, valid_citations = guardrail.classify(
+        classification, [c.model_dump() for c in citations], text_by_ref
+    )
+    proposal = {"classification": final_classification, "citations": valid_citations}
+    tool_context.state["classification_proposal"] = proposal
+    return proposal
+
+
+_GUARDRAIL_INSTRUCTION = """\
+Kamu menilai satu permintaan baru dari klien terhadap baseline (rencana
+proyek) yang sudah disepakati untuk sebuah proyek freelance.
+
+Pesan berikutnya berisi permintaan klien yang harus dinilai, dan daftar teks
+yang boleh dikutip (ref -> teks) dari baseline aktif.
+
+Klasifikasi yang tersedia:
+- IN_SCOPE: permintaan ini sudah tercakup oleh salah satu teks yang boleh
+  dikutip di atas.
+- CHANGE_REQUEST: permintaan ini di LUAR apa yang sudah disepakati -- scope
+  tambahan, bukan sekadar klarifikasi dari yang sudah ada.
+- AMBIGUOUS: kamu tidak yakin ada dasar kutipan yang kuat untuk salah satu
+  di atas.
+
+Aturan wajib:
+- IN_SCOPE dan CHANGE_REQUEST WAJIB disertai minimal satu citation verbatim
+  (ref dan quote PERSIS seperti tertulis di teks yang boleh dikutip) yang
+  benar-benar mendukung kesimpulanmu. JANGAN memaksakan kutipan yang tidak
+  relevan hanya supaya tidak AMBIGUOUS -- kalau ragu, pilih AMBIGUOUS tanpa
+  citation.
+- JANGAN mengarang ref yang tidak ada di daftar yang diberikan.
+- Panggil propose_classification tepat sekali, dengan classification final
+  dan seluruh citation pendukungnya (list kosong kalau AMBIGUOUS).
+- Usulanmu bukan keputusan akhir -- freelancer tetap yang mengonfirmasi.
+"""
+
+guardrail_agent = LlmAgent(
+    name="guardrail_agent",
+    description=(
+        "Mengusulkan classification (IN_SCOPE/AMBIGUOUS/CHANGE_REQUEST) + citation "
+        "untuk satu scope request baru, terhadap baseline aktif."
+    ),
+    model=config.GEMINI_MODEL,
+    instruction=_GUARDRAIL_INSTRUCTION,
+    tools=[propose_classification],
 )

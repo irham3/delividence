@@ -182,7 +182,7 @@ export default function Home() {
                 ["Media", "Attach screenshot, audio, video, or a file URL."],
                 ["Proof", "Link evidence to a confirmed criterion."],
               ].map(([title, body]) => (
-                <div key={title} className="rounded-[6px] border border-[var(--rule)] bg-white/45 p-3">
+                <div key={title} className="rounded-[6px] border border-[var(--rule)] surface-o45 p-3">
                   <p className="font-medium">{title}</p>
                   <p className="mt-1 leading-5 text-[var(--muted)]">{body}</p>
                 </div>
@@ -253,7 +253,7 @@ export default function Home() {
       </section>
 
       {error && (
-        <p className="mt-6 flex items-start gap-2 rounded-[6px] border border-[var(--danger)]/20 bg-white/70 p-3 text-sm text-[var(--danger)]">
+        <p className="mt-6 flex items-start gap-2 rounded-[6px] border border-[var(--danger)]/20 surface-o70 p-3 text-sm text-[var(--danger)]">
           <AlertCircle size={16} className="mt-0.5 shrink-0" /> {error}
         </p>
       )}
@@ -297,7 +297,7 @@ export default function Home() {
             {(run?.audit_trail ?? []).map((step, i) => (
               <li
                 key={i}
-                className="rounded-[6px] border border-[var(--rule)] bg-white/45 p-3 text-sm"
+                className="rounded-[6px] border border-[var(--rule)] surface-o45 p-3 text-sm"
               >
                 <div className="flex justify-between gap-4">
                   <span className="font-medium">{step.step}</span>
@@ -414,12 +414,12 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
           <p className="mono text-xs uppercase tracking-[0.12em] text-[var(--muted)]">Owner controls</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight">Freelancer actions</h2>
         </div>
-        <span className="w-fit rounded-[6px] border border-[var(--rule)] bg-white/55 px-3 py-2 text-sm text-[var(--muted)]">
+        <span className="w-fit rounded-[6px] border border-[var(--rule)] surface-o55 px-3 py-2 text-sm text-[var(--muted)]">
           Baseline {hasBaseline ? "active" : "pending"}
         </span>
       </div>
 
-      <div className="mt-6 rounded-[8px] border border-[var(--rule)] bg-white/35 p-4">
+      <div className="mt-6 rounded-[8px] border border-[var(--rule)] surface-o35 p-4">
         <p className="text-sm leading-6 text-[var(--muted)]">
           Send this link to the client so they can review and confirm the plan.
         </p>
@@ -432,11 +432,11 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
           </button>
           {links.CLARIFICATION && (
             <>
-              <code className="truncate text-xs text-neutral-500">{links.CLARIFICATION.url}</code>
+              <code className="truncate text-xs text-[var(--muted)]">{links.CLARIFICATION.url}</code>
               <button
                 onClick={() => revokeLink("CLARIFICATION")}
                 disabled={revoking === "CLARIFICATION"}
-                className="shrink-0 text-xs text-neutral-400 underline hover:text-red-600 disabled:opacity-40"
+                className="shrink-0 text-xs text-[var(--faint)] underline hover:text-[var(--danger)] disabled:opacity-40"
               >
                 {revoking === "CLARIFICATION" ? "Revoking..." : "Revoke"}
               </button>
@@ -445,7 +445,7 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
         </div>
       </div>
 
-      <div className="mt-4 rounded-[8px] border border-[var(--rule)] bg-white/35 p-4">
+      <div className="mt-4 rounded-[8px] border border-[var(--rule)] surface-o35 p-4">
         <p className="text-sm leading-6 text-[var(--muted)]">
           {hasBaseline
             ? "Once the plan is confirmed, send this link for delivery review."
@@ -461,11 +461,11 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
           </button>
           {links.DELIVERY_REVIEW && (
             <>
-              <code className="truncate text-xs text-neutral-500">{links.DELIVERY_REVIEW.url}</code>
+              <code className="truncate text-xs text-[var(--muted)]">{links.DELIVERY_REVIEW.url}</code>
               <button
                 onClick={() => revokeLink("DELIVERY_REVIEW")}
                 disabled={revoking === "DELIVERY_REVIEW"}
-                className="shrink-0 text-xs text-neutral-400 underline hover:text-red-600 disabled:opacity-40"
+                className="shrink-0 text-xs text-[var(--faint)] underline hover:text-[var(--danger)] disabled:opacity-40"
               >
                 {revoking === "DELIVERY_REVIEW" ? "Revoking..." : "Revoke"}
               </button>
@@ -474,7 +474,7 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
         </div>
       </div>
 
-      <div className="mt-4 rounded-[8px] border border-[var(--rule)] bg-white/35 p-4">
+      <div className="mt-4 rounded-[8px] border border-[var(--rule)] surface-o35 p-4">
         <p className="text-sm leading-6 text-[var(--muted)]">
           {hasBaseline
             ? "Send this link so the client can ask for something new themselves, any time."
@@ -490,11 +490,11 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
           </button>
           {links.NEW_REQUEST && (
             <>
-              <code className="truncate text-xs text-neutral-500">{links.NEW_REQUEST.url}</code>
+              <code className="truncate text-xs text-[var(--muted)]">{links.NEW_REQUEST.url}</code>
               <button
                 onClick={() => revokeLink("NEW_REQUEST")}
                 disabled={revoking === "NEW_REQUEST"}
-                className="shrink-0 text-xs text-neutral-400 underline hover:text-red-600 disabled:opacity-40"
+                className="shrink-0 text-xs text-[var(--faint)] underline hover:text-[var(--danger)] disabled:opacity-40"
               >
                 {revoking === "NEW_REQUEST" ? "Revoking..." : "Revoke"}
               </button>
@@ -502,9 +502,9 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
           )}
         </div>
       </div>
-      {linkError && <p className="text-sm text-red-700">{linkError}</p>}
+      {linkError && <p className="text-sm text-[var(--danger)]">{linkError}</p>}
 
-      <div className="mt-4 rounded-[8px] border border-[var(--rule)] bg-white/35 p-4">
+      <div className="mt-4 rounded-[8px] border border-[var(--rule)] surface-o35 p-4">
         <p className="text-sm leading-6 text-[var(--muted)]">
           Attach evidence to an acceptance criterion (needs a confirmed plan).
         </p>
@@ -556,11 +556,11 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
           </button>
         </form>
         {evidenceMessage && (
-          <p className="mt-2 text-xs text-neutral-500">{evidenceMessage}</p>
+          <p className="mt-2 text-xs text-[var(--muted)]">{evidenceMessage}</p>
         )}
       </div>
 
-      <div className="mt-4 rounded-[8px] border border-[var(--rule)] bg-white/35 p-4">
+      <div className="mt-4 rounded-[8px] border border-[var(--rule)] surface-o35 p-4">
         <p className="text-sm leading-6 text-[var(--muted)]">
           {hasBaseline
             ? "Acceptance Record, exportable as JSON or Markdown."
@@ -634,9 +634,9 @@ function ChangeProposalPanel({ runId, run }: { runId: string; run: Run | null })
   }
 
   return (
-    <div className="border-t border-neutral-200 pt-8 dark:border-neutral-800">
+    <div className="border-t border-[var(--rule)] pt-8">
       <h2 className="text-sm font-medium">Propose a scope change</h2>
-      <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="mt-1 text-sm text-[var(--muted)]">
         For a request confirmed as CHANGE_REQUEST above: add a new acceptance criterion for it,
         then send a fresh clarification link so the client can review and confirm it as v
         {(run?.active_baseline_version ?? 1) + 1}. Existing criteria and their acceptance status
@@ -648,32 +648,32 @@ function ChangeProposalPanel({ runId, run }: { runId: string; run: Run | null })
           onChange={(e) => setDeliverableId(e.target.value)}
           required
           placeholder="deliverable id"
-          className="w-32 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+          className="w-32 rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-sm"
         />
         <input
           value={criterionKey}
           onChange={(e) => setCriterionKey(e.target.value)}
           required
           placeholder="new criterion key"
-          className="w-40 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+          className="w-40 rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-sm"
         />
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           required
           placeholder="verbatim acceptance text"
-          className="min-w-56 flex-1 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+          className="min-w-56 flex-1 rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-sm"
         />
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+          className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm text-white hover:bg-[var(--accent-dark)] disabled:opacity-40"
         >
           {submitting ? "Proposing..." : "Propose change"}
         </button>
       </form>
-      {message && <p className="mt-2 text-xs text-neutral-500">{message}</p>}
-      {linkUrl && <code className="mt-1 block truncate text-xs text-neutral-500">{linkUrl}</code>}
+      {message && <p className="mt-2 text-xs text-[var(--muted)]">{message}</p>}
+      {linkUrl && <code className="mt-1 block truncate text-xs text-[var(--muted)]">{linkUrl}</code>}
     </div>
   );
 }
@@ -730,9 +730,9 @@ function GuardrailPanel({ runId }: { runId: string }) {
   }
 
   return (
-    <div className="border-t border-neutral-200 pt-8 dark:border-neutral-800">
+    <div className="border-t border-[var(--rule)] pt-8">
       <h2 className="text-sm font-medium">New requests (Guardrail)</h2>
-      <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="mt-1 text-sm text-[var(--muted)]">
         Log something the client asked for after the plan was confirmed. Classify it against
         the baseline with a verbatim citation -- without one it&apos;s automatically downgraded
         to AMBIGUOUS, never assumed in scope.
@@ -744,17 +744,17 @@ function GuardrailPanel({ runId }: { runId: string }) {
           onChange={(e) => setRawText(e.target.value)}
           required
           placeholder="What did the client ask for?"
-          className="min-w-48 flex-1 rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+          className="min-w-48 flex-1 rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-sm"
         />
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+          className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm text-white hover:bg-[var(--accent-dark)] disabled:opacity-40"
         >
           {submitting ? "Logging..." : "Log request"}
         </button>
       </form>
-      {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
+      {error && <p className="mt-2 text-xs text-[var(--danger)]">{error}</p>}
 
       <div className="mt-4 space-y-3">
         {requests.map((r) => (
@@ -767,7 +767,7 @@ function GuardrailPanel({ runId }: { runId: string }) {
           />
         ))}
         {requests.length === 0 && (
-          <p className="text-xs text-neutral-400">No requests logged yet.</p>
+          <p className="text-xs text-[var(--faint)]">No requests logged yet.</p>
         )}
       </div>
     </div>
@@ -785,8 +785,13 @@ function RequestCard({
   citableRefs: { ref: string; text: string }[];
   onClassified: () => void;
 }) {
-  const [classification, setClassification] = useState<Classification>("AMBIGUOUS");
-  const [citations, setCitations] = useState<Citation[]>([]);
+  // Pre-filled from the model's Guardrail proposal when there is one -- the
+  // freelancer still has to click "Confirm classification" below, the
+  // model's suggestion is never applied on its own (09-DOMAIN-RULES §8).
+  const [classification, setClassification] = useState<Classification>(
+    () => (request.proposed_classification as Classification | null) ?? "AMBIGUOUS"
+  );
+  const [citations, setCitations] = useState<Citation[]>(() => request.proposed_citations ?? []);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -808,13 +813,13 @@ function RequestCard({
 
   if (request.confirmed_classification) {
     return (
-      <div className="rounded-md border border-neutral-200 p-3 text-sm dark:border-neutral-800">
+      <div className="rounded-md border border-[var(--rule)] p-3 text-sm">
         <p>{request.raw_text}</p>
         <p className="mt-1 text-xs">
           Classification: <strong>{request.confirmed_classification}</strong>
         </p>
         {request.citations.length > 0 && (
-          <ul className="mt-1 space-y-0.5 text-xs text-neutral-500">
+          <ul className="mt-1 space-y-0.5 text-xs text-[var(--muted)]">
             {request.citations.map((c, i) => (
               <li key={i}>
                 <code>{c.ref}</code> - &quot;{c.quote}&quot;
@@ -827,13 +832,18 @@ function RequestCard({
   }
 
   return (
-    <div className="rounded-md border border-neutral-200 p-3 text-sm dark:border-neutral-800">
+    <div className="rounded-md border border-[var(--rule)] p-3 text-sm">
       <p>{request.raw_text}</p>
+      {request.proposed_classification && (
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          Model suggested: <strong>{request.proposed_classification}</strong> -- review before confirming.
+        </p>
+      )}
       <div className="mt-2 flex items-center gap-2">
         <select
           value={classification}
           onChange={(e) => setClassification(e.target.value as Classification)}
-          className="rounded border border-neutral-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+          className="rounded border border-[var(--rule)] surface-o60 px-2 py-1 text-xs"
         >
           {CLASSIFICATIONS.map((c) => (
             <option key={c} value={c}>
@@ -844,7 +854,7 @@ function RequestCard({
         <button
           onClick={classify}
           disabled={submitting}
-          className="rounded-md border border-neutral-300 px-3 py-1 text-xs disabled:opacity-40 dark:border-neutral-700"
+          className="rounded-md border border-[var(--rule)] px-3 py-1 text-xs disabled:opacity-40"
         >
           {submitting ? "Saving..." : "Confirm classification"}
         </button>
@@ -853,7 +863,7 @@ function RequestCard({
       {classification !== "AMBIGUOUS" && (
         <div className="mt-2">
           {citableRefs.length > 0 && (
-            <ul className="space-y-0.5 text-xs text-neutral-400">
+            <ul className="space-y-0.5 text-xs text-[var(--faint)]">
               {citableRefs.map((c) => (
                 <li key={c.ref}>
                   <code>{c.ref}</code>: {c.text}
@@ -864,7 +874,7 @@ function RequestCard({
           <CitationList citations={citations} onChange={setCitations} />
         </div>
       )}
-      {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
+      {error && <p className="mt-2 text-xs text-[var(--danger)]">{error}</p>}
     </div>
   );
 }
@@ -886,7 +896,7 @@ function CitationList({
               onChange(citations.map((it, j) => (j === i ? { ...it, ref: e.target.value } : it)))
             }
             placeholder="ref"
-            className="w-32 rounded border border-neutral-300 px-1 py-0.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+            className="w-32 rounded border border-[var(--rule)] surface-o60 px-1 py-0.5 text-xs"
           />
           <input
             value={c.quote}
@@ -894,12 +904,12 @@ function CitationList({
               onChange(citations.map((it, j) => (j === i ? { ...it, quote: e.target.value } : it)))
             }
             placeholder="verbatim quote"
-            className="flex-1 rounded border border-neutral-300 px-1 py-0.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+            className="flex-1 rounded border border-[var(--rule)] surface-o60 px-1 py-0.5 text-xs"
           />
           <button
             type="button"
             onClick={() => onChange(citations.filter((_, j) => j !== i))}
-            className="text-xs text-neutral-400"
+            className="text-xs text-[var(--faint)]"
           >
             remove
           </button>
@@ -908,7 +918,7 @@ function CitationList({
       <button
         type="button"
         onClick={() => onChange([...citations, { ref: "", quote: "" }])}
-        className="text-xs text-neutral-500 underline"
+        className="text-xs text-[var(--muted)] underline"
       >
         + add citation
       </button>

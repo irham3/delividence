@@ -57,6 +57,56 @@ def test_submit_request_sukses_dan_menulis_audit_event(published):
     assert "REQUEST_SUBMITTED" in events
 
 
+def test_submit_request_menyimpan_usulan_guardrail_dan_menulis_audit_event(published, monkeypatch):
+    """propose_scope_classification di-stub autouse (conftest) supaya test
+    lain tidak memanggil Gemini -- di sini di-override sekali untuk
+    memverifikasi hasilnya benar-benar tersambung ke record + audit trail,
+    tanpa memanggil Gemini sungguhan sama sekali."""
+    import app.api as api_module
+
+    async def _fake_proposal(raw_text, text_by_ref):
+        return {
+            "classification": "IN_SCOPE",
+            "citations": [{"ref": "mobile-breakpoints", "quote": "Renders at 375px."}],
+        }
+
+    monkeypatch.setattr(api_module, "propose_scope_classification", _fake_proposal)
+
+    run_id = _run_with_active_baseline(published)
+    r = api.post(
+        "/runs/%s/requests" % run_id, json={"raw_text": "Perlu breakpoint mobile juga?"}
+    )
+    assert r.status_code == 201
+    body = r.json()
+    assert body["proposed_classification"] == "IN_SCOPE"
+    assert body["proposed_citations"] == [{"ref": "mobile-breakpoints", "quote": "Renders at 375px."}]
+    # Freelancer belum mengonfirmasi apa pun -- usulan model tidak boleh
+    # otomatis dianggap keputusan final (09-DOMAIN-RULES §8).
+    assert body["confirmed_classification"] is None
+
+    events = [e["type"] for e in audit.list_events(run_id)]
+    assert "SCOPE_ANALYSIS_PROPOSED" in events
+
+
+def test_submit_request_kegagalan_guardrail_agent_tidak_menggagalkan_pencatatan(published, monkeypatch):
+    import app.api as api_module
+
+    async def _boom(raw_text, text_by_ref):
+        raise RuntimeError("Gemini gagal")
+
+    monkeypatch.setattr(api_module, "propose_scope_classification", _boom)
+
+    run_id = _run_with_active_baseline(published)
+    r = api.post("/runs/%s/requests" % run_id, json={"raw_text": "x"})
+
+    assert r.status_code == 201
+    body = r.json()
+    assert body["proposed_classification"] is None
+
+    events = [e["type"] for e in audit.list_events(run_id)]
+    assert "SCOPE_ANALYSIS_PROPOSED" not in events
+
+
 def test_list_requests(published):
     run_id = _run_with_active_baseline(published)
     api.post("/runs/%s/requests" % run_id, json={"raw_text": "a"})

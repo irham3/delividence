@@ -69,6 +69,10 @@ export type ScopeRequest = {
   submitted_by: string;
   confirmed_classification: string | null;
   citations: Citation[];
+  // Usulan model (Guardrail) -- bukan keputusan final, hint saja untuk
+  // form konfirmasi freelancer di bawah.
+  proposed_classification: string | null;
+  proposed_citations: Citation[];
   created_at: string;
   decided_at: string | null;
 };
