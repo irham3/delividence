@@ -4,6 +4,15 @@ import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import {
+  AlertCircle,
+  Clock3,
+  RotateCcw,
+  Send,
+  ShieldCheck,
+} from "lucide-react";
+import { AppShell, RailPanel, WorkspaceHeader } from "@/components/delividence/app-shell";
+import { LandingPage } from "@/components/delividence/landing";
+import {
   ApiError,
   apiFetch,
   openAuthedInNewTab,
@@ -134,67 +143,98 @@ export default function Home() {
 
   if (!authReady) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-16">
-        <p className="text-sm text-neutral-500">Loading…</p>
+      <main className="paper-texture flex min-h-[100dvh] items-center justify-center px-6">
+        <p className="paper-card rounded-[8px] px-5 py-4 text-sm text-[var(--muted)]">Loading Delividence...</p>
       </main>
     );
   }
 
   if (!user) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-16">
-        <h1 className="text-3xl font-semibold tracking-tight">Delividence</h1>
-        <p className="mt-2 text-sm text-neutral-500">
-          Sign in to create and manage your deals.
-        </p>
-        <button
-          onClick={() => signInWithGoogle().catch((e) => setError(e instanceof Error ? e.message : "Sign-in failed"))}
-          className="mt-6 rounded-md bg-neutral-900 px-4 py-2 text-sm text-white dark:bg-white dark:text-neutral-900"
-        >
-          Sign in with Google
-        </button>
-        {error && (
-          <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>
-        )}
-      </main>
+      <LandingPage
+        error={error}
+        onSample={() =>
+          setBrief(
+            "Can you redesign our landing page hero, tighten the copy, keep the hero video muted, and send a mobile version too? The screenshot is the main visual reference. We need this by next Wednesday, but we have not agreed on revision rounds yet."
+          )
+        }
+        onSignIn={() => signInWithGoogle().catch((e) => setError(e instanceof Error ? e.message : "Sign-in failed"))}
+      />
     );
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16">
-      <div className="flex items-baseline justify-between gap-4">
-        <h1 className="text-3xl font-semibold tracking-tight">Delividence</h1>
-        <div className="flex items-center gap-2 text-xs text-neutral-500">
-          <span>{user.email}</span>
-          <button onClick={() => signOutOwner()} className="underline">
-            Sign out
-          </button>
-        </div>
-      </div>
-      <p className="mt-2 text-sm text-neutral-500">
-        Paste a client brief. The agent works on it in the background and records
-        every step it takes.
-      </p>
+    <AppShell
+      email={user.email}
+      onSignOut={() => signOutOwner()}
+      onNewRecord={() => {
+        setRunId(null);
+        setRun(null);
+        setBrief("");
+        setTimeout(() => document.getElementById("new-record-brief")?.focus(), 0);
+      }}
+      rightRail={
+        <>
+          <RailPanel title="Incoming material">
+            <div className="space-y-3 text-sm">
+              {[
+                ["Brief", "Paste text, email exports, or chat notes."],
+                ["Media", "Attach screenshot, audio, video, or a file URL."],
+                ["Proof", "Link evidence to a confirmed criterion."],
+              ].map(([title, body]) => (
+                <div key={title} className="rounded-[6px] border border-[var(--rule)] bg-white/45 p-3">
+                  <p className="font-medium">{title}</p>
+                  <p className="mt-1 leading-5 text-[var(--muted)]">{body}</p>
+                </div>
+              ))}
+            </div>
+          </RailPanel>
+          <RailPanel title="Judge proof">
+            <ul className="space-y-3 text-sm text-[var(--muted)]">
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 text-[var(--accepted)]" /> Gemini extraction with citations.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 text-[var(--accepted)]" /> ADK workflow resumes after client input.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 text-[var(--accepted)]" /> Google Cloud backend proof in demo.</li>
+            </ul>
+          </RailPanel>
+        </>
+      }
+    >
+      <WorkspaceHeader status={run?.status ?? (runId ? "queued" : "Ready")} runId={runId} />
 
-      <form onSubmit={submit} className="mt-8 space-y-4">
+      <section className="paper-card record-shadow rounded-[8px] p-5 sm:p-6">
+        <div className="flex flex-col justify-between gap-4 border-b border-[var(--rule)] pb-5 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight">Create a project record</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+              Paste a client brief. The agent works in the background and records every step it takes.
+            </p>
+          </div>
+          <div className="inline-flex w-fit items-center gap-2 rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] px-3 py-2 text-sm text-[var(--muted)]">
+            <Clock3 size={16} strokeWidth={1.8} />
+            Resumable
+          </div>
+        </div>
+
+      <form onSubmit={submit} className="mt-6 space-y-4">
         <textarea
+          id="new-record-brief"
           value={brief}
           onChange={(e) => setBrief(e.target.value)}
           required
           rows={7}
           placeholder="Can you edit some videos for our IG? A few clips, deadline next week, budget 2 million."
-          className="w-full rounded-md border border-neutral-300 p-3 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+          className="focus-ring w-full rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] p-4 text-sm leading-6 text-[var(--ink)] placeholder:text-[var(--faint)]"
         />
 
-        <div className="flex items-center gap-3">
-          <label htmlFor="lang" className="text-sm text-neutral-500">
+        <div className="flex flex-wrap items-center gap-3">
+          <label htmlFor="lang" className="text-sm text-[var(--muted)]">
             Output language
           </label>
           <select
             id="lang"
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
-            className="rounded-md border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            className="focus-ring rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] px-3 py-2 text-sm"
           >
             <option value="en">English</option>
             <option value="id">Bahasa Indonesia</option>
@@ -203,31 +243,36 @@ export default function Home() {
           <button
             type="submit"
             disabled={submitting || brief.trim().length === 0}
-            className="ml-auto rounded-md bg-neutral-900 px-4 py-2 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+            className="tap focus-ring ml-auto inline-flex items-center gap-2 rounded-[6px] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
-            {submitting ? "Sending…" : "Analyse brief"}
+            <Send size={16} strokeWidth={1.8} />
+            {submitting ? "Sending..." : "Analyse brief"}
           </button>
         </div>
       </form>
+      </section>
 
       {error && (
-        <p className="mt-6 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>
+        <p className="mt-6 flex items-start gap-2 rounded-[6px] border border-[var(--danger)]/20 bg-white/70 p-3 text-sm text-[var(--danger)]">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" /> {error}
+        </p>
       )}
 
       {runId && (
-        <section className="mt-10 border-t border-neutral-200 pt-6 dark:border-neutral-800">
-          <div className="flex items-baseline justify-between gap-4">
-            <h2 className="text-sm font-medium">Run</h2>
+        <section className="mt-8 paper-card rounded-[8px] p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h2 className="text-xl font-semibold tracking-tight">Run activity</h2>
             <div className="flex items-center gap-3">
-              <code className="text-xs text-neutral-500">{runId}</code>
+              <code className="mono text-xs text-[var(--muted)]">{runId}</code>
               <button
                 onClick={() => {
                   setRunId(null);
                   setRun(null);
                   setBrief("");
                 }}
-                className="text-xs text-neutral-500 underline"
+                className="tap focus-ring inline-flex items-center gap-1 text-xs text-[var(--muted)] underline"
               >
+                <RotateCcw size={13} strokeWidth={1.8} />
                 Start a new run
               </button>
             </div>
@@ -241,9 +286,9 @@ export default function Home() {
               <button
                 onClick={retryExtraction}
                 disabled={retrying}
-                className="text-xs text-neutral-500 underline disabled:opacity-40"
+                className="tap focus-ring text-xs text-[var(--muted)] underline disabled:opacity-40"
               >
-                {retrying ? "Retrying…" : "Retry extraction"}
+                {retrying ? "Retrying..." : "Retry extraction"}
               </button>
             )}
           </div>
@@ -252,15 +297,15 @@ export default function Home() {
             {(run?.audit_trail ?? []).map((step, i) => (
               <li
                 key={i}
-                className="rounded-md border border-neutral-200 p-3 text-sm dark:border-neutral-800"
+                className="rounded-[6px] border border-[var(--rule)] bg-white/45 p-3 text-sm"
               >
                 <div className="flex justify-between gap-4">
                   <span className="font-medium">{step.step}</span>
-                  <time className="shrink-0 text-xs text-neutral-500">
+                  <time className="shrink-0 text-xs text-[var(--muted)]">
                     {new Date(step.at).toLocaleTimeString()}
                   </time>
                 </div>
-                <p className="mt-1 text-neutral-600 dark:text-neutral-400">
+                <p className="mt-1 text-[var(--muted)]">
                   {step.detail}
                 </p>
               </li>
@@ -268,15 +313,15 @@ export default function Home() {
           </ol>
 
           {run && run.audit_trail.length === 0 && (
-            <p className="mt-4 text-sm text-neutral-500">
-              Waiting for the worker to pick this up…
+            <p className="mt-4 text-sm text-[var(--muted)]">
+              Waiting for the worker to pick this up...
             </p>
           )}
         </section>
       )}
 
       {runId && <FreelancerActions runId={runId} run={run} />}
-    </main>
+    </AppShell>
   );
 }
 
@@ -363,17 +408,25 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
   const hasBaseline = !!run?.active_baseline_version;
 
   return (
-    <section className="mt-10 space-y-8 border-t border-neutral-200 pt-6 dark:border-neutral-800">
-      <h2 className="text-sm font-medium">Freelancer actions</h2>
+    <section className="mt-8 paper-card rounded-[8px] p-5 sm:p-6">
+      <div className="flex flex-col justify-between gap-3 border-b border-[var(--rule)] pb-5 sm:flex-row sm:items-center">
+        <div>
+          <p className="mono text-xs uppercase tracking-[0.12em] text-[var(--muted)]">Owner controls</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight">Freelancer actions</h2>
+        </div>
+        <span className="w-fit rounded-[6px] border border-[var(--rule)] bg-white/55 px-3 py-2 text-sm text-[var(--muted)]">
+          Baseline {hasBaseline ? "active" : "pending"}
+        </span>
+      </div>
 
-      <div>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+      <div className="mt-6 rounded-[8px] border border-[var(--rule)] bg-white/35 p-4">
+        <p className="text-sm leading-6 text-[var(--muted)]">
           Send this link to the client so they can review and confirm the plan.
         </p>
         <div className="mt-2 flex items-center gap-3">
           <button
             onClick={() => createLink("CLARIFICATION")}
-            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700"
+            className="tap focus-ring rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] px-3 py-2 text-sm"
           >
             Create clarification link
           </button>
@@ -385,15 +438,15 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
                 disabled={revoking === "CLARIFICATION"}
                 className="shrink-0 text-xs text-neutral-400 underline hover:text-red-600 disabled:opacity-40"
               >
-                {revoking === "CLARIFICATION" ? "Revoking…" : "Revoke"}
+                {revoking === "CLARIFICATION" ? "Revoking..." : "Revoke"}
               </button>
             </>
           )}
         </div>
       </div>
 
-      <div>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+      <div className="mt-4 rounded-[8px] border border-[var(--rule)] bg-white/35 p-4">
+        <p className="text-sm leading-6 text-[var(--muted)]">
           {hasBaseline
             ? "Once the plan is confirmed, send this link for delivery review."
             : "Available once the client confirms the project plan."}
@@ -402,7 +455,7 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
           <button
             onClick={() => createLink("DELIVERY_REVIEW")}
             disabled={!hasBaseline}
-            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm disabled:opacity-40 dark:border-neutral-700"
+            className="tap focus-ring rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] px-3 py-2 text-sm disabled:opacity-40"
           >
             Create delivery review link
           </button>
@@ -414,15 +467,15 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
                 disabled={revoking === "DELIVERY_REVIEW"}
                 className="shrink-0 text-xs text-neutral-400 underline hover:text-red-600 disabled:opacity-40"
               >
-                {revoking === "DELIVERY_REVIEW" ? "Revoking…" : "Revoke"}
+                {revoking === "DELIVERY_REVIEW" ? "Revoking..." : "Revoke"}
               </button>
             </>
           )}
         </div>
       </div>
 
-      <div>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+      <div className="mt-4 rounded-[8px] border border-[var(--rule)] bg-white/35 p-4">
+        <p className="text-sm leading-6 text-[var(--muted)]">
           {hasBaseline
             ? "Send this link so the client can ask for something new themselves, any time."
             : "Available once the client confirms the project plan."}
@@ -431,7 +484,7 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
           <button
             onClick={() => createLink("NEW_REQUEST")}
             disabled={!hasBaseline}
-            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm disabled:opacity-40 dark:border-neutral-700"
+            className="tap focus-ring rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] px-3 py-2 text-sm disabled:opacity-40"
           >
             Create new-request link
           </button>
@@ -443,7 +496,7 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
                 disabled={revoking === "NEW_REQUEST"}
                 className="shrink-0 text-xs text-neutral-400 underline hover:text-red-600 disabled:opacity-40"
               >
-                {revoking === "NEW_REQUEST" ? "Revoking…" : "Revoke"}
+                {revoking === "NEW_REQUEST" ? "Revoking..." : "Revoke"}
               </button>
             </>
           )}
@@ -451,8 +504,8 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
       </div>
       {linkError && <p className="text-sm text-red-700">{linkError}</p>}
 
-      <div>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+      <div className="mt-4 rounded-[8px] border border-[var(--rule)] bg-white/35 p-4">
+        <p className="text-sm leading-6 text-[var(--muted)]">
           Attach evidence to an acceptance criterion (needs a confirmed plan).
         </p>
         <form onSubmit={addEvidence} className="mt-2 flex flex-wrap items-center gap-2">
@@ -461,7 +514,7 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
             onChange={(e) => setCriterionKey(e.target.value)}
             required
             disabled={!hasBaseline}
-            className="w-40 rounded border border-neutral-300 px-2 py-1 text-sm disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"
+            className="focus-ring w-40 rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] px-3 py-2 text-sm disabled:opacity-40"
           >
             <option value="">criterion key</option>
             {(run?.ledger?.acceptance_criteria?.value ?? []).map((c) => (
@@ -474,7 +527,7 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
             value={evidenceType}
             onChange={(e) => setEvidenceType(e.target.value as "url" | "text")}
             disabled={!hasBaseline}
-            className="rounded border border-neutral-300 px-2 py-1 text-sm disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"
+            className="focus-ring rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] px-3 py-2 text-sm disabled:opacity-40"
           >
             <option value="url">url</option>
             <option value="text">text</option>
@@ -484,22 +537,22 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
             onChange={(e) => setEvidenceUri(e.target.value)}
             required
             disabled={!hasBaseline}
-            placeholder={evidenceType === "url" ? "https://…" : "Test result text"}
-            className="min-w-48 flex-1 rounded border border-neutral-300 px-2 py-1 text-sm disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"
+            placeholder={evidenceType === "url" ? "https://..." : "Test result text"}
+            className="focus-ring min-w-48 flex-1 rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] px-3 py-2 text-sm disabled:opacity-40"
           />
           <input
             value={evidenceCaption}
             onChange={(e) => setEvidenceCaption(e.target.value)}
             disabled={!hasBaseline}
             placeholder="caption (optional)"
-            className="w-40 rounded border border-neutral-300 px-2 py-1 text-sm disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"
+            className="focus-ring w-40 rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] px-3 py-2 text-sm disabled:opacity-40"
           />
           <button
             type="submit"
             disabled={!hasBaseline || evidenceSaving}
-            className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+            className="tap focus-ring rounded-[6px] bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
-            {evidenceSaving ? "Saving…" : "Attach"}
+            {evidenceSaving ? "Saving..." : "Attach"}
           </button>
         </form>
         {evidenceMessage && (
@@ -507,8 +560,8 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
         )}
       </div>
 
-      <div>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+      <div className="mt-4 rounded-[8px] border border-[var(--rule)] bg-white/35 p-4">
+        <p className="text-sm leading-6 text-[var(--muted)]">
           {hasBaseline
             ? "Acceptance Record, exportable as JSON or Markdown."
             : "Proof export is available once a baseline is confirmed."}
@@ -616,7 +669,7 @@ function ChangeProposalPanel({ runId, run }: { runId: string; run: Run | null })
           disabled={submitting}
           className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
         >
-          {submitting ? "Proposing…" : "Propose change"}
+          {submitting ? "Proposing..." : "Propose change"}
         </button>
       </form>
       {message && <p className="mt-2 text-xs text-neutral-500">{message}</p>}
@@ -698,7 +751,7 @@ function GuardrailPanel({ runId }: { runId: string }) {
           disabled={submitting}
           className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
         >
-          {submitting ? "Logging…" : "Log request"}
+          {submitting ? "Logging..." : "Log request"}
         </button>
       </form>
       {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
@@ -764,7 +817,7 @@ function RequestCard({
           <ul className="mt-1 space-y-0.5 text-xs text-neutral-500">
             {request.citations.map((c, i) => (
               <li key={i}>
-                <code>{c.ref}</code> — &quot;{c.quote}&quot;
+                <code>{c.ref}</code> - &quot;{c.quote}&quot;
               </li>
             ))}
           </ul>
@@ -793,7 +846,7 @@ function RequestCard({
           disabled={submitting}
           className="rounded-md border border-neutral-300 px-3 py-1 text-xs disabled:opacity-40 dark:border-neutral-700"
         >
-          {submitting ? "Saving…" : "Confirm classification"}
+          {submitting ? "Saving..." : "Confirm classification"}
         </button>
       </div>
 

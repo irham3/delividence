@@ -1,8 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --canvas: #f4f1ea;
+  --surface: #fcfbf8;
+  --surface-strong: #fffefa;
+  --ink: #20211f;
+  --muted: #6c6b66;
+  --faint: #928f87;
+  --rule: #d9d4ca;
+  --rule-strong: #bdb5a7;
+  --accent: #b98015;
+  --accent-dark: #835a0f;
+  --accent-soft: #f3e7ca;
+  --accepted: #52755b;
+  --danger: #a64a3b;
+  --shadow: 0 24px 70px rgb(32 33 31 / 0.08);
+  --background: var(--canvas);
+  --foreground: var(--ink);
 }
 
 @theme inline {
@@ -12,15 +26,86 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  text-rendering: geometricPrecision;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  outline-color: var(--accent);
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+.paper-texture {
+  background:
+    radial-gradient(circle at 18% 12%, rgb(255 255 255 / 0.72), transparent 34rem),
+    radial-gradient(circle at 86% 8%, rgb(255 249 236 / 0.8), transparent 28rem),
+    linear-gradient(90deg, rgb(32 33 31 / 0.025) 1px, transparent 1px),
+    linear-gradient(180deg, rgb(32 33 31 / 0.02) 1px, transparent 1px),
+    var(--canvas);
+  background-size: auto, auto, 64px 64px, 64px 64px, auto;
+}
+
+.paper-card {
+  border: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--surface) 92%, white);
+  box-shadow: 0 12px 36px rgb(32 33 31 / 0.07);
+}
+
+.record-shadow {
+  box-shadow: var(--shadow);
+}
+
+.mono {
+  font-family: var(--font-geist-mono), "SFMono-Regular", Consolas, monospace;
+}
+
+.focus-ring {
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.tap {
+  transition: transform 180ms cubic-bezier(.2, 0, 0, 1), background 180ms ease, border-color 180ms ease;
+}
+
+.tap:active {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

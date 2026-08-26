@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import { ClientCard, ClientFrame } from "@/components/delividence/client-frame";
 import { apiFetch } from "@/lib/api";
 
 type NewRequestView = { brief: string };
@@ -55,29 +56,35 @@ export default function NewRequestPage({
 
   if (loadError) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-16">
-        <h1 className="text-xl font-semibold">This link isn&apos;t available</h1>
-        <p className="mt-2 text-sm text-red-700">{loadError}</p>
-      </main>
+      <ClientFrame title="This link is not available">
+        <ClientCard>
+          <p className="text-sm text-[var(--danger)]">{loadError}</p>
+        </ClientCard>
+      </ClientFrame>
     );
   }
 
   if (!view) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-16">
-        <p className="text-sm text-neutral-500">Loading…</p>
-      </main>
+      <ClientFrame title="Loading request page">
+        <ClientCard>
+          <p className="text-sm text-[var(--muted)]">Loading...</p>
+        </ClientCard>
+      </ClientFrame>
     );
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16">
-      <h1 className="text-2xl font-semibold tracking-tight">Ask for something new</h1>
-      <p className="mt-2 text-sm text-neutral-500">
+    <ClientFrame
+      title="Ask for something new"
+      description="New requests are captured separately, then reviewed against the confirmed plan."
+    >
+      <ClientCard>
+      <p className="text-sm leading-6 text-[var(--muted)]">
         Need something beyond what was originally agreed? Describe it below and your freelancer
         will review it against the confirmed plan.
       </p>
-      <p className="mt-4 whitespace-pre-wrap rounded-md bg-neutral-50 p-3 text-sm text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
+      <p className="mt-4 whitespace-pre-wrap rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] p-4 text-sm leading-6 text-[var(--muted)]">
         {view.brief}
       </p>
 
@@ -88,14 +95,14 @@ export default function NewRequestPage({
           required
           rows={5}
           placeholder="What would you like to ask for or add?"
-          className="w-full rounded-md border border-neutral-300 p-3 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+          className="focus-ring w-full rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] p-4 text-sm leading-6"
         />
         <button
           type="submit"
           disabled={submitting || rawText.trim().length === 0}
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+          className="tap focus-ring rounded-[6px] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
         >
-          {submitting ? "Sending…" : "Send request"}
+          {submitting ? "Sending..." : "Send request"}
         </button>
       </form>
       {submitError && <p className="mt-3 text-sm text-red-700">{submitError}</p>}
@@ -106,6 +113,7 @@ export default function NewRequestPage({
           below if needed.
         </p>
       )}
-    </main>
+      </ClientCard>
+    </ClientFrame>
   );
 }

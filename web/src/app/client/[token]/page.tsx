@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import { ClientCard, ClientFrame } from "@/components/delividence/client-frame";
 import {
   apiFetch,
   type AcceptanceCriterion,
@@ -119,37 +120,44 @@ export default function ClientClarificationPage({
 
   if (loadError) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-16">
-        <h1 className="text-xl font-semibold">This link isn&apos;t available</h1>
-        <p className="mt-2 text-sm text-red-700">{loadError}</p>
-      </main>
+      <ClientFrame title="This link is not available">
+        <ClientCard>
+          <p className="text-sm text-[var(--danger)]">{loadError}</p>
+        </ClientCard>
+      </ClientFrame>
     );
   }
 
   if (!view) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-16">
-        <p className="text-sm text-neutral-500">Loading…</p>
-      </main>
+      <ClientFrame title="Loading plan">
+        <ClientCard>
+          <p className="text-sm text-[var(--muted)]">Loading...</p>
+        </ClientCard>
+      </ClientFrame>
     );
   }
 
   if (confirmed) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-16">
-        <h1 className="text-2xl font-semibold">Project plan confirmed</h1>
-        <p className="mt-2 text-sm text-neutral-600">
+      <ClientFrame title="Project plan confirmed">
+        <ClientCard>
+        <p className="text-sm leading-6 text-[var(--muted)]">
           Baseline version {confirmed.version} is now active. The freelancer can start work
           against this plan.
         </p>
-      </main>
+        </ClientCard>
+      </ClientFrame>
     );
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16">
-      <h1 className="text-2xl font-semibold tracking-tight">Review the project plan</h1>
-      <p className="mt-2 whitespace-pre-wrap rounded-md bg-neutral-50 p-3 text-sm text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
+    <ClientFrame
+      title="Review the project plan"
+      description="Resolve the few parts the record cannot assume, then confirm the version your freelancer should work from."
+    >
+      <ClientCard>
+      <p className="whitespace-pre-wrap rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] p-4 text-sm leading-6 text-[var(--muted)]">
         {view.brief}
       </p>
 
@@ -235,7 +243,7 @@ export default function ClientClarificationPage({
             type="date"
             value={deadline}
             onChange={(e) => setDeadline(e.target.value)}
-            className="mt-1 block rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            className="focus-ring mt-1 block rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] px-3 py-2 text-sm"
           />
         </div>
 
@@ -248,7 +256,7 @@ export default function ClientClarificationPage({
               value={roundsTotal}
               disabled={roundsNotSet}
               onChange={(e) => setRoundsTotal(e.target.value)}
-              className="w-24 rounded border border-neutral-300 px-2 py-1 text-sm disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"
+              className="focus-ring w-24 rounded-[6px] border border-[var(--rule)] bg-[var(--surface-strong)] px-3 py-2 text-sm disabled:opacity-40"
             />
             <label className="flex items-center gap-1 text-xs text-neutral-500">
               <input
@@ -333,21 +341,22 @@ export default function ClientClarificationPage({
         <button
           onClick={saveAnswers}
           disabled={saving}
-          className="rounded-md border border-neutral-300 px-4 py-2 text-sm disabled:opacity-40 dark:border-neutral-700"
+          className="tap focus-ring rounded-[6px] border border-[var(--rule)] bg-white/55 px-4 py-2 text-sm disabled:opacity-40"
         >
-          {saving ? "Saving…" : "Save changes"}
+          {saving ? "Saving..." : "Save changes"}
         </button>
         <button
           onClick={confirmPlan}
           disabled={!view.readiness.ready || confirming}
           title={!view.readiness.ready ? "Resolve all blockers first" : undefined}
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+          className="tap focus-ring rounded-[6px] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
         >
-          {confirming ? "Confirming…" : "Confirm project plan"}
+          {confirming ? "Confirming..." : "Confirm project plan"}
         </button>
       </div>
       {confirmError && <p className="mt-3 text-sm text-red-700">{confirmError}</p>}
-    </main>
+      </ClientCard>
+    </ClientFrame>
   );
 }
 
@@ -371,7 +380,7 @@ function ReadinessBanner({
       <ul className="mt-2 list-disc space-y-1 pl-5">
         {blockers.map((b, i) => (
           <li key={i}>
-            <span className="font-mono text-xs">{b.field}</span> — {b.reason}
+        <span className="font-mono text-xs">{b.field}</span> - {b.reason}
           </li>
         ))}
       </ul>
@@ -418,7 +427,7 @@ function ListField<T>({
           </div>
         ))}
         {items.length === 0 && (
-          <p className="text-xs text-neutral-400">Nothing yet — add one above.</p>
+          <p className="text-xs text-neutral-400">Nothing yet - add one above.</p>
         )}
       </div>
     </div>

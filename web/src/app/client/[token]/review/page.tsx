@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import { ClientCard, ClientFrame } from "@/components/delividence/client-frame";
 import { apiFetch, type ReviewCriterion, type ReviewView } from "@/lib/api";
 
 type Decision = "ACCEPTED" | "CHANGES_REQUESTED";
@@ -66,27 +67,33 @@ export default function DeliveryReviewPage({
 
   if (loadError) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-16">
-        <h1 className="text-xl font-semibold">This link isn&apos;t available</h1>
-        <p className="mt-2 text-sm text-red-700">{loadError}</p>
-      </main>
+      <ClientFrame title="This link is not available">
+        <ClientCard>
+          <p className="text-sm text-[var(--danger)]">{loadError}</p>
+        </ClientCard>
+      </ClientFrame>
     );
   }
 
   if (!view) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-16">
-        <p className="text-sm text-neutral-500">Loading…</p>
-      </main>
+      <ClientFrame title="Loading review">
+        <ClientCard>
+          <p className="text-sm text-[var(--muted)]">Loading...</p>
+        </ClientCard>
+      </ClientFrame>
     );
   }
 
   const pending = view.criteria.filter((c) => c.status !== "ACCEPTED");
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16">
-      <h1 className="text-2xl font-semibold tracking-tight">Delivery review</h1>
-      <p className="mt-2 text-sm text-neutral-500">
+    <ClientFrame
+      title="Delivery review"
+      description="Review the evidence for each agreed criterion. Acceptance stays with the client."
+    >
+      <ClientCard>
+      <p className="text-sm text-[var(--muted)]">
         Baseline version {view.baseline_version}. Review the evidence for each criterion and
         accept it or request changes.
       </p>
@@ -116,9 +123,9 @@ export default function DeliveryReviewPage({
         <button
           onClick={submit}
           disabled={submitting || Object.keys(decisions).length === 0}
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+            className="tap focus-ring rounded-[6px] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
         >
-          {submitting ? "Submitting…" : "Submit review"}
+          {submitting ? "Submitting..." : "Submit review"}
         </button>
         {pending.length === 0 && (
           <p className="mt-2 text-xs text-neutral-500">
@@ -126,7 +133,8 @@ export default function DeliveryReviewPage({
           </p>
         )}
       </div>
-    </main>
+      </ClientCard>
+    </ClientFrame>
   );
 }
 
@@ -145,7 +153,7 @@ function CriterionCard({
 }) {
   const locked = criterion.status === "ACCEPTED";
   return (
-    <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
+    <div className="rounded-[8px] border border-[var(--rule)] bg-white/45 p-4">
       <div className="flex items-baseline justify-between gap-4">
         <span className="font-mono text-xs text-neutral-500">{criterion.criterion_key}</span>
         <span
@@ -174,7 +182,7 @@ function CriterionCard({
               ) : (
                 e.uri
               )}
-              {e.caption ? ` — ${e.caption}` : ""}
+              {e.caption ? ` - ${e.caption}` : ""}
             </li>
           ))}
         </ul>
@@ -191,7 +199,7 @@ function CriterionCard({
         <div className="mt-3 flex items-center gap-2">
           <button
             onClick={() => onDecision("ACCEPTED")}
-            className={`rounded-md border px-3 py-1 text-xs ${
+            className={`tap focus-ring rounded-[6px] border px-3 py-1 text-xs ${
               decision === "ACCEPTED"
                 ? "border-green-600 bg-green-50 text-green-800"
                 : "border-neutral-300 dark:border-neutral-700"
@@ -201,7 +209,7 @@ function CriterionCard({
           </button>
           <button
             onClick={() => onDecision("CHANGES_REQUESTED")}
-            className={`rounded-md border px-3 py-1 text-xs ${
+            className={`tap focus-ring rounded-[6px] border px-3 py-1 text-xs ${
               decision === "CHANGES_REQUESTED"
                 ? "border-amber-600 bg-amber-50 text-amber-900"
                 : "border-neutral-300 dark:border-neutral-700"
