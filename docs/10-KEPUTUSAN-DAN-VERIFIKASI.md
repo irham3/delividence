@@ -20,6 +20,7 @@ langsung ke halaman aturan resmi + dokumentasi model Google.
 | — | Repo cadangan | `github.com/rifqiahmadpratama/dealready`, private, mirror milik Rifqi |
 | — | Commit pertama | 25 Agustus 2026 — di dalam periode submission (3–31 Agustus) |
 | **R-4** | Model | `gemini-3.7-flash` (lihat §3) |
+| — | Jalur akses Gemini | **Direvisi 25 Agustus malam:** Gemini Developer API (`GEMINI_API_KEY`), bukan Vertex AI — billing GCP tidak aktif dan Developer API punya free tier tanpa kartu. V-8 eksplisit mengizinkan keduanya ("*through Gemini API or Vertex AI*"); syarat "pakai infrastruktur Google Cloud" tetap dipenuhi lewat Cloud Run/Firestore/Pub/Sub saat deploy, terpisah dari jalur panggilan model. `GOOGLE_GENAI_USE_VERTEXAI=FALSE` di `app/config.py`; tinggal ganti env ke `TRUE` + isi `GOOGLE_CLOUD_PROJECT` kalau billing aktif nanti, tidak ada kode yang perlu diubah. |
 | — | Rencana kerja | Paket revisi partner diadopsi; profil **Modul A saja** (§4b) |
 | — | Stack | Next.js 16 + TypeScript + Tailwind 4 (web); Python 3.11 + FastAPI (API & worker) |
 

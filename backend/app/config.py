@@ -8,13 +8,38 @@ PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT", "").strip()
 PUBSUB_TOPIC = os.environ.get("PUBSUB_TOPIC", "delividence-runs").strip()
 
 # 06 §2. Model terverifikasi di 10-KEPUTUSAN-DAN-VERIFIKASI.md: paket revisi
-# sempat menulis gemini-3.5-flash, dikoreksi karena Google kini menyebutnya
-# legacy Flash model.
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.7-flash").strip()
+# sempat menulis gemini-3.5-flash (dikoreksi -> 3.7, Google menyebutnya
+# legacy Flash model), lalu direvisi lagi 25 Agu malam ke 3.6: 3.7-flash
+# konsisten balas 503 "high demand" lewat extraction_agent (tool-calling +
+# system instruction) walau panggilan sederhana ke 3.7 tanpa tool berhasil --
+# 3.6-flash terbukti sukses end-to-end (kutipan verbatim tervalidasi, skema
+# valid) di percobaan yang sama. Ganti balik ke 3.7 kapan saja lewat env
+# GEMINI_MODEL begitu demand-nya mereda -- tidak ada kode yang perlu diubah.
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash").strip()
 GOOGLE_CLOUD_LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "asia-southeast2").strip()
-# Wajib TRUE: mencegah ADK diam-diam fallback ke Gemini Developer API/API key
-# (02 §2, "Google technology mapping").
-GOOGLE_GENAI_USE_VERTEXAI = os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "TRUE").strip()
+
+# Keputusan direvisi 25 Agu 2026: default sekarang Gemini Developer API (API
+# key, GEMINI_API_KEY), bukan Vertex AI -- billing GCP tidak aktif dan
+# Developer API punya free tier tanpa kartu. Aturan hackathon eksplisit
+# mengizinkan keduanya ("Gemini 3.5 or newer accessed through Gemini API or
+# Vertex AI", 10-KEPUTUSAN-DAN-VERIFIKASI.md V-8) -- syarat "pakai
+# infrastruktur Google Cloud" tetap dipenuhi lewat Cloud Run/Firestore/
+# Pub/Sub saat deploy, terpisah dari jalur panggilan model. Set
+# GOOGLE_GENAI_USE_VERTEXAI=TRUE lagi kalau billing sudah aktif dan mau balik
+# ke Vertex AI (tinggal ganti env, tidak ada kode yang perlu diubah -- ADK
+# baca env ini langsung).
+GOOGLE_GENAI_USE_VERTEXAI = os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "FALSE").strip()
+# Dipakai google-genai SDK secara langsung lewat env (bukan lewat variabel
+# ini) kalau GOOGLE_GENAI_USE_VERTEXAI=FALSE. Ada di sini supaya kelihatan
+# di satu tempat bersama variabel Gemini lain, dan supaya kode lain bisa
+# mengecek "apakah API key sudah diisi" tanpa membaca os.environ langsung.
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+
+# 02 §8 / 06 §6: owner login pakai Firebase Auth, diverifikasi di app/auth.py.
+# Firebase Auth adalah layanan hosted terpisah dari Firestore/Pub/Sub, jadi
+# proyek Firebase tetap dipakai walau LOCAL=True (client link/portal klien
+# tidak lewat sini sama sekali -- itu opaque token sendiri).
+FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "").strip()
 
 # Tanpa GOOGLE_CLOUD_PROJECT, jalan dalam mode lokal: antrean lewat HTTP langsung
 # ke worker, state ke file JSON. Bentuk envelope dan semantik klaim job dibuat

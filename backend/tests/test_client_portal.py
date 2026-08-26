@@ -53,6 +53,33 @@ def test_klien_membuka_link_yang_sudah_direvoke_403(published):
     assert "revoked" in r.json()["detail"]
 
 
+def test_freelancer_revoke_lewat_endpoint_bikin_link_403(published):
+    run_id = _new_run(published)
+    token = api.post("/runs/%s/client-links" % run_id).json()["token"]
+
+    r = api.post("/runs/%s/client-links/%s/revoke" % (run_id, token))
+    assert r.status_code == 200
+    assert r.json() == {"revoked": True}
+
+    assert api.get("/client/%s" % token).status_code == 403
+
+
+def test_revoke_token_tidak_dikenal_404(published):
+    run_id = _new_run(published)
+    r = api.post("/runs/%s/client-links/token-yang-tidak-pernah-diterbitkan/revoke" % run_id)
+    assert r.status_code == 404
+
+
+def test_revoke_token_milik_run_lain_404(published):
+    run_a = _new_run(published)
+    run_b = _new_run(published)
+    token_a = api.post("/runs/%s/client-links" % run_a).json()["token"]
+
+    r = api.post("/runs/%s/client-links/%s/revoke" % (run_b, token_a))
+    assert r.status_code == 404
+    assert api.get("/client/%s" % token_a).status_code == 200  # tetap valid, tidak ikut ke-revoke
+
+
 def test_klien_menjawab_mengubah_ledger_dan_menulis_audit_event(published):
     run_id = _new_run(published)
     token = api.post("/runs/%s/client-links" % run_id).json()["token"]
@@ -74,8 +101,8 @@ def test_klien_menjawab_mengubah_ledger_dan_menulis_audit_event(published):
 
 
 def test_link_tetap_valid_setelah_dipakai_menjawab_sekali(published):
-    """Klien boleh mengirim beberapa ronde koreksi sebelum Confirm project
-    plan (belum dibangun) -- link tidak otomatis selesai setelah satu jawaban."""
+    """Klien boleh mengirim beberapa ronde koreksi sebelum confirm -- link
+    tidak otomatis selesai setelah satu jawaban (lihat test_confirm.py)."""
     run_id = _new_run(published)
     token = api.post("/runs/%s/client-links" % run_id).json()["token"]
 
