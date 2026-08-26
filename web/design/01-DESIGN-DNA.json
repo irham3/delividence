@@ -1,0 +1,49 @@
+{
+  "overview": {
+    "name": "Delividence Field Notes",
+    "performance_tier": "medium",
+    "fallback_strategy": "static editorial layout with all content visible; disable scroll choreography for reduced motion and small screens"
+  },
+  "design_system": {
+    "color": {
+      "canvas": "#F4F1EA",
+      "surface": "#FCFBF8",
+      "ink": "#20211F",
+      "muted": "#6C6B66",
+      "rule": "#D9D4CA",
+      "accent": "#B98015",
+      "accent_soft": "#F3E7CA",
+      "accepted": "#52755B",
+      "warning": "#B98015",
+      "conflict": "#A64A3B"
+    },
+    "typography": {
+      "font_families": { "heading": "Geist, Inter, ui-sans-serif, system-ui, sans-serif", "body": "Geist, Inter, ui-sans-serif, system-ui, sans-serif", "metadata": "Geist Mono, ui-monospace, SFMono-Regular, Menlo, monospace" },
+      "display": "clamp(3rem, 6.4vw, 6.25rem)",
+      "h1": "clamp(2.25rem, 4.2vw, 4.5rem)",
+      "h2": "clamp(1.75rem, 3vw, 3rem)",
+      "body": "1rem",
+      "metadata": "0.6875rem"
+    },
+    "spacing": { "base": 8, "section_desktop": "9rem–12rem", "section_tablet": "6rem–8rem", "section_mobile": "4.5rem–6rem", "content_max": "75rem" },
+    "shape": { "radius_sm": "0.25rem", "radius_md": "0.5rem", "radius_lg": "0.75rem", "rule": "1px solid #D9D4CA" },
+    "elevation": { "paper": "0 1px 2px rgba(32,33,31,.05), 0 8px 22px rgba(32,33,31,.055)", "focus": "0 16px 40px rgba(32,33,31,.11)" },
+    "motion": { "personality": "premium-corporate paper", "ease": "cubic-bezier(.2,0,0,1)", "quick": "140ms", "standard": "260ms", "slow": "640ms" }
+  },
+  "design_style": {
+    "mood": "calm, evidence-led, exacting, tactile-but-digital",
+    "whitespace_usage": "generous, with deliberate quiet zones around each major scroll beat",
+    "composition": "asymmetric editorial layouts anchored by source material and thin index lines",
+    "imagery": "real product states, real evidence representations, restrained paper texture",
+    "voice": "plain, specific, non-legal, non-hyped"
+  },
+  "visual_effects": {
+    "svg_animations": { "enabled": true, "type": "path-draw" },
+    "scroll_effects": { "enabled": true, "type": "pinned narrative and horizontal evidence reel" },
+    "parallax": { "enabled": true, "amplitude": "small, <= 24px" },
+    "canvas": { "enabled": false },
+    "webgl": { "enabled": false },
+    "particles": { "enabled": false },
+    "glassmorphism": { "enabled": false }
+  }
+}
