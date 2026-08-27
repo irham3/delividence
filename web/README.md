@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Delividence web
 
-## Getting Started
+Next.js 16 frontend for the Delividence public story, authenticated freelancer workspace, and no-account client review flow.
 
-First, run the development server:
+## Run locally
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
+1. Copy `.env.example` to `.env`.
+2. Set `NEXT_PUBLIC_API_URL` to the API (normally `http://127.0.0.1:8080`).
+3. Create a Firebase Web App and fill every `NEXT_PUBLIC_FIREBASE_*` value.
+4. Enable Google sign-in in Firebase Authentication.
+
+```powershell
+pnpm install
+pnpm lint
+pnpm build
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Route map
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `/` — public landing; Workflow, Review, and About are anchors, not duplicate marketing pages.
+- `/workspace` — authenticated work queue and working record.
+- `/records`, `/sources`, `/review`, `/activity`, `/settings/policies` — owner read models.
+- `/records/new`, `/records/[runId]/[section]` — record actions and traceability views.
+- `/sign-in`, `/register` — Google sign-in.
+- `/client/[token]`, `/client/[token]/review`, `/client/[token]/request` — client links without Firebase login.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app deliberately renders real state through the API; visual preview slices in `design/previews/slices/` are reference artifacts only and are never shipped as screenshots masquerading as UI.
 
-## Learn More
+## Design implementation
 
-To learn more about Next.js, take a look at the following resources:
+The product uses the Field Notes system: Geist for functional copy, Caveat only for small handwritten annotations, off-white paper surfaces, hairline rules, and a single amber action color. The landing uses scoped GSAP `useGSAP` + `ScrollTrigger`, progressive enhancement, and reduced-motion fallback.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See [design/README.md](design/README.md) and [design/13-BE-CLOUD-HANDOFF.md](design/13-BE-CLOUD-HANDOFF.md).

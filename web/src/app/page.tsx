@@ -26,9 +26,16 @@ import {
   type Ledger,
   type ScopeRequest,
 } from "@/lib/api";
-import { auth, signInWithGoogle, signOutOwner } from "@/lib/firebase";
+import { getFirebaseAuth, signInWithGoogle, signOutOwner } from "@/lib/firebase";
 
-setAuthTokenProvider(() => (auth.currentUser ? auth.currentUser.getIdToken() : Promise.resolve(null)));
+setAuthTokenProvider(() => {
+  try {
+    const auth = getFirebaseAuth();
+    return auth.currentUser ? auth.currentUser.getIdToken() : Promise.resolve(null);
+  } catch {
+    return Promise.resolve(null);
+  }
+});
 
 type AuditStep = { at: string; step: string; detail: string };
 
@@ -68,13 +75,23 @@ export default function Home() {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setAuthReady(true);
-    });
-    const fallback = window.setTimeout(() => setAuthReady(true), 1500);
+    let unsubscribe: () => void = () => {};
+    let fallback: number | undefined;
+    try {
+      const auth = getFirebaseAuth();
+      unsubscribe = onAuthStateChanged(auth, (u) => {
+        setUser(u);
+        setAuthReady(true);
+      });
+      fallback = window.setTimeout(() => setAuthReady(true), 1500);
+    } catch (cause) {
+      fallback = window.setTimeout(() => {
+        setError(cause instanceof Error ? cause.message : "Firebase is not configured.");
+        setAuthReady(true);
+      }, 0);
+    }
     return () => {
-      window.clearTimeout(fallback);
+      if (fallback) window.clearTimeout(fallback);
       unsubscribe();
     };
   }, []);

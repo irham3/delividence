@@ -11,6 +11,25 @@ log = logging.getLogger("delividence.worker")
 app = FastAPI(title="Delividence Worker")
 
 
+def _merge_staged_preference(run, ledger_draft):
+    """Tambahkan policy owner hanya saat sumber klien tidak sudah menjawabnya."""
+    staged = run.get("preference_candidate")
+    if not staged or "revision_policy" in ledger_draft:
+        return ledger_draft, False
+    merged = dict(ledger_draft)
+    rounds = staged["revision_rounds"]
+    merged["revision_policy"] = {
+        "rounds_total": {
+            "value": rounds,
+            "state": "FREELANCER_POLICY",
+            "source_artifact": "artifact:policy-1",
+            "source_quote": "%d revision rounds are included." % rounds,
+            "confidence": None,
+        }
+    }
+    return merged, True
+
+
 async def run_extraction(run_id, brief):
     """Jalankan agent.extraction_agent lewat Gemini sungguhan atas satu
     artifact brief (artifact:brief-1). Mengembalikan ledger draft (dict)
@@ -110,18 +129,26 @@ async def push(request: Request):
     except Exception:
         log.exception("ekstraksi Gemini gagal untuk run %s", run_id)
         ledger_draft = None
+        final_status = "failed"
         detail = "Ekstraksi Gemini gagal (lihat log worker); ledger belum terisi."
     else:
+        final_status = "done"
+        ledger_draft, applied_preference = _merge_staged_preference(run, ledger_draft or {})
         if ledger_draft:
             store.update_run(run_id, ledger=ledger_draft)
             audit.append_event(
                 run_id, "LEDGER_DRAFT_SAVED", "model", 0,
                 {"fields": sorted(ledger_draft.keys())},
             )
+            if applied_preference:
+                audit.append_event(
+                    run_id, "PREFERENCE_CONFIRMED", "system", 0,
+                    {"field": "revision_policy.rounds_total", "state": "FREELANCER_POLICY"},
+                )
             detail = "Brief diekstrak lewat Gemini -- %d field ledger terisi." % len(ledger_draft)
         else:
             detail = "Gemini tidak menghasilkan field ledger apa pun dari brief ini."
     store.append_audit_step(run_id, "extraction", detail)
 
-    store.update_run(run_id, status="done")
+    store.update_run(run_id, status=final_status)
     return Response(status_code=204)

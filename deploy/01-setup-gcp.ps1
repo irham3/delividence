@@ -98,7 +98,8 @@ $SaApi = "delividence-api@$ProjectId.iam.gserviceaccount.com"
 $SaWorker = "delividence-worker@$ProjectId.iam.gserviceaccount.com"
 
 Step "IAM level project"
-# API: baca/tulis Firestore. Worker: Firestore + Vertex AI. Tidak lebih.
+# API: baca/tulis Firestore dan menjalankan Guardrail/proof review. Worker:
+# Firestore + ekstraksi. Keduanya dapat memakai Vertex bila runtime dipilih.
 Must "api datastore" {
     gcloud projects add-iam-policy-binding $ProjectId `
         --member="serviceAccount:$SaApi" --role="roles/datastore.user" --condition=None --quiet | Out-Null
@@ -107,9 +108,21 @@ Must "worker datastore" {
     gcloud projects add-iam-policy-binding $ProjectId `
         --member="serviceAccount:$SaWorker" --role="roles/datastore.user" --condition=None --quiet | Out-Null
 }
+Must "api vertex" {
+    gcloud projects add-iam-policy-binding $ProjectId `
+        --member="serviceAccount:$SaApi" --role="roles/aiplatform.user" --condition=None --quiet | Out-Null
+}
 Must "worker vertex" {
     gcloud projects add-iam-policy-binding $ProjectId `
         --member="serviceAccount:$SaWorker" --role="roles/aiplatform.user" --condition=None --quiet | Out-Null
+}
+Must "api secret accessor" {
+    gcloud projects add-iam-policy-binding $ProjectId `
+        --member="serviceAccount:$SaApi" --role="roles/secretmanager.secretAccessor" --condition=None --quiet | Out-Null
+}
+Must "worker secret accessor" {
+    gcloud projects add-iam-policy-binding $ProjectId `
+        --member="serviceAccount:$SaWorker" --role="roles/secretmanager.secretAccessor" --condition=None --quiet | Out-Null
 }
 
 Step "Topic utama + dead-letter"

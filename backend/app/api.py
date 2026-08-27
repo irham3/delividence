@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
-from app import agent, audit, auth, baselines, client_links, config, evidence, queue, scope_requests, store
+from app import agent, audit, auth, baselines, client_links, config, evidence, preferences, queue, scope_requests, store
 from app.domain import client_link, criteria, guardrail, proof, readiness, schemas
 from app.domain.baseline import build_canonical_payload
 from app.domain.canonical import payload_hash as compute_payload_hash
@@ -71,11 +71,17 @@ def create_run(req: CreateRunRequest, owner_id: str = Depends(auth.require_owner
     # yang disubmit menciptakan tepat satu deal, jadi id run pemrosesannya
     # dipakai ulang sebagai deal_id untuk audit log 09-DOMAIN-RULES §7.
     run_id = uuid.uuid4().hex
-    store.create_run(run_id, owner_id, req.brief, req.output_language)
+    policy_candidate = preferences.candidate_for_new_run(owner_id)
+    store.create_run(run_id, owner_id, req.brief, req.output_language, policy_candidate)
     audit.append_event(
         run_id, "DEAL_CREATED", "freelancer", 0,
         {"output_language": req.output_language},
     )
+    if policy_candidate:
+        audit.append_event(
+            run_id, "PREFERENCE_CANDIDATE_SAVED", "freelancer", 0,
+            {"field": "revision_policy.rounds_total", "source": "confirmed owner preference"},
+        )
     audit.append_event(
         run_id, "ARTIFACT_ADDED", "freelancer", 0,
         {"artifact_ref": "artifact:brief-1", "type": "text", "chars": len(req.brief)},
@@ -84,9 +90,46 @@ def create_run(req: CreateRunRequest, owner_id: str = Depends(auth.require_owner
     return {"run_id": run_id, "status": "queued"}
 
 
+class ConfirmPreferenceRequest(BaseModel):
+    revision_rounds: int = Field(ge=0, le=20)
+
+
+@app.get("/preferences")
+def get_preferences(owner_id: str = Depends(auth.require_owner)):
+    return preferences.get(owner_id) or {"status": "NOT_SET"}
+
+
+@app.post("/preferences")
+def confirm_preferences(req: ConfirmPreferenceRequest, owner_id: str = Depends(auth.require_owner)):
+    return preferences.confirm_revision_rounds(owner_id, req.revision_rounds)
+
+
 @app.get("/runs/{run_id}")
 def get_run(run_id: str, owner_id: str = Depends(auth.require_owner)):
     return _owned_run_or_404(run_id, owner_id)
+
+
+@app.get("/runs")
+def list_runs(owner_id: str = Depends(auth.require_owner)):
+    """Read model ringan untuk Workspace dan Records.
+
+    Detail ledger/proof tetap di route per-run sehingga list ini tidak menjadi
+    endpoint dump seluruh bukti atau keputusan dari semua deal.
+    """
+    return {"items": store.list_runs(owner_id)}
+
+
+@app.get("/runs/{run_id}/activity")
+def get_activity(run_id: str, owner_id: str = Depends(auth.require_owner)):
+    _owned_run_or_404(run_id, owner_id)
+    return {"items": audit.list_events(run_id)}
+
+
+@app.get("/runs/{run_id}/baseline")
+def get_active_baseline(run_id: str, owner_id: str = Depends(auth.require_owner)):
+    run = _owned_run_or_404(run_id, owner_id)
+    active_version, baseline = _active_baseline_or_409(run_id, run)
+    return {"active_version": active_version, "baseline": baseline}
 
 
 @app.post("/runs/{run_id}/retry-extraction", status_code=202)

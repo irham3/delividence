@@ -5,13 +5,20 @@
     untuk membuat push subscription, baru API di-deploy terakhir.
 
     Pemakaian:
-        .\02-deploy.ps1 -ProjectId delividence-xxxx
+        .\02-deploy.ps1 -ProjectId delividence-xxxx `
+          -FrontendOrigin https://delividence.example `
+          -FirebaseProjectId delividence-xxxx
 #>
 
 param(
     [Parameter(Mandatory = $true)][string]$ProjectId,
     [string]$Region = "asia-southeast2",
-    [string]$Topic = "delividence-runs"
+    [string]$Topic = "delividence-runs",
+    [Parameter(Mandatory = $true)][string]$FrontendOrigin,
+    [Parameter(Mandatory = $true)][string]$FirebaseProjectId,
+    [ValidateSet("developer", "vertex")][string]$ModelRuntime = "developer",
+    [string]$GeminiSecretName = "delividence-gemini-api-key",
+    [string]$GeminiModel = "gemini-3.6-flash"
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,17 +43,23 @@ function Must([string]$what, [scriptblock]$cmd) {
     if ($LASTEXITCODE -ne 0) { throw "GAGAL: $what" }
 }
 
+$UseVertex = if ($ModelRuntime -eq "vertex") { "TRUE" } else { "FALSE" }
+$BaseEnv = "GOOGLE_CLOUD_PROJECT=$ProjectId,PUBSUB_TOPIC=$Topic,GOOGLE_CLOUD_LOCATION=$Region,GEMINI_MODEL=$GeminiModel,GOOGLE_GENAI_USE_VERTEXAI=$UseVertex,FIREBASE_PROJECT_ID=$FirebaseProjectId"
+$WorkerEnv = "ROLE=worker,$BaseEnv"
+$ApiEnv = "ROLE=api,$BaseEnv,ALLOWED_ORIGINS=$FrontendOrigin"
+$SecretArgs = @()
+
+if ($ModelRuntime -eq "developer") {
+    if (-not (Exists { gcloud secrets describe $GeminiSecretName --format="value(name)" })) {
+        throw "Secret '$GeminiSecretName' belum ada. Buat dulu: gcloud secrets create $GeminiSecretName --replication-policy=automatic; lalu tambahkan GEMINI_API_KEY sebagai versi secret."
+    }
+    $SecretArgs = @("--set-secrets=GEMINI_API_KEY=$GeminiSecretName`:latest")
+}
+
 Step "Deploy worker (tertutup - hanya Pub/Sub yang boleh memanggil)"
 Must "deploy worker" {
-    gcloud run deploy delividence-worker `
-        --source=$Backend `
-        --region=$Region `
-        --service-account=$SaWorker `
-        --no-allow-unauthenticated `
-        --set-env-vars="ROLE=worker,GOOGLE_CLOUD_PROJECT=$ProjectId,PUBSUB_TOPIC=$Topic" `
-        --timeout=300 `
-        --concurrency=10 `
-        --quiet
+    $deployArgs = @("run", "deploy", "delividence-worker", "--source=$Backend", "--region=$Region", "--service-account=$SaWorker", "--no-allow-unauthenticated", "--set-env-vars=$WorkerEnv", "--timeout=300", "--concurrency=10", "--quiet") + $SecretArgs
+    & gcloud @deployArgs
 }
 
 $WorkerUrl = (gcloud run services describe delividence-worker --region=$Region --format="value(status.url)")
@@ -94,14 +107,8 @@ if (Exists { gcloud pubsub subscriptions describe $PushSub --format="value(name)
 
 Step "Deploy API (terbuka - juri harus bisa mengaksesnya tanpa restriksi)"
 Must "deploy api" {
-    gcloud run deploy delividence-api `
-        --source=$Backend `
-        --region=$Region `
-        --service-account=$SaApi `
-        --allow-unauthenticated `
-        --set-env-vars="ROLE=api,GOOGLE_CLOUD_PROJECT=$ProjectId,PUBSUB_TOPIC=$Topic" `
-        --timeout=60 `
-        --quiet
+    $deployArgs = @("run", "deploy", "delividence-api", "--source=$Backend", "--region=$Region", "--service-account=$SaApi", "--allow-unauthenticated", "--set-env-vars=$ApiEnv", "--timeout=60", "--quiet") + $SecretArgs
+    & gcloud @deployArgs
 }
 
 $ApiUrl = (gcloud run services describe delividence-api --region=$Region --format="value(status.url)")

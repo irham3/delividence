@@ -1,67 +1,39 @@
-# Delividence — backend
+# Delividence backend
 
-Vertical slice: `POST /runs → antrean → worker → store`. Belum ada logika produk
-di dalamnya; yang dibuktikan di tahap ini adalah **eksekusi terpisah dari
-request** dan **idempotensi**.
+FastAPI API plus a private async worker for the Delividence deal-record domain.
 
-## Satu image, dua service
+## What it owns
 
-`ROLE` menentukan app mana yang di-serve dari image yang sama:
+- Firebase ID-token verification and owner isolation.
+- Async run creation, extraction, retry, and append-only audit events.
+- Source-linked ledger, readiness, immutable baseline versions, client links, evidence, proof, and Guardrail classification.
+- Local JSON mode for tests/development; Firestore and Pub/Sub in Cloud Run.
 
-| `ROLE` | App | Endpoint |
-|---|---|---|
-| `api` (default) | `app.api` | `GET /health`, `POST /runs`, `GET /runs/{run_id}` |
-| `worker` | `app.worker` | `GET /health`, `POST /pubsub/push` |
-
-Ini yang membuat `delividence-api` dan `delividence-worker` bisa di-deploy dari satu
-sumber tanpa keduanya boot app yang sama.
-
-## Mode lokal
-
-Tanpa `GOOGLE_CLOUD_PROJECT`, backend jalan lokal: antrean lewat HTTP langsung ke
-worker, state ke file JSON di `.localdata/`. Bentuk envelope dan semantik klaim
-job dibuat identik dengan produksi, jadi handler yang diuji lokal adalah handler
-yang sama yang dipakai di Cloud Run.
+## Local verification
 
 ```powershell
 python -m venv ..\.venv
 ..\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-
-# terminal 1 — worker
-$env:ROLE = "worker"
-..\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8081
-
-# terminal 2 — api
-$env:ROLE = "api"; $env:WORKER_URL = "http://127.0.0.1:8081"
-..\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8080
-```
-
-Verifikasi (pakai `curl.exe`, bukan alias `curl` bawaan PowerShell):
-
-```powershell
-curl.exe -s http://127.0.0.1:8080/health
-curl.exe -s -X POST http://127.0.0.1:8080/runs -H "Content-Type: application/json" -d "{\"brief\":\"need an edit for our IG content\"}"
-curl.exe -s http://127.0.0.1:8080/runs/<run_id>
-```
-
-Run yang berhasil berubah `queued → processing → done` **tanpa** request kedua,
-dan `audit_trail` berisi satu langkah.
-
-## Test
-
-```powershell
 ..\.venv\Scripts\python.exe -m pytest -q
 ```
 
-## Keputusan yang sudah tertanam di kode
+For two-process manual verification:
 
-- **Idempotensi** ditegakkan dokumen job create-only berkunci `{run_id}:{round}`
-  (`store.claim_job`), bukan field `idempotency_key`. Pub/Sub at-least-once, jadi
-  pengiriman ganda pasti terjadi. Kunci menyertakan `round` supaya jawaban klien
-  di putaran berikutnya tidak ikut tertekan sebagai duplikat.
-- **Pesan rusak permanen di-ack** (`204`), tidak diulang selamanya. Yang layak
-  diulang adalah kegagalan sementara — itu urusan retry + dead-letter topic.
-- **`output_language` default `en`.** Aturan hackathon mewajibkan aplikasi
-  mendukung bahasa Inggris minimal; Bahasa Indonesia adalah pilihan tambahan.
-- **Jejak audit menyimpan keputusan dan hasil tool**, bukan prompt atau reasoning
-  mentah.
+```powershell
+# terminal 1
+$env:ROLE = "worker"
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8081
+
+# terminal 2
+$env:ROLE = "api"
+$env:WORKER_URL = "http://127.0.0.1:8081"
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8080
+```
+
+Copy `.env.example` into `.env` to select model runtime and Firebase project. In local mode, do not set `GOOGLE_CLOUD_PROJECT`; state is kept under `.localdata/` and messages go directly to the local worker.
+
+## Production
+
+Use the scripts in `../deploy`. API and worker receive distinct Cloud Run service accounts. Developer API keys are injected from Secret Manager; Vertex mode uses Cloud Run ADC and `roles/aiplatform.user`.
+
+The complete hosted deployment contract is [web/design/13-BE-CLOUD-HANDOFF.md](../web/design/13-BE-CLOUD-HANDOFF.md).
