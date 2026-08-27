@@ -17,6 +17,198 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Repo cadangan (tidak dipush lagi) | <https://github.com/rifqiahmadpratama/dealready> (masih ada di GitHub, tapi remote `origin` sudah dilepas dari git lokal 25 Agu — fokus ke `delividence` saja) |
 | Folder lokal | `C:\Users\ASUS\Projects\dealready` (nama folder sengaja dibiarkan lama) |
 | Test | **220 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
+| Production | **LIVE** — lihat milestone 27 Agu di bawah untuk URL & detail |
+
+## MILESTONE 27 Agu — deploy production penuh ke Google Cloud + Vercel, diverifikasi end-to-end
+
+Instruksi Rifqi: jalankan seluruh setup deploy dari nol (GCP billing, Firebase,
+Vercel, Cloud Run, Gemini API) sampai siap demo, ikuti urutan supaya tidak
+kena error CORS/Firebase/billing di tengah.
+
+### Akun & project
+
+- Google account owner: **`rifqiahmadpratama@gmail.com`** — sama untuk GCP,
+  Firebase, GitHub, dan Vercel (bukan akun `rifqiahmad234a@gmail.com` yang
+  dipakai sesi-sesi sebelumnya untuk `dudepercobaan`).
+- Project GCP: **`gen-lang-client-0104798459`** ("Gemini API" di AI Studio) --
+  BUKAN project baru custom (`delividence-hackathon` di contoh instruksi)
+  karena akun `rifqiahmadpratama` kena **quota limit pembuatan project baru**
+  (`gcloud projects create` gagal "exceeded your allotted project quota").
+  Menghapus 3 project lama tidak langsung membebaskan quota (GCP
+  soft-delete tetap terhitung sampai purge 30 hari) -- solusinya reuse
+  project existing yang masih kosong (cuma Gemini API enabled, belum ada
+  Cloud Run/Firestore/Pub-Sub).
+- Billing: billing account `010843-5311E0-8D874C` (IDR) sudah ada &
+  aktif di akun ini, tidak perlu prepayment Rp500rb untuk **GCP Cloud
+  Billing** (Cloud Run/Firestore/Pub-Sub). Budget alert Rp50.000/bulan,
+  threshold 50/90/100%, dibuat lewat `gcloud billing budgets create`.
+
+### Firebase
+
+- Firebase disambungkan ke project via Firebase Management API
+  (`:addFirebase`, `x-goog-user-project` header wajib supaya tidak kena
+  `PERMISSION_DENIED` quota project ADC).
+- Web app `Delividence Web` dibuat via API, config didapat
+  (`gen-lang-client-0104798459.firebaseapp.com`, dst).
+- Google Sign-In: **REST API tidak bisa create OAuth client dari nol**
+  untuk project yang belum pernah punya provider Google (sama seperti
+  temuan sesi `dudepercobaan` sebelumnya) -- Rifqi aktifkan manual lewat
+  Console (Authentication > Sign-in method > Google > isi support email >
+  Save), Console yang auto-provision OAuth client baru.
+- `localhost` otomatis masuk authorized domains; `delividence.vercel.app`
+  ditambah manual lewat Identity Toolkit API setelah domain Vercel ada.
+
+### Vercel
+
+- GitHub App Vercel yang terhubung ke akun `rifqiahmadpratama` **tidak bisa
+  import langsung** repo `irham3/delividence` (beda owner, GitHub App
+  personal cuma lihat repo milik akun sendiri walau Rifqi collaborator).
+  Satu-satunya jalur: **"Clone" jadi repo privat baru**
+  `rifqiahmadpratama/delividence` (snapshot `main`, di-deploy dari situ) --
+  konsekuensinya push ke `irham3/delividence` tidak auto-redeploy, perlu
+  redeploy manual dari Vercel dashboard tiap ada update penting.
+- Root Directory `web`, tapi **deploy pertama 404** karena Framework Preset
+  ke-detect "Other" (root direktori diset SETELAH clone pertama, preset
+  tidak auto-refresh). Fix: set manual Framework Preset ke "Next.js" di
+  Project Settings, baru redeploy -- baru langsung sukses.
+- 7 environment variables (6 Firebase config + `NEXT_PUBLIC_API_URL`
+  placeholder), lalu update lagi ke URL Cloud Run asli setelah step deploy
+  API + redeploy sekali lagi.
+- Live: **`https://delividence.vercel.app`**.
+
+### GCP resource + deploy Cloud Run
+
+- `deploy/01-setup-gcp.ps1` jalan mulus KECUALI langkah publisher DLQ --
+  service agent Pub/Sub (`service-{project}@gcp-sa-pubsub...`) belum
+  ke-provision di project baru, fix dengan
+  `gcloud beta services identity create --service=pubsub.googleapis.com`
+  lalu re-run script (idempotent, aman diulang).
+- **`deploy/02-deploy.ps1` di repo ternyata TIDAK PERNAH di-update** sejak
+  ditulis pertama kali -- tidak ada parameter `-FrontendOrigin`,
+  `-FirebaseProjectId`, `-ModelRuntime` yang disebut instruksi, dan tidak
+  wire `ALLOWED_ORIGINS`/`FIREBASE_PROJECT_ID`/secret Gemini ke Cloud Run
+  sama sekali (dua fitur itu ditulis belakangan setelah script deploy
+  terakhir disentuh). **Diperbaiki**: tiga parameter baru ditambahkan,
+  worker & API sekarang dapat `GOOGLE_GENAI_USE_VERTEXAI` +
+  `--set-secrets GEMINI_API_KEY=...:latest` (kalau `-ModelRuntime
+  developer`, default), API juga dapat `FIREBASE_PROJECT_ID` +
+  `ALLOWED_ORIGINS`. Script juga sekarang grant
+  `roles/secretmanager.secretAccessor` ke SA api & worker sebelum deploy
+  (ditaruh di 02, bukan 01, karena urutan kerja: provision dulu baru
+  secret baru deploy). **Bug ketemu sambil nulis fix ini**: gcloud
+  `--set-env-vars` pakai koma sebagai pemisah key=value, sedangkan
+  `ALLOWED_ORIGINS` sendiri berisi banyak origin dipisah koma -- pakai
+  delimiter alternatif gcloud (`^;^KEY=VAL;KEY=VAL`) supaya tidak pecah.
+- Live: **API `https://delividence-api-3jww7h7koq-et.a.run.app`**, **worker
+  `https://delividence-worker-3jww7h7koq-et.a.run.app`**.
+
+### Gemini API key -- dua masalah beruntun
+
+1. Key lama project ini (`...2mv4`, dibuat Feb 2025 dari AI Studio) sudah
+   **invalid/revoked** ("API key not valid") -- bukan masalah cara pakai.
+2. Key baru yang di-generate AI Studio sekarang pakai **format berbeda**
+   (prefix `AQ.` bukan `AIzaSy` lagi) -- signature Google Cloud API key
+   generation di AI Studio sempat gagal berkali-kali dengan "The request is
+   suspicious" **spesifik lewat browser automation** (percobaan manual
+   Rifqi langsung sukses di percobaan pertama, jadi ini deteksi anti-bot
+   Google terhadap aksi create-credential, bukan masalah account/project).
+   Key baru sempat **dua kali salah tercatat**: pertama field yang di-copy
+   salah (Name/Project alih-alih API Key), kedua **salah baca 1 karakter**
+   dari screenshot (`I` besar vs `l` kecil di akhir string) -- pelajaran:
+   untuk string sepanjang ini SELALU ambil dari accessibility tree
+   (`read_page`) bukan baca visual dari screenshot.
+3. Setelah key benar, masih dapat `429 "Your prepayment credits are
+   depleted"` -- **Gemini Developer API di project dengan Cloud Billing
+   aktif butuh prepayment terpisah** dari GCP Cloud Billing biasa (dua
+   wallet berbeda walau satu akun Google). Rifqi top-up manual lewat AI
+   Studio billing, baru extraction & Guardrail jalan.
+
+### Verifikasi end-to-end (via API asli, bukan UI klik manual)
+
+Google OAuth popup **diblokir sandbox browser automation** (window.open
+null) -- tidak bisa tes lewat klik "Sign in with Google" di browser
+otomatis. Solusi: aktifkan **Email/Password sementara** di Firebase Auth
+(pola yang sama dipakai sesi `dudepercobaan` 25 Agu), bikin 1 user tes
+lewat REST API `accounts:signUp`, dapat ID token Firebase **asli**, lalu
+jalankan seluruh alur produksi lewat `curl` pakai token itu:
+
+`POST /runs` (Firestore+Pub/Sub) -> worker proses via push OIDC tanpa
+request kedua -> **ekstraksi Gemini asli** (4 field ledger + kutipan
+verbatim) -> readiness gate -> client portal isi `out_of_scope` ->
+`ready:true` -> confirm -> **baseline v1 ACTIVE** -> log request ->
+**Guardrail Gemini asli** propose `CHANGE_REQUEST` + kutipan valid ->
+confirm klasifikasi -> attach evidence -> delivery review link -> client
+Accept -> **Proof Manifest** lengkap (evidence + keputusan klien). CORS
+dari origin Vercel juga dites lewat `curl -X OPTIONS` dan benar
+(`access-control-allow-origin: https://delividence.vercel.app`).
+
+User tes dan provider Email/Password **sudah dibersihkan/dimatikan lagi**
+setelah verifikasi selesai (login production tetap Google-only).
+
+**Tidak ada perubahan kode aplikasi di sesi ini** (backend/frontend) --
+murni infrastruktur & satu fix di `deploy/02-deploy.ps1`. Test suite tetap
+220 hijau (tidak dijalankan ulang, tidak ada yang berubah).
+
+### Lanjutan sesi yang sama -- README diperbarui, local dev disambungkan ke production, partner dikasih akses
+
+**`backend/README.md` ternyata usang parah** (masih dari fase "vertical
+slice" sebelum Firebase Auth/Gemini/Guardrail ada) -- dua hal di dalamnya
+sudah aktif salah, bukan cuma kurang jelas: (1) command `uvicorn` di situ
+TIDAK punya `--env-file .env`, persis bug yang sudah didokumentasikan di
+atas; (2) contoh `curl POST /runs` tanpa header Authorization, padahal
+endpoint itu sekarang wajib Firebase ID token. Diperbaiki -- README sekarang
+juga jelaskan setup `.env` (`GEMINI_API_KEY`/`FIREBASE_PROJECT_ID`), cara
+dapat ID token untuk tes manual (lewat frontend DevTools atau REST
+`accounts:signUp` sementara), dan larangan eksplisit pakai/minta
+`GEMINI_API_KEY`/kredensial produksi milik rekan tim.
+
+**`.env` lokal Rifqi sekarang SUNGGUH nyambung ke Firestore/Pub-Sub
+PRODUKSI** (`GOOGLE_CLOUD_PROJECT=gen-lang-client-0104798459`,
+`FIREBASE_PROJECT_ID` sama) -- sebelumnya `FIREBASE_PROJECT_ID` masih
+`dudepercobaan` (proyek lama, ketinggalan dari sesi lain), sudah disamakan.
+Ini keputusan sadar Rifqi (bukan default yang disarankan) supaya backend
+lokal bisa lihat/tulis data produksi asli, bukan cuma mode LOCAL file JSON.
+
+Konsekuensi teknis yang tidak trivial: subscription push yang sudah ada
+(`delividence-runs-push`) tetap mengirim job ke Cloud Run worker seperti
+biasa -- job TIDAK otomatis mampir ke worker lokal (push subscription
+target-nya fixed ke satu URL). Dibuatkan **`backend/local_pubsub_forwarder.py`**
+(baru, bukan bagian dari app FastAPI) -- pull dari subscription pull
+terpisah (`LOCAL_PULL_SUBSCRIPTION_ID` env var, default
+`delividence-runs-local-pull`) lalu forward ke `/pubsub/push` worker lokal
+dengan envelope yang sama persis. Efeknya: **setiap run diproses DUA KALI**
+(Cloud Run + worker lokal), disengaja, dua-duanya independen lewat
+subscription terpisah, idempotency (`claim_job`) yang sudah ada mencegah
+efek samping ganda di level ledger.
+
+**Partner (Irham, `irhamtria@gmail.com`) diberi akses IAM** ke
+`gen-lang-client-0104798459`: `roles/datastore.user` +
+`roles/pubsub.editor` (BUKAN owner/editor project, tidak bisa ubah
+billing/secret/deploy). Subscription pull terpisah dibuatkan untuknya:
+`delividence-runs-local-pull-irham` (subscription pull tidak boleh dipakai
+bareng dua orang sekaligus -- pesan di-load-balance antar consumer, bukan
+disalin ke semuanya). `GEMINI_API_KEY` **TIDAK** dibagikan ke Irham --
+dia generate sendiri, tetap isi `GOOGLE_CLOUD_PROJECT`/`FIREBASE_PROJECT_ID`
+yang sama. Instruksi lengkap ada di `backend/README.md` bagian "Nyambung
+backend lokal ke Firestore/Pub-Sub produksi".
+
+Proses lokal yang jalan di laptop Rifqi saat catatan ini ditulis (mati
+kalau laptop restart, TIDAK auto-start lagi -- perlu dijalankan ulang manual
+sesuai README kalau mau lanjut sesi ini):
+- `uvicorn` ROLE=worker port 8081 (`--env-file .env`, PID berubah tiap restart)
+- `uvicorn` ROLE=api port 8080 (`--env-file .env`)
+- `local_pubsub_forwarder.py` (subscription `delividence-runs-local-pull`)
+
+Firestore koleksi tes lama (`client_links`, `deals`, `jobs`, `runs`) sudah
+**dibersihkan semua** (dihapus manual satu-satu, bukan bulk-delete) supaya
+Cloud Console bersih untuk screenshot/rekaman demo video.
+
+**Project GCP di-rename** (display name saja, Project ID tidak bisa
+diganti): "Gemini API" -> **"Delividence"**, biar rapi di screenshot Cloud
+Console.
+
+Commit sesi ini (branch `rifqi`, sudah di-push): `7834f86` (fix deploy
+script), `788a42a` (forwarder + README).
 
 ## MILESTONE 26 Agu (lanjutan #7) — Gemini akhirnya sukses sungguhan, dan Guardrail sekarang model-assisted
 
