@@ -149,6 +149,67 @@ setelah verifikasi selesai (login production tetap Google-only).
 murni infrastruktur & satu fix di `deploy/02-deploy.ps1`. Test suite tetap
 220 hijau (tidak dijalankan ulang, tidak ada yang berubah).
 
+### Lanjutan sesi yang sama -- README diperbarui, local dev disambungkan ke production, partner dikasih akses
+
+**`backend/README.md` ternyata usang parah** (masih dari fase "vertical
+slice" sebelum Firebase Auth/Gemini/Guardrail ada) -- dua hal di dalamnya
+sudah aktif salah, bukan cuma kurang jelas: (1) command `uvicorn` di situ
+TIDAK punya `--env-file .env`, persis bug yang sudah didokumentasikan di
+atas; (2) contoh `curl POST /runs` tanpa header Authorization, padahal
+endpoint itu sekarang wajib Firebase ID token. Diperbaiki -- README sekarang
+juga jelaskan setup `.env` (`GEMINI_API_KEY`/`FIREBASE_PROJECT_ID`), cara
+dapat ID token untuk tes manual (lewat frontend DevTools atau REST
+`accounts:signUp` sementara), dan larangan eksplisit pakai/minta
+`GEMINI_API_KEY`/kredensial produksi milik rekan tim.
+
+**`.env` lokal Rifqi sekarang SUNGGUH nyambung ke Firestore/Pub-Sub
+PRODUKSI** (`GOOGLE_CLOUD_PROJECT=gen-lang-client-0104798459`,
+`FIREBASE_PROJECT_ID` sama) -- sebelumnya `FIREBASE_PROJECT_ID` masih
+`dudepercobaan` (proyek lama, ketinggalan dari sesi lain), sudah disamakan.
+Ini keputusan sadar Rifqi (bukan default yang disarankan) supaya backend
+lokal bisa lihat/tulis data produksi asli, bukan cuma mode LOCAL file JSON.
+
+Konsekuensi teknis yang tidak trivial: subscription push yang sudah ada
+(`delividence-runs-push`) tetap mengirim job ke Cloud Run worker seperti
+biasa -- job TIDAK otomatis mampir ke worker lokal (push subscription
+target-nya fixed ke satu URL). Dibuatkan **`backend/local_pubsub_forwarder.py`**
+(baru, bukan bagian dari app FastAPI) -- pull dari subscription pull
+terpisah (`LOCAL_PULL_SUBSCRIPTION_ID` env var, default
+`delividence-runs-local-pull`) lalu forward ke `/pubsub/push` worker lokal
+dengan envelope yang sama persis. Efeknya: **setiap run diproses DUA KALI**
+(Cloud Run + worker lokal), disengaja, dua-duanya independen lewat
+subscription terpisah, idempotency (`claim_job`) yang sudah ada mencegah
+efek samping ganda di level ledger.
+
+**Partner (Irham, `irhamtria@gmail.com`) diberi akses IAM** ke
+`gen-lang-client-0104798459`: `roles/datastore.user` +
+`roles/pubsub.editor` (BUKAN owner/editor project, tidak bisa ubah
+billing/secret/deploy). Subscription pull terpisah dibuatkan untuknya:
+`delividence-runs-local-pull-irham` (subscription pull tidak boleh dipakai
+bareng dua orang sekaligus -- pesan di-load-balance antar consumer, bukan
+disalin ke semuanya). `GEMINI_API_KEY` **TIDAK** dibagikan ke Irham --
+dia generate sendiri, tetap isi `GOOGLE_CLOUD_PROJECT`/`FIREBASE_PROJECT_ID`
+yang sama. Instruksi lengkap ada di `backend/README.md` bagian "Nyambung
+backend lokal ke Firestore/Pub-Sub produksi".
+
+Proses lokal yang jalan di laptop Rifqi saat catatan ini ditulis (mati
+kalau laptop restart, TIDAK auto-start lagi -- perlu dijalankan ulang manual
+sesuai README kalau mau lanjut sesi ini):
+- `uvicorn` ROLE=worker port 8081 (`--env-file .env`, PID berubah tiap restart)
+- `uvicorn` ROLE=api port 8080 (`--env-file .env`)
+- `local_pubsub_forwarder.py` (subscription `delividence-runs-local-pull`)
+
+Firestore koleksi tes lama (`client_links`, `deals`, `jobs`, `runs`) sudah
+**dibersihkan semua** (dihapus manual satu-satu, bukan bulk-delete) supaya
+Cloud Console bersih untuk screenshot/rekaman demo video.
+
+**Project GCP di-rename** (display name saja, Project ID tidak bisa
+diganti): "Gemini API" -> **"Delividence"**, biar rapi di screenshot Cloud
+Console.
+
+Commit sesi ini (branch `rifqi`, sudah di-push): `7834f86` (fix deploy
+script), `788a42a` (forwarder + README).
+
 ## MILESTONE 26 Agu (lanjutan #7) — Gemini akhirnya sukses sungguhan, dan Guardrail sekarang model-assisted
 
 Sesi baru setelah "penutup sesi" sebelumnya. Tiga hal sekaligus, saling
