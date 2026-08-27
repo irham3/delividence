@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
@@ -15,15 +15,17 @@ import {
   FileText,
   Image as ImageIcon,
   Mail,
+  Menu,
   Play,
   Plus,
   Video,
+  X,
 } from "lucide-react";
 
 gsap.registerPlugin(ScrollTrigger);
 
 type LandingPageProps = {
-  onSignIn: () => void;
+  onRegister: () => void;
   onSample: () => void;
   error?: string | null;
 };
@@ -43,8 +45,9 @@ const sourceFiles = [
   ["hero_ref.mp4", "Apr 27, 2:18 PM", "video"],
 ];
 
-export function LandingPage({ onSignIn, onSample, error }: LandingPageProps) {
+export function LandingPage({ onRegister, onSample, error }: LandingPageProps) {
   const root = useRef<HTMLDivElement | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useGSAP(
     () => {
@@ -64,6 +67,26 @@ export function LandingPage({ onSignIn, onSample, error }: LandingPageProps) {
           duration: 0.92,
           stagger: 0.085,
         }, 0.18);
+
+      const header = root.current?.querySelector<HTMLElement>(".site-header");
+      if (header) {
+        let headerVisible = true;
+        ScrollTrigger.create({
+          start: "top top",
+          end: "max",
+          onUpdate: (self) => {
+            const shouldShow = self.direction === -1 || self.scroll() < 96;
+            if (shouldShow === headerVisible) return;
+            headerVisible = shouldShow;
+            gsap.to(header, {
+              yPercent: shouldShow ? 0 : -116,
+              duration: 0.34,
+              ease: "power2.out",
+              overwrite: "auto",
+            });
+          },
+        });
+      }
 
       gsap.timeline({
         scrollTrigger: {
@@ -170,28 +193,30 @@ export function LandingPage({ onSignIn, onSample, error }: LandingPageProps) {
   return (
     <main ref={root} className="paper-texture landing-canvas min-h-[100dvh] overflow-x-clip">
       <div className="pointer-events-none fixed left-0 top-0 z-50 hidden h-dvh w-px bg-[#282923]/10 lg:block" aria-hidden="true"><span className="scroll-progress block h-full w-px origin-top bg-[#a66a00]" /></div>
-      <header className="relative z-30 px-5 sm:px-8">
+      <header className="site-header fixed inset-x-0 top-0 z-40 px-5 sm:px-8">
         <div className="site-header-inner mx-auto flex h-[72px] max-w-[1344px] items-center justify-between border-b border-[#a9a69f] sm:h-[78px]">
-          <a href="#" className="focus-ring text-[17px] font-semibold tracking-[-0.035em] text-[#171815] sm:text-[18px]">Delividence</a>
+          <a href="#top" className="focus-ring text-[17px] font-semibold tracking-[-0.035em] text-[#171815] sm:text-[18px]">Delividence</a>
           <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-[54px] text-[13px] font-medium text-[#343530] md:flex">
             <a className="focus-ring hover:text-[#11120f]" href="#workflow">Workflow</a>
+            <a className="focus-ring hover:text-[#11120f]" href="#clarification">For clients</a>
             <a className="focus-ring hover:text-[#11120f]" href="#review">Review</a>
-            <a className="focus-ring hover:text-[#11120f]" href="#about">About</a>
           </nav>
-          <div className="flex items-center gap-7">
-            <button className="tap focus-ring hidden text-[13px] font-medium text-[#343530] hover:text-[#11120f] sm:inline-flex" onClick={onSignIn}>Sign in</button>
-            <button className="tap focus-ring rounded-[4px] bg-[#8d5900] px-3.5 py-2.5 text-[12px] font-semibold text-white shadow-[0_3px_10px_rgba(120,76,0,.16)] hover:bg-[#744900] sm:px-5 sm:py-3 sm:text-[13px]" onClick={onSignIn}>Create a record</button>
+          <div className="flex items-center gap-3 sm:gap-7">
+            <a className="tap focus-ring hidden text-[13px] font-medium text-[#343530] hover:text-[#11120f] sm:inline-flex" href="/sign-in">Sign in</a>
+            <button className="tap focus-ring rounded-[4px] bg-[#8d5900] px-3.5 py-2.5 text-[12px] font-semibold text-white shadow-[0_3px_10px_rgba(120,76,0,.16)] hover:bg-[#744900] sm:px-5 sm:py-3 sm:text-[13px]" onClick={onRegister}>Create a record</button>
+            <button type="button" aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} className="tap focus-ring grid h-10 w-10 place-items-center text-[#171815] md:hidden" onClick={() => setMenuOpen((open) => !open)}>{menuOpen ? <X size={20} strokeWidth={1.6} /> : <Menu size={21} strokeWidth={1.6} />}</button>
           </div>
         </div>
+        {menuOpen && <nav aria-label="Mobile navigation" className="mx-auto max-w-[1344px] border-b border-[#a9a69f] bg-[#f4f1ea]/95 px-4 py-4 backdrop-blur-sm md:hidden"><div className="grid gap-1"><a className="tap focus-ring px-2 py-3 text-sm font-medium" href="#workflow" onClick={() => setMenuOpen(false)}>Workflow</a><a className="tap focus-ring px-2 py-3 text-sm font-medium" href="#clarification" onClick={() => setMenuOpen(false)}>For clients</a><a className="tap focus-ring px-2 py-3 text-sm font-medium" href="#review" onClick={() => setMenuOpen(false)}>Review</a><a className="tap focus-ring px-2 py-3 text-sm font-medium" href="/sign-in">Sign in</a></div></nav>}
       </header>
 
-      <section className="hero-stage mx-auto grid min-h-[calc(100svh-72px)] max-w-[1344px] items-center gap-12 px-5 py-14 sm:min-h-[calc(100svh-78px)] sm:px-8 lg:grid-cols-[36.5%_63.5%] lg:px-0 lg:py-10">
+      <section id="top" className="hero-stage mx-auto grid min-h-[100dvh] max-w-[1344px] items-center gap-12 px-5 pb-14 pt-[112px] sm:px-8 sm:pb-14 sm:pt-[126px] lg:grid-cols-[36.5%_63.5%] lg:px-0 lg:pb-10 lg:pt-[98px]">
         <div className="hero-copy relative z-10 self-center lg:pb-3">
           <p className="handwritten max-w-[175px] border-l border-[#c98a17] pl-[14px] text-[21px] font-medium leading-[1.34] text-[#ba7807]">One place for<br />the material<br />behind the work</p>
           <h1 className="mt-10 max-w-[8.8ch] text-[clamp(48px,14vw,80px)] font-medium leading-[1.02] tracking-[-0.058em] text-[#171815] sm:mt-[46px]">The brief is<br />more than<br />the brief.</h1>
           <p className="mt-6 max-w-[425px] text-[16px] leading-[1.65] tracking-[-0.015em] text-[#595a55] sm:mt-7 sm:text-[17px]">Emails, notes, images, and calls become a record the project can actually use.</p>
           <div className="mt-8 flex flex-wrap items-center gap-7 sm:mt-9 sm:gap-9">
-            <button className="tap focus-ring rounded-[4px] bg-[#8d5900] px-[22px] py-[14px] text-[14px] font-semibold text-white shadow-[0_3px_10px_rgba(120,76,0,.16)] hover:bg-[#744900]" onClick={onSignIn}>Create a record</button>
+            <button className="tap focus-ring rounded-[4px] bg-[#8d5900] px-[22px] py-[14px] text-[14px] font-semibold text-white shadow-[0_3px_10px_rgba(120,76,0,.16)] hover:bg-[#744900]" onClick={onRegister}>Create a record</button>
             <button className="tap focus-ring inline-flex items-center border-b border-[#292a26] pb-[3px] text-[14px] font-semibold text-[#292a26]" onClick={() => { onSample(); document.getElementById("workflow")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }}>See a sample</button>
           </div>
           {error && <p className="mt-5 max-w-xl border border-[var(--danger)]/20 bg-white/35 p-3 text-sm text-[var(--danger)]">{error}</p>}
@@ -239,7 +264,7 @@ export function LandingPage({ onSignIn, onSample, error }: LandingPageProps) {
             <DecisionPaper eyebrow="CHANGE DECISION · May 1" variant="decision"><span className="absolute right-5 top-[25%] h-[62%] w-3 border-y border-r border-[#c98a17]" aria-hidden="true" /><p className="mono text-[17px] leading-[1.65]"><u>Change Decision (D-01)</u><br /><br /><b>Decision:</b> Add testimonials section below the hero.<br /><br /><b>Rationale:</b> Supports trust signal without impacting core message.<br /><br /><b>Impact:</b> Affects layout below the fold; no change to hero.<br /><b>Approved by:</b> Sarah Park<br /><b>Date:</b> May 1</p></DecisionPaper>
           </div>
         </div>
-        <p className="mt-7 max-w-5xl text-[14px] leading-6 text-[#565750] sm:text-[15px]">New requests are captured as field notes and resolved as formal change decisions—without editing the original agreement.</p>
+        <p className="mt-7 max-w-5xl text-[14px] leading-6 text-[#565750] sm:text-[15px]">New requests are captured as field notes and resolved as formal change decisions without editing the original agreement.</p>
         <JourneyConnector label="Change recorded" />
       </section>
 
@@ -256,7 +281,7 @@ export function LandingPage({ onSignIn, onSample, error }: LandingPageProps) {
           {[["Source-linked extraction", "Every point in the record links back to what was said or shown."], ["Resumable workflow", "Pause, return, and continue without losing context."], ["Versioned activity record", "Every change, decision, and handoff is recorded with time and author."]].map(([title, body], index) => <article key={title} className="production-node grid grid-cols-[48px_1fr] gap-4 border-b border-[#c9c5bc] py-7 last:border-b-0 lg:block lg:border-b-0 lg:border-r lg:px-8 lg:text-center lg:last:border-r-0"><span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#292a26] text-[16px] lg:hidden">{index + 1}</span><div><h3 className="text-[17px] font-semibold tracking-[-0.02em]">{title}</h3><p className="mt-2 max-w-sm text-[14px] leading-6 text-[#5d5e58] lg:mx-auto">{body}</p></div></article>)}
         </div>
         <p className="technology-line border-b border-[#bcb8af] py-4 text-center text-[13px] text-[#666760]">Gemini 3.5, Google ADK, and Google Cloud are used behind these steps.</p>
-        <div className="closing-cta mx-auto mt-20 max-w-3xl text-center sm:mt-24"><h2 className="text-[clamp(34px,5vw,48px)] font-medium leading-[1.12] tracking-[-0.045em]">Give the work a record worth returning to.</h2><button className="tap focus-ring mt-8 min-h-12 w-full rounded-[4px] bg-[#8d5900] px-8 py-3.5 text-[14px] font-semibold text-white shadow-[0_3px_10px_rgba(120,76,0,.16)] hover:bg-[#744900] sm:w-auto" onClick={onSignIn}>Create a record</button></div>
+        <div className="closing-cta mx-auto mt-20 max-w-3xl text-center sm:mt-24"><h2 className="text-[clamp(34px,5vw,48px)] font-medium leading-[1.12] tracking-[-0.045em]">Give the work a record worth returning to.</h2><button className="tap focus-ring mt-8 min-h-12 w-full rounded-[4px] bg-[#8d5900] px-8 py-3.5 text-[14px] font-semibold text-white shadow-[0_3px_10px_rgba(120,76,0,.16)] hover:bg-[#744900] sm:w-auto" onClick={onRegister}>Create a record</button></div>
       </section>
 
       <footer className="border-t border-[#bcb8af] px-5 py-8 sm:px-8"><div className="mx-auto grid max-w-[1344px] gap-6 text-[13px] text-[#5f605a] md:grid-cols-3 md:items-center"><span>© 2026 Delividence</span><nav aria-label="Legal" className="flex flex-wrap gap-x-8 gap-y-3 md:justify-center"><a className="focus-ring hover:text-[#171815]" href="#">Security</a><a className="focus-ring hover:text-[#171815]" href="#">Privacy</a><a className="focus-ring hover:text-[#171815]" href="#">Terms</a></nav><a className="focus-ring hover:text-[#171815] md:text-right" href="mailto:hello@delividence.com">hello@delividence.com</a></div></footer>
