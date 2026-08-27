@@ -4,14 +4,25 @@
     Urutannya penting: worker di-deploy lebih dulu karena URL-nya dibutuhkan
     untuk membuat push subscription, baru API di-deploy terakhir.
 
+    Prasyarat: secret Gemini API key sudah dibuat di Secret Manager (nama
+    default: delividence-gemini-api-key) dan service account api/worker
+    sudah dapat roles/secretmanager.secretAccessor atasnya.
+
     Pemakaian:
-        .\02-deploy.ps1 -ProjectId delividence-xxxx
+        .\02-deploy.ps1 -ProjectId delividence-xxxx `
+            -FrontendOrigin https://xxxxx.vercel.app `
+            -FirebaseProjectId delividence-xxxx `
+            -ModelRuntime developer
 #>
 
 param(
     [Parameter(Mandatory = $true)][string]$ProjectId,
     [string]$Region = "asia-southeast2",
-    [string]$Topic = "delividence-runs"
+    [string]$Topic = "delividence-runs",
+    [string]$FrontendOrigin = "",
+    [string]$FirebaseProjectId = $ProjectId,
+    [ValidateSet("developer", "vertex")][string]$ModelRuntime = "developer",
+    [string]$GeminiSecretName = "delividence-gemini-api-key"
 )
 
 $ErrorActionPreference = "Stop"
@@ -23,6 +34,21 @@ $Backend = Join-Path $PSScriptRoot "..\backend"
 $SaApi = "delividence-api@$ProjectId.iam.gserviceaccount.com"
 $SaWorker = "delividence-worker@$ProjectId.iam.gserviceaccount.com"
 $SaPush = "delividence-pubsub@$ProjectId.iam.gserviceaccount.com"
+
+$AllowedOrigins = @("http://localhost:3000", "http://127.0.0.1:3000")
+if ($FrontendOrigin) { $AllowedOrigins = @($FrontendOrigin) + $AllowedOrigins }
+$AllowedOriginsCsv = $AllowedOrigins -join ","
+
+# developer runtime: model dipanggil lewat Gemini Developer API (API key di
+# Secret Manager). vertex: dipanggil lewat Vertex AI pakai ADC service
+# account -- worker sudah dapat roles/aiplatform.user dari 01-setup-gcp.ps1,
+# tapi API (Guardrail) belum, jadi mode vertex butuh binding IAM tambahan
+# yang tidak dikerjakan skrip ini.
+$UseVertex = if ($ModelRuntime -eq "vertex") { "TRUE" } else { "FALSE" }
+$GeminiSecretArg = @()
+if ($ModelRuntime -eq "developer") {
+    $GeminiSecretArg = @("--set-secrets", "GEMINI_API_KEY=${GeminiSecretName}:latest")
+}
 
 function Step($text) { Write-Host "`n==> $text" -ForegroundColor Cyan }
 
@@ -36,6 +62,18 @@ function Must([string]$what, [scriptblock]$cmd) {
     if ($LASTEXITCODE -ne 0) { throw "GAGAL: $what" }
 }
 
+if ($ModelRuntime -eq "developer") {
+    Step "Izin: api & worker boleh baca secret Gemini API key"
+    Must "api secretAccessor" {
+        gcloud secrets add-iam-policy-binding $GeminiSecretName `
+            --member="serviceAccount:$SaApi" --role="roles/secretmanager.secretAccessor" --quiet | Out-Null
+    }
+    Must "worker secretAccessor" {
+        gcloud secrets add-iam-policy-binding $GeminiSecretName `
+            --member="serviceAccount:$SaWorker" --role="roles/secretmanager.secretAccessor" --quiet | Out-Null
+    }
+}
+
 Step "Deploy worker (tertutup - hanya Pub/Sub yang boleh memanggil)"
 Must "deploy worker" {
     gcloud run deploy delividence-worker `
@@ -43,7 +81,8 @@ Must "deploy worker" {
         --region=$Region `
         --service-account=$SaWorker `
         --no-allow-unauthenticated `
-        --set-env-vars="ROLE=worker,GOOGLE_CLOUD_PROJECT=$ProjectId,PUBSUB_TOPIC=$Topic" `
+        --set-env-vars="^;^ROLE=worker;GOOGLE_CLOUD_PROJECT=$ProjectId;PUBSUB_TOPIC=$Topic;GOOGLE_GENAI_USE_VERTEXAI=$UseVertex" `
+        @GeminiSecretArg `
         --timeout=300 `
         --concurrency=10 `
         --quiet
@@ -99,7 +138,8 @@ Must "deploy api" {
         --region=$Region `
         --service-account=$SaApi `
         --allow-unauthenticated `
-        --set-env-vars="ROLE=api,GOOGLE_CLOUD_PROJECT=$ProjectId,PUBSUB_TOPIC=$Topic" `
+        --set-env-vars="^;^ROLE=api;GOOGLE_CLOUD_PROJECT=$ProjectId;PUBSUB_TOPIC=$Topic;GOOGLE_GENAI_USE_VERTEXAI=$UseVertex;FIREBASE_PROJECT_ID=$FirebaseProjectId;ALLOWED_ORIGINS=$AllowedOriginsCsv" `
+        @GeminiSecretArg `
         --timeout=60 `
         --quiet
 }
