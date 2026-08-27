@@ -214,6 +214,27 @@ button:disabled {
     url('/assets/paper-noise.svg');
 }
 
+.evidence-capture {
+  border: 1px solid #b7b0a3;
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, rgb(235 229 218 / 0.94), rgb(222 215 202 / 0.94)),
+    url('/assets/paper-noise.svg');
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.5),
+    0 10px 20px rgb(32 33 31 / 0.08);
+}
+
+:root[data-theme="dark"] .evidence-capture {
+  border-color: #514d43;
+  background:
+    linear-gradient(180deg, rgb(48 46 40 / 0.94), rgb(38 36 32 / 0.94)),
+    url('/assets/paper-noise.svg');
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 10px 20px rgb(0 0 0 / 0.34);
+}
+
 .editorial-scroll {
   scrollbar-width: thin;
   scrollbar-color: #a9a69f transparent;
@@ -280,5 +301,44 @@ button:disabled {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .site-header,
+  .site-header-inner,
+  .hero-copy,
+  .hero-art-board,
+  .hero-artifact,
+  .editorial-section,
+  .section-number,
+  .section-title,
+  .section-heading-rule,
+  .journey-progress,
+  .journey-arrow,
+  .journey-label,
+  .scene-two-source,
+  .project-record-panel,
+  .project-record-bracket,
+  .source-progress,
+  .source-arrow,
+  .process-panel,
+  .client-handoff-arrow,
+  .decision-paper-wrap,
+  .decision-route,
+  .decision-arrow,
+  .decision-paper,
+  .proof-criteria,
+  .evidence-strip,
+  .evidence-strip > figure,
+  .client-decision,
+  .proof-route,
+  .proof-arrow,
+  .production-node,
+  .technology-line,
+  .closing-cta,
+  .mobile-flow-line {
+    clip-path: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    visibility: visible !important;
   }
 }
