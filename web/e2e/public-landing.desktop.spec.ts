@@ -5,8 +5,8 @@ test("public landing renders without Firebase configuration and sends owners to 
 
   await expect(page.getByRole("heading", { level: 1, name: "The brief is more than the brief." })).toBeVisible();
   await expect(page.getByRole("link", { name: "Workflow" })).toHaveAttribute("href", "#workflow");
-  await expect(page.getByRole("link", { name: "For clients" })).toHaveAttribute("href", "#clarification");
-  await expect(page.getByRole("link", { name: "Review" })).toHaveAttribute("href", "#review");
+  await expect(page.getByRole("link", { name: "Client review" })).toHaveAttribute("href", "#review");
+  await expect(page.getByRole("link", { name: "About" })).toHaveAttribute("href", "#about");
 
   await page.getByRole("button", { name: "Create a record" }).first().click();
   await expect(page).toHaveURL(/\/register$/);
@@ -15,9 +15,17 @@ test("public landing renders without Firebase configuration and sends owners to 
 test("desktop navigation keeps the client role in the product story", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("link", { name: "For clients" }).click();
-  await expect(page).toHaveURL(/#clarification$/);
-  await expect(page.getByRole("heading", { name: "Ask only what the record cannot answer." })).toBeInViewport();
+  await page.getByRole("link", { name: "Client review" }).click();
+  await expect(page).toHaveURL(/#review$/);
+  await expect(page.getByRole("heading", { name: "Review what was delivered." })).toBeInViewport();
+});
+
+test("navbar gains an opaque reading surface after scrolling", async ({ page }) => {
+  await page.goto("/");
+  const header = page.locator(".site-header");
+  await expect(header).not.toHaveClass(/site-header-scrolled/);
+  await page.evaluate(() => window.scrollTo({ top: 420, behavior: "instant" }));
+  await expect(header).toHaveClass(/site-header-scrolled/);
 });
 
 test("reduced-motion users can still reach the full landing content", async ({ page }) => {

@@ -121,6 +121,23 @@ button:disabled {
   background-blend-mode: multiply, normal, normal, normal;
 }
 
+.site-header {
+  background: transparent;
+  transition: background-color 240ms ease, box-shadow 240ms ease;
+}
+
+.site-header-scrolled {
+  background: rgb(244 241 234 / 0.94);
+  box-shadow: 0 8px 24px rgb(32 33 31 / 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+:root[data-theme="dark"] .site-header-scrolled {
+  background: rgb(28 27 24 / 0.94);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.28);
+}
+
 :root[data-theme="dark"] .paper-texture {
   background:
     url('/assets/paper-noise.svg'),

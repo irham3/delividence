@@ -51,7 +51,29 @@ export function LandingPage({ onRegister, onSample, error }: LandingPageProps) {
 
   useGSAP(
     () => {
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const header = root.current?.querySelector<HTMLElement>(".site-header");
+      if (header) {
+        let headerVisible = true;
+        ScrollTrigger.create({
+          start: "top top",
+          end: "max",
+          onUpdate: (self) => {
+            const isScrolled = self.scroll() > 16;
+            header.classList.toggle("site-header-scrolled", isScrolled);
+            const shouldShow = self.direction === -1 || self.scroll() < 96;
+            if (reducedMotion || shouldShow === headerVisible) return;
+            headerVisible = shouldShow;
+            gsap.to(header, {
+              yPercent: shouldShow ? 0 : -116,
+              duration: 0.34,
+              ease: "power2.out",
+              overwrite: "auto",
+            });
+          },
+        });
+      }
+      if (reducedMotion) return;
       const mm = gsap.matchMedia();
 
       const premiumEase = "power3.out";
@@ -67,26 +89,6 @@ export function LandingPage({ onRegister, onSample, error }: LandingPageProps) {
           duration: 0.92,
           stagger: 0.085,
         }, 0.18);
-
-      const header = root.current?.querySelector<HTMLElement>(".site-header");
-      if (header) {
-        let headerVisible = true;
-        ScrollTrigger.create({
-          start: "top top",
-          end: "max",
-          onUpdate: (self) => {
-            const shouldShow = self.direction === -1 || self.scroll() < 96;
-            if (shouldShow === headerVisible) return;
-            headerVisible = shouldShow;
-            gsap.to(header, {
-              yPercent: shouldShow ? 0 : -116,
-              duration: 0.34,
-              ease: "power2.out",
-              overwrite: "auto",
-            });
-          },
-        });
-      }
 
       gsap.timeline({
         scrollTrigger: {
@@ -198,8 +200,8 @@ export function LandingPage({ onRegister, onSample, error }: LandingPageProps) {
           <a href="#top" className="focus-ring text-[17px] font-semibold tracking-[-0.035em] text-[#171815] sm:text-[18px]">Delividence</a>
           <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-[54px] text-[13px] font-medium text-[#343530] md:flex">
             <a className="focus-ring hover:text-[#11120f]" href="#workflow">Workflow</a>
-            <a className="focus-ring hover:text-[#11120f]" href="#clarification">For clients</a>
-            <a className="focus-ring hover:text-[#11120f]" href="#review">Review</a>
+            <a className="focus-ring hover:text-[#11120f]" href="#review">Client review</a>
+            <a className="focus-ring hover:text-[#11120f]" href="#about">About</a>
           </nav>
           <div className="flex items-center gap-3 sm:gap-7">
             <a className="tap focus-ring hidden text-[13px] font-medium text-[#343530] hover:text-[#11120f] sm:inline-flex" href="/sign-in">Sign in</a>
@@ -207,7 +209,7 @@ export function LandingPage({ onRegister, onSample, error }: LandingPageProps) {
             <button type="button" aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} className="tap focus-ring grid h-10 w-10 place-items-center text-[#171815] md:hidden" onClick={() => setMenuOpen((open) => !open)}>{menuOpen ? <X size={20} strokeWidth={1.6} /> : <Menu size={21} strokeWidth={1.6} />}</button>
           </div>
         </div>
-        {menuOpen && <nav aria-label="Mobile navigation" className="mx-auto max-w-[1344px] border-b border-[#a9a69f] bg-[#f4f1ea]/95 px-4 py-4 backdrop-blur-sm md:hidden"><div className="grid gap-1"><a className="tap focus-ring px-2 py-3 text-sm font-medium" href="#workflow" onClick={() => setMenuOpen(false)}>Workflow</a><a className="tap focus-ring px-2 py-3 text-sm font-medium" href="#clarification" onClick={() => setMenuOpen(false)}>For clients</a><a className="tap focus-ring px-2 py-3 text-sm font-medium" href="#review" onClick={() => setMenuOpen(false)}>Review</a><a className="tap focus-ring px-2 py-3 text-sm font-medium" href="/sign-in">Sign in</a></div></nav>}
+        {menuOpen && <nav aria-label="Mobile navigation" className="mx-auto max-w-[1344px] border-b border-[#a9a69f] bg-[#f4f1ea]/95 px-4 py-4 backdrop-blur-sm md:hidden"><div className="grid gap-1"><a className="tap focus-ring px-2 py-3 text-sm font-medium" href="#workflow" onClick={() => setMenuOpen(false)}>Workflow</a><a className="tap focus-ring px-2 py-3 text-sm font-medium" href="#review" onClick={() => setMenuOpen(false)}>Client review</a><a className="tap focus-ring px-2 py-3 text-sm font-medium" href="#about" onClick={() => setMenuOpen(false)}>About</a><a className="tap focus-ring px-2 py-3 text-sm font-medium" href="/sign-in">Sign in</a></div></nav>}
       </header>
 
       <section id="top" className="hero-stage mx-auto grid min-h-[100dvh] max-w-[1344px] items-center gap-12 px-5 pb-14 pt-[112px] sm:px-8 sm:pb-14 sm:pt-[126px] lg:grid-cols-[36.5%_63.5%] lg:px-0 lg:pb-10 lg:pt-[98px]">
