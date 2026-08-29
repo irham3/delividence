@@ -22,7 +22,8 @@ param(
     [string]$FrontendOrigin = "",
     [string]$FirebaseProjectId = $ProjectId,
     [ValidateSet("developer", "vertex")][string]$ModelRuntime = "developer",
-    [string]$GeminiSecretName = "delividence-gemini-api-key"
+    [string]$GeminiSecretName = "delividence-gemini-api-key",
+    [string]$GeminiModel = "gemini-3.5-flash"
 )
 
 $ErrorActionPreference = "Stop"
@@ -81,7 +82,7 @@ Must "deploy worker" {
         --region=$Region `
         --service-account=$SaWorker `
         --no-allow-unauthenticated `
-        --set-env-vars="^;^ROLE=worker;GOOGLE_CLOUD_PROJECT=$ProjectId;PUBSUB_TOPIC=$Topic;GOOGLE_GENAI_USE_VERTEXAI=$UseVertex" `
+        --set-env-vars="^;^ROLE=worker;GOOGLE_CLOUD_PROJECT=$ProjectId;PUBSUB_TOPIC=$Topic;GOOGLE_CLOUD_LOCATION=$Region;GEMINI_MODEL=$GeminiModel;GOOGLE_GENAI_USE_VERTEXAI=$UseVertex" `
         @GeminiSecretArg `
         --timeout=300 `
         --concurrency=10 `
@@ -138,7 +139,7 @@ Must "deploy api" {
         --region=$Region `
         --service-account=$SaApi `
         --allow-unauthenticated `
-        --set-env-vars="^;^ROLE=api;GOOGLE_CLOUD_PROJECT=$ProjectId;PUBSUB_TOPIC=$Topic;GOOGLE_GENAI_USE_VERTEXAI=$UseVertex;FIREBASE_PROJECT_ID=$FirebaseProjectId;ALLOWED_ORIGINS=$AllowedOriginsCsv" `
+        --set-env-vars="^;^ROLE=api;GOOGLE_CLOUD_PROJECT=$ProjectId;PUBSUB_TOPIC=$Topic;GOOGLE_CLOUD_LOCATION=$Region;GEMINI_MODEL=$GeminiModel;GOOGLE_GENAI_USE_VERTEXAI=$UseVertex;FIREBASE_PROJECT_ID=$FirebaseProjectId;ALLOWED_ORIGINS=$AllowedOriginsCsv" `
         @GeminiSecretArg `
         --timeout=60 `
         --quiet

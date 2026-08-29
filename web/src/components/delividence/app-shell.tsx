@@ -2,8 +2,9 @@
 
 import type { ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import {
-  Archive,
   Bell,
   CheckCircle2,
   ClipboardList,
@@ -13,9 +14,10 @@ import {
   Layers3,
   LogOut,
   Plus,
+  ListChecks,
   Search,
   Settings,
-  ShieldCheck,
+  Activity,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -27,40 +29,46 @@ type AppShellProps = {
   rightRail?: ReactNode;
 };
 
-const navItems: Array<[string, LucideIcon]> = [
-  ["Workspace", Inbox],
-  ["Records", FileStack],
-  ["Sources", Layers3],
-  ["Evidence", ShieldCheck],
-  ["Archive", Archive],
+const navItems: Array<[string, string, LucideIcon]> = [
+  ["Workspace", "/workspace", Inbox],
+  ["Records", "/records", FileStack],
+  ["Sources", "/sources", Layers3],
+  ["Review", "/review", ListChecks],
+  ["Activity", "/activity", Activity],
 ];
 
 export function AppShell({ email, onSignOut, onNewRecord, children, rightRail }: AppShellProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+
   return (
     <div className="paper-texture min-h-[100dvh]">
       <div className="grid min-h-[100dvh] lg:grid-cols-[224px_1fr]">
         <aside className="hidden border-r border-[var(--rule)] surface-o72 px-5 py-6 backdrop-blur-xl lg:block">
           <div className="flex items-center gap-2 text-lg font-semibold tracking-tight"><Image src="/assets/delividence-mark.svg" alt="" aria-hidden="true" width={24} height={24} />Delividence</div>
           <nav className="mt-10 space-y-1">
-            {navItems.map(([label, Icon], index) => (
-              <button
+            {navItems.map(([label, href, Icon]) => {
+              const active = pathname === href || (href === "/workspace" && pathname === "/") || (href === "/records" && pathname.startsWith("/records"));
+              return (
+              <Link
                 key={label}
+                href={href}
                 className={`focus-ring tap flex w-full items-center gap-3 rounded-[6px] px-3 py-2.5 text-left text-sm ${
-                  index === 0
+                  active
                     ? "bg-[var(--accent-soft)] text-[var(--ink)]"
                     : "text-[var(--muted)] surface-hover-o60 hover:text-[var(--ink)]"
                 }`}
               >
                 <Icon size={17} strokeWidth={1.8} />
                 {label}
-              </button>
-            ))}
+              </Link>
+            )})}
           </nav>
           <div className="mt-12 border-t border-[var(--rule)] pt-5">
-            <button className="focus-ring tap flex w-full items-center gap-3 rounded-[6px] px-3 py-2.5 text-left text-sm text-[var(--muted)] surface-hover-o60 hover:text-[var(--ink)]">
+            <Link href="/settings/policies" className="focus-ring tap flex w-full items-center gap-3 rounded-[6px] px-3 py-2.5 text-left text-sm text-[var(--muted)] surface-hover-o60 hover:text-[var(--ink)]">
               <Settings size={17} strokeWidth={1.8} />
               Policies
-            </button>
+            </Link>
             <button className="focus-ring tap flex w-full items-center gap-3 rounded-[6px] px-3 py-2.5 text-left text-sm text-[var(--muted)] surface-hover-o60 hover:text-[var(--ink)]">
               <HelpCircle size={17} strokeWidth={1.8} />
               Help
@@ -84,7 +92,10 @@ export function AppShell({ email, onSignOut, onNewRecord, children, rightRail }:
               </div>
               <button
                 className="tap focus-ring inline-flex items-center gap-2 rounded-[6px] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--accent-dark)]"
-                onClick={onNewRecord}
+                onClick={() => {
+                  onNewRecord();
+                  if (pathname !== "/workspace" && pathname !== "/") router.push("/records/new");
+                }}
               >
                 <Plus size={16} strokeWidth={1.9} />
                 New record

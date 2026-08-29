@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import type { User } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import {
@@ -26,9 +27,16 @@ import {
   type Ledger,
   type ScopeRequest,
 } from "@/lib/api";
-import { auth, signInWithGoogle, signOutOwner } from "@/lib/firebase";
+import { getFirebaseAuth, signInWithGoogle, signOutOwner } from "@/lib/firebase";
 
-setAuthTokenProvider(() => (auth.currentUser ? auth.currentUser.getIdToken() : Promise.resolve(null)));
+setAuthTokenProvider(() => {
+  try {
+    const auth = getFirebaseAuth();
+    return auth.currentUser ? auth.currentUser.getIdToken() : Promise.resolve(null);
+  } catch {
+    return Promise.resolve(null);
+  }
+});
 
 type AuditStep = { at: string; step: string; detail: string };
 
@@ -50,7 +58,27 @@ const incomingMaterial: Array<[string, string, LucideIcon]> = [
   ["Proof", "Link evidence to a confirmed criterion.", ShieldCheck],
 ];
 
-export default function Home() {
+export default function PublicHome() {
+  const router = useRouter();
+
+  return (
+    <LandingPage
+      onRegister={() => router.push("/register")}
+      onSample={() =>
+        document.getElementById("workflow")?.scrollIntoView({
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? "auto"
+            : "smooth",
+        })
+      }
+    />
+  );
+}
+
+// The owner workspace is deliberately separate from the public product page.
+// A visitor can understand the product before Firebase is configured, while all
+// authenticated actions still live behind OwnerGate on /workspace and /records.
+export function WorkspaceApp() {
   const [brief, setBrief] = useState("");
   const [language, setLanguage] = useState("en");
   // Persisted so refreshing the page (or coming back later) doesn't lose the
@@ -68,13 +96,23 @@ export default function Home() {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setAuthReady(true);
-    });
-    const fallback = window.setTimeout(() => setAuthReady(true), 1500);
+    let unsubscribe: () => void = () => {};
+    let fallback: number | undefined;
+    try {
+      const auth = getFirebaseAuth();
+      unsubscribe = onAuthStateChanged(auth, (u) => {
+        setUser(u);
+        setAuthReady(true);
+      });
+      fallback = window.setTimeout(() => setAuthReady(true), 1500);
+    } catch (cause) {
+      fallback = window.setTimeout(() => {
+        setError(cause instanceof Error ? cause.message : "Firebase is not configured.");
+        setAuthReady(true);
+      }, 0);
+    }
     return () => {
-      window.clearTimeout(fallback);
+      if (fallback) window.clearTimeout(fallback);
       unsubscribe();
     };
   }, []);
@@ -174,7 +212,7 @@ export default function Home() {
             "Can you redesign our landing page hero, tighten the copy, keep the hero video muted, and send a mobile version too? The screenshot is the main visual reference. We need this by next Wednesday, but we have not agreed on revision rounds yet."
           )
         }
-        onSignIn={() => signInWithGoogle().catch((e) => setError(e instanceof Error ? e.message : "Sign-in failed"))}
+        onRegister={() => signInWithGoogle().catch((e) => setError(e instanceof Error ? e.message : "Sign-in failed"))}
       />
     );
   }

@@ -5,7 +5,9 @@
 **Hackathon:** All Things Agentic  
 **Kategori:** The Collaborative Partner  
 **Deadline:** 31 Agustus 2026, 17:00 PT / 1 September 2026, 07:00 WIB  
-**Status:** konsep final; implementasi belum dimulai
+**Status:** core submission diimplementasi dan lulus test lokal; Firebase,
+Cloud Run, Firestore, Pub/Sub, hosted URL, architecture diagram, dan video
+masih perlu dikonfigurasi/diuji pada environment produksi.
 
 ## Keputusan produk final
 
@@ -23,7 +25,10 @@ Delividence bukan marketplace, contract platform, atau chatbot pembuat proposal.
 
 ## Demo utama dalam satu kalimat
 
-Masukkan brief yang kabur dan satu screenshot chat; agent membuat Deal Ledger dan link klien; klien mengklarifikasi serta menyetujui scope; permintaan tambahan kemudian ditandai sebagai change request dengan kutipan baseline; freelancer melampirkan bukti hasil dan klien memberi acceptance.
+Masukkan brief yang kabur; agent membuat Deal Ledger dan link klien; klien
+mengklarifikasi serta menyetujui scope; permintaan tambahan kemudian ditandai
+sebagai change request dengan kutipan baseline; freelancer melampirkan bukti
+hasil dan klien memberi acceptance.
 
 ## Batas klaim
 
@@ -46,7 +51,7 @@ Snapshot versi, hash konten, timestamp server, provenance, dan tindakan approval
 ## Definition of done hackathon
 
 - Aplikasi mendukung English; Bahasa Indonesia adalah pilihan output tambahan.
-- Gemini 3.5+ dipakai untuk ekstraksi multimodal dan analisis semantik.
+- Gemini 3.5+ dipakai untuk ekstraksi teks dan analisis semantik.
 - Google ADK menjalankan workflow agent yang stateful.
 - Backend benar-benar berjalan di Google Cloud, bukan mock lokal.
 - Satu alur lengkap Handshake → Guardrail → Proof dapat didemokan.
@@ -56,3 +61,14 @@ Snapshot versi, hash konten, timestamp server, provenance, dan tindakan approval
 ## Aturan scope
 
 Jika tertinggal, pertahankan satu vertical slice yang benar-benar bekerja. Potong email otomatis, PDF legal, integrasi Upwork/Fiverr, video input, pricing engine, dan multi-agent. Jangan memotong provenance, client approval, versioned baseline, event-driven resume, atau deployment Google Cloud karena itulah pembeda utama.
+
+## Submission profile yang berlaku
+
+Modul B (penghitungan consumption revision rounds), Modul C (drift ledger), dan
+Modul D (conflict-resolution matrix) secara eksplisit **dilepas** oleh
+[`10-KEPUTUSAN-DAN-VERIFIKASI.md`](./10-KEPUTUSAN-DAN-VERIFIKASI.md) agar
+vertical slice Handshake → Guardrail → Proof selesai dan dapat dibuktikan.
+Direct binary upload/transkripsi audio, gambar, video, PDF, email delivery,
+dan PDF export juga bukan klaim MVP saat ini. Jangan mendemokan atau menuliskan
+fitur itu sebagai sudah tersedia sebelum adapter Cloud Storage/multimodal benar-
+benar dibangun.

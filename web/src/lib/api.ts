@@ -77,6 +77,51 @@ export type ScopeRequest = {
   decided_at: string | null;
 };
 
+export type OwnerRun = {
+  run_id: string;
+  status: string;
+  brief: string;
+  output_language: string;
+  round: number;
+  active_baseline_version?: number;
+  created_at: string;
+  updated_at: string;
+  ledger?: Ledger;
+};
+
+export type AuditEvent = {
+  event_id: string;
+  seq: number;
+  type: string;
+  actor: string;
+  baseline_version: number;
+  created_at: string;
+  payload: Record<string, unknown>;
+};
+
+export type ActiveBaseline = {
+  active_version: number;
+  baseline: {
+    version: number;
+    payload_hash: string;
+    canonical_payload: {
+      deliverables: unknown[];
+      in_scope: string[];
+      out_of_scope: string[];
+      timeline: Record<string, unknown>;
+      revision_policy: Record<string, unknown>;
+      criteria: Record<string, { text: string; text_hash: string }>;
+    };
+  };
+};
+
+export type OwnerPreference = {
+  revision_rounds?: number;
+  status: "CONFIRMED" | "NOT_SET";
+  confirmed_at?: string;
+  updated_at?: string;
+};
+
 // Carries the HTTP status so callers can tell a permanent failure (404/403 --
 // wrong owner, deleted run) from a transient one (network blip, 5xx) instead
 // of treating every fetch failure the same way. Extends Error so existing

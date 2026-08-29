@@ -64,6 +64,27 @@ def test_worker_memproses_sampai_selesai(published):
     assert len(run["audit_trail"]) == 1
 
 
+def test_worker_menandai_failed_saat_model_gagal(published, monkeypatch):
+    """UI boleh menawarkan retry hanya setelah kegagalan yang jujur.
+
+    Menulis `done` saat Gemini melempar error membuat freelancer mengira
+    material telah selesai dibaca; status ini harus tetap dapat dibedakan
+    dari ekstraksi kosong yang benar-benar selesai.
+    """
+    from app import worker as worker_module
+
+    async def _fails(run_id, brief):
+        raise RuntimeError("Gemini unavailable")
+
+    monkeypatch.setattr(worker_module, "run_extraction", _fails)
+    run_id = api.post("/runs", json={"brief": "brief apa adanya"}).json()["run_id"]
+
+    assert worker.post("/pubsub/push", json=envelope({"run_id": run_id, "round": 1})).status_code == 204
+    run = store.get_run(run_id)
+    assert run["status"] == "failed"
+    assert "gagal" in run["audit_trail"][-1]["detail"]
+
+
 def test_pengiriman_ganda_hanya_diproses_sekali(published):
     """Pub/Sub menjamin at-least-once, jadi pesan yang sama pasti datang dua kali."""
     run_id = api.post("/runs", json={"brief": "brief apa adanya"}).json()["run_id"]

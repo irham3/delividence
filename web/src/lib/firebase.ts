@@ -1,25 +1,37 @@
 import { initializeApp, getApps } from "firebase/app";
-import { GoogleAuthProvider, getAuth, signInWithPopup, signOut } from "firebase/auth";
+import { GoogleAuthProvider, getAuth, signInWithPopup, signOut, type Auth } from "firebase/auth";
 
-// Config Firebase web app -- ini public config, bukan secret (02 §8 / 06 §6):
-// aman di bundle client. Isolasi data sesungguhnya terjadi di backend lewat
-// verifikasi ID token (app/auth.py), bukan lewat menyembunyikan config ini.
+// Firebase web config memang public (bukan secret), tetapi tetap harus milik
+// project deployment ini. Jangan pernah mengirimkan staging project yang
+// kebetulan dipakai saat development ke production (02 §8 / 06 §6).
 const firebaseConfig = {
-  apiKey: "AIzaSyClurPoX2_8eOCAv4_cGglFwW3Zd9Dsw0M",
-  authDomain: "dudepercobaan.firebaseapp.com",
-  projectId: "dudepercobaan",
-  storageBucket: "dudepercobaan.firebasestorage.app",
-  messagingSenderId: "809536883160",
-  appId: "1:809536883160:web:6d48fb0ecf49294375caad",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+let cachedAuth: Auth | null = null;
+
+export function getFirebaseAuth() {
+  if (cachedAuth) return cachedAuth;
+  const missingConfig = Object.entries(firebaseConfig)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+  if (missingConfig.length > 0) {
+    throw new Error(`Firebase is not configured: ${missingConfig.join(", ")}`);
+  }
+  const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  cachedAuth = getAuth(app);
+  return cachedAuth;
+}
 
 export function signInWithGoogle() {
-  return signInWithPopup(auth, new GoogleAuthProvider());
+  return signInWithPopup(getFirebaseAuth(), new GoogleAuthProvider());
 }
 
 export function signOutOwner() {
-  return signOut(auth);
+  return signOut(getFirebaseAuth());
 }

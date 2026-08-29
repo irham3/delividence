@@ -55,7 +55,7 @@ def _local_read(kind, name):
 # --- API ------------------------------------------------------------------
 
 
-def create_run(run_id, owner_id, brief, output_language):
+def create_run(run_id, owner_id, brief, output_language, preference_candidate=None):
     doc = {
         "run_id": run_id,
         "owner_id": owner_id,
@@ -67,6 +67,7 @@ def create_run(run_id, owner_id, brief, output_language):
         # deal_id == run_id (lihat api.py) -- ledger draft hidup di sini
         # sampai ada alasan nyata untuk memisahkannya ke collection sendiri.
         "ledger": {},
+        "preference_candidate": preference_candidate,
         "created_at": _now(),
         "updated_at": _now(),
     }
@@ -82,6 +83,39 @@ def get_run(run_id):
         return _local_read("runs", run_id)
     snap = _client().collection("runs").document(run_id).get()
     return snap.to_dict() if snap.exists else None
+
+
+def list_runs(owner_id):
+    """Semua deal milik satu freelancer, terbaru lebih dulu.
+
+    Ini adalah read model untuk workspace/records. Ia sengaja hanya membaca
+    dokumen run yang sudah dimiliki owner yang terautentikasi; route API tetap
+    menyembunyikan keberadaan run milik owner lain.
+    """
+    if config.LOCAL:
+        directory = os.path.join(config.LOCAL_DATA_DIR, "runs")
+        if not os.path.isdir(directory):
+            return []
+        items = []
+        for name in os.listdir(directory):
+            if not name.endswith(".json"):
+                continue
+            with open(os.path.join(directory, name), encoding="utf-8") as f:
+                record = json.load(f)
+            if record.get("owner_id") == owner_id:
+                items.append(record)
+        return sorted(items, key=lambda item: item.get("updated_at", ""), reverse=True)
+
+    from google.cloud import firestore
+
+    docs = (
+        _client()
+        .collection("runs")
+        .where("owner_id", "==", owner_id)
+        .order_by("updated_at", direction=firestore.Query.DESCENDING)
+        .stream()
+    )
+    return [doc.to_dict() for doc in docs]
 
 
 def update_run(run_id, **fields):
