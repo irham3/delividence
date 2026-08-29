@@ -19,6 +19,90 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Test | **220 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 | Production | **LIVE** — lihat milestone 27 Agu di bawah untuk URL & detail |
 
+## MILESTONE 29 Agu — audit penuh setelah merge partner: 3 bug produksi ketemu & diperbaiki
+
+Instruksi Rifqi: cek total aplikasi dari login sampai akhir langsung di
+Chrome, perbaiki semua error. Dilakukan terhadap **production**, bukan lokal.
+
+### Bug 1 — Guardrail tidak pernah jalan di portal klien (backend)
+
+`POST /client/{token}/new-request` mencatat request tapi **tidak pernah
+memanggil guardrail agent**, beda dari `POST /runs/{run_id}/requests` versi
+freelancer. Akibatnya request yang klien kirim sendiri lewat portal
+self-service selalu nongkrong tanpa usulan klasifikasi + citation, dan
+freelancer harus menebak manual. Fix: panggil `propose_scope_classification`
+dengan pola fail-open yang sama. Commit `28051dd`. Test baru:
+`test_klien_submit_request_baru_menyimpan_usulan_guardrail`.
+
+### Bug 2 — SEMUA halaman daftar mati di production (backend)
+
+`/records`, `/sources`, `/review`, `/activity` semuanya menampilkan
+"Failed to fetch". Bukan CORS (itu dugaan awal yang salah — endpoint balas
+401 JSON dengan normal). Akar masalah ada di log Cloud Run:
+
+```
+google.api_core.exceptions.FailedPrecondition: 400 The query requires an index.
+```
+
+`store.list_runs()` menggabungkan `.where("owner_id", "==", ...)` dengan
+`.order_by("updated_at")`. Firestore hanya melayani kombinasi itu lewat
+**composite index**, dan index-nya belum pernah dibuat, jadi query gagal
+total. Dengan token invalid auth gagal duluan (401) sehingga kode ini tidak
+pernah tersentuh — itu sebabnya tes manual dengan token asal-asalan
+kelihatan "sehat".
+
+**Fix: sort dipindah ke Python, `order_by` Firestore dihapus** (commit
+`5d6a9c3`). Sengaja TIDAK membuat composite index-nya, karena deployment
+baru — termasuk juri yang deploy ke project sendiri — tidak akan punya index
+itu dan akan patah dengan cara yang sama. Cabang LOCAL memang sudah sort di
+Python, jadi keduanya kini konsisten.
+
+> **Pelajaran yang harus diingat:** SELURUH test suite backend jalan di mode
+> LOCAL (file JSON) dan tidak pernah menyentuh Firestore sungguhan. "227 test
+> hijau" TIDAK membuktikan jalur Firestore aman. Test regresi baru di
+> `test_owner_read_models.py` sekarang menjaga jalur Firestore-nya lewat fake
+> client (assert `order_by` tidak dipanggil).
+
+### Bug 3 — dua bug tampilan ledger (frontend)
+
+1. **Deliverables tampil `[object Object]`** di halaman Baseline.
+   `canonical_payload.deliverables` diketik `unknown[]`, sehingga
+   `.map(String)` lolos TypeScript padahal isinya objek `{id, title}`.
+   Tipe diperbaiki jadi `Deliverable[]` (mengikuti `schemas.Deliverable` di
+   backend) dan dirender `id: title`.
+2. **`timeline` dan `revision_policy` selalu tampil "No value"** di halaman
+   Source record, padahal datanya ada. Keduanya adalah **wadah berisi
+   sub-field** (`final_deadline`, `rounds_total`), bukan field tunggal, tapi
+   dibaca sebagai satu field. Ini menyembunyikan deadline hasil ekstraksi
+   Gemini DAN revision rounds yang distage dari fitur preference baru.
+   Formatter dipindah ke `web/src/lib/ledger-summary.ts` supaya bisa diuji
+   tanpa merender React, sekalian memperbaiki nilai numerik `0` yang dulu
+   dibaca sebagai kosong. Commit `2331553` + `84cda8d`.
+
+### Status deploy — BACA INI SEBELUM LANJUT
+
+- **Backend: sudah live.** Rev `delividence-api-00003-vdm` +
+  `delividence-worker-00003-8lg`. Diverifikasi 14 langkah end-to-end di
+  produksi (create run → ekstraksi Gemini → clarification → confirm baseline
+  → new-request klien + usulan Gemini → confirm classification → evidence →
+  delivery review → proof md/json), semua hijau, log Cloud Run **nol error**.
+- **Frontend: BELUM live.** Vercel men-deploy dari branch **`main`**, bukan
+  `rifqi`. (Catatan lama soal Vercel memakai repo clone
+  `rifqiahmadpratama/delividence` sudah **tidak akurat** — clone itu stale
+  sejak 27 Agu, sementara halaman baru partner sudah live, jadi sumbernya
+  pasti `main` di repo ini.) Karena `main` branch kerja partner dan catatan
+  ini melarang push langsung ke sana, dibuat **PR #1**:
+  <https://github.com/irham3/delividence/pull/1> — fast-forward murni
+  (`main` adalah ancestor `rifqi`, tidak ada kerja partner yang hilang).
+  **Dua bug tampilan di atas masih terlihat di produksi sampai PR itu
+  di-merge.**
+
+Status test setelah semua fix: backend **227 hijau**, frontend **9 unit
+(vitest)** + **5 e2e (Playwright)** hijau, `tsc --noEmit` bersih,
+`next build` sukses.
+
+---
+
 ## MILESTONE 27 Agu — deploy production penuh ke Google Cloud + Vercel, diverifikasi end-to-end
 
 Instruksi Rifqi: jalankan seluruh setup deploy dari nol (GCP billing, Firebase,

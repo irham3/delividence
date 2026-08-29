@@ -157,8 +157,23 @@ sebagai cut". Artinya cadangan pemotongan yang dijanjikan `04` sebenarnya tidak 
 |---|---|---|
 | **A** — criterion identity & baseline versioning | **DIBANGUN** | — |
 | **C** — drift ledger | **DILEPAS** | panel drift disembunyikan; beat drift dihapus dari naskah video |
-| **B** — revision rounds | **DILEPAS** | revision counter & exhausted-round routing disembunyikan |
+| **B** — revision rounds | **SEBAGIAN DIBANGUN (29 Agu)** | revision counter & exhausted-round routing tetap disembunyikan — **tidak** ada penghitungan/pembatasan ronde revisi (`REVISION_ROUND_CONSUMED`/`GRANTED` tetap di `DISABLED_EVENT_TYPES`) |
 | **D** — conflict resolution | **DILEPAS** | fixture konflik Friday/Monday ikut dilepas — mempertahankannya tanpa D membuat golden path deadlock |
+
+**Update 29 Agu 2026**: partner (Irham) membangun satu bagian sempit dari
+Modul B — *preference lintas-deal* freelancer untuk `revision_rounds`
+(`backend/app/preferences.py`, endpoint `GET/POST /preferences`). Freelancer
+konfirmasi sekali "jumlah ronde revisi default", lalu tiap run baru otomatis
+mendapat `revision_policy.rounds_total` berstate `FREELANCER_POLICY` (bukan
+klaim klien, tetap bisa dikalahkan jawaban klien eksplisit, dan baru jadi
+AGREED lewat approval baseline biasa — tidak ada jalur pintas baru).
+Diverifikasi live di production (29 Agu): confirm preference → run baru →
+`revision_policy.rounds_total` muncul otomatis dengan state yang benar.
+**Disetujui Rifqi ("ikutin Irham")** — bukan pelanggaran keputusan di atas,
+melainkan revisi sadar atas cakupan Modul B: **hanya** sub-fitur
+"preference persisten lintas-deal" yang masuk, penghitungan/pembatasan
+ronde revisi & exhausted-round routing (bagian B lainnya) **tetap tidak
+dibangun**.
 
 Yang dihemat: seluruh WP-2b (4.5 jam), sebagian besar matriks 45 test, dan potongan
 besar WP-5/WP-6 — tanpa menyentuh pembeda utama: portal klien tanpa akun, Pub/Sub

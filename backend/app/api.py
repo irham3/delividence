@@ -572,7 +572,7 @@ class SubmitClientRequestRequest(BaseModel):
 
 
 @app.post("/client/{token}/new-request", status_code=201)
-def submit_client_new_request(token: str, req: SubmitClientRequestRequest):
+async def submit_client_new_request(token: str, req: SubmitClientRequestRequest):
     """Link TIDAK ditandai selesai setelah submit -- sama seperti
     `/client/{token}/answers`, klien boleh mengirim beberapa request
     terpisah lewat link yang sama sepanjang project berjalan, bukan
@@ -583,7 +583,7 @@ def submit_client_new_request(token: str, req: SubmitClientRequestRequest):
     run = store.get_run(deal_id)
     if run is None:
         raise HTTPException(status_code=404, detail="deal not found")
-    active_version, _ = _active_baseline_or_409(deal_id, run)
+    active_version, active_baseline = _active_baseline_or_409(deal_id, run)
 
     result = scope_requests.submit(deal_id, req.raw_text, "client")
     actor_ref = client_links.actor_ref_for(token)
@@ -592,6 +592,24 @@ def submit_client_new_request(token: str, req: SubmitClientRequestRequest):
         {"request_id": result["request_id"], "raw_text": req.raw_text},
         actor_ref=actor_ref,
     )
+
+    # Kegagalan Gemini TIDAK BOLEH menggagalkan pencatatan request itu
+    # sendiri -- sama seperti submit_scope_request (endpoint freelancer).
+    # Request yang klien kirim sendiri lewat portal ini sebelumnya tidak
+    # pernah diklasifikasi model sama sekali (ketemu 29 Agu, cek manual).
+    try:
+        text_by_ref = guardrail.citable_text(active_baseline)
+        proposal = await propose_scope_classification(req.raw_text, text_by_ref)
+    except Exception:
+        proposal = None
+    if proposal:
+        result = scope_requests.save_proposal(
+            deal_id, result["request_id"], proposal["classification"], proposal["citations"]
+        )
+        audit.append_event(
+            deal_id, "SCOPE_ANALYSIS_PROPOSED", "model", active_version,
+            {"request_id": result["request_id"], "classification": proposal["classification"]},
+        )
     return result
 
 

@@ -13,6 +13,7 @@ import {
   Upload,
 } from "lucide-react";
 import { OwnerGate } from "@/components/delividence/owner-gate";
+import { fieldSummary } from "@/lib/ledger-summary";
 import {
   apiFetch,
   type ActiveBaseline,
@@ -178,7 +179,7 @@ function QuestionDetail({ run }: { run: OwnerRun }) {
 function BaselineDetail({ baseline }: { baseline: ActiveBaseline | null }) {
   if (!baseline) return <Message tone="neutral">No active baseline yet. Send a clarification link and wait until the client confirms the project plan.</Message>;
   const payload = baseline.baseline.canonical_payload;
-  return <div className="paper-card rounded-[8px] p-5 sm:p-7"><p className="mono text-[11px] tracking-[0.1em] text-[var(--muted)]">ACTIVE BASELINE v{baseline.active_version}</p><div className="mt-6 grid gap-7 lg:grid-cols-2"><DetailList title="Deliverables" values={payload.deliverables.map(String)} /><DetailList title="Out of scope" values={payload.out_of_scope} /><DetailList title="Acceptance criteria" values={Object.entries(payload.criteria).map(([key, criterion]) => `${key}: ${criterion.text}`)} /><DetailList title="Record integrity" values={[`Hash: ${baseline.baseline.payload_hash}`, ...Object.entries(payload.timeline).map(([key, value]) => `${key}: ${String(value)}`)]} /></div></div>;
+  return <div className="paper-card rounded-[8px] p-5 sm:p-7"><p className="mono text-[11px] tracking-[0.1em] text-[var(--muted)]">ACTIVE BASELINE v{baseline.active_version}</p><div className="mt-6 grid gap-7 lg:grid-cols-2"><DetailList title="Deliverables" values={payload.deliverables.map((deliverable) => `${deliverable.id}: ${deliverable.title}`)} /><DetailList title="Out of scope" values={payload.out_of_scope} /><DetailList title="Acceptance criteria" values={Object.entries(payload.criteria).map(([key, criterion]) => `${key}: ${criterion.text}`)} /><DetailList title="Record integrity" values={[`Hash: ${baseline.baseline.payload_hash}`, ...Object.entries(payload.timeline).map(([key, value]) => `${key}: ${String(value)}`)]} /></div></div>;
 }
 
 function EvidenceDetail({ baseline, runId }: { baseline: ActiveBaseline | null; runId: string }) {
@@ -234,5 +235,4 @@ function PageHeading({ title, description, action }: { title: string; descriptio
 function Status({ value }: { value: string }) { const complete = value === "done"; const failed = value === "failed"; return <span className={`w-fit rounded-[4px] px-2.5 py-1 text-xs ${complete ? "status-ok" : failed ? "text-[var(--danger)]" : "status-warn"}`}>{value}</span>; }
 function Message({ children, tone }: { children: React.ReactNode; tone: "error" | "success" | "neutral" }) { return <p className={`mt-5 border p-4 text-sm leading-6 ${tone === "error" ? "border-[var(--danger)]/35 text-[var(--danger)]" : tone === "success" ? "status-ok status-ok-border" : "border-[var(--rule)] text-[var(--muted)]"}`}>{children}</p>; }
 function recordTitle(run: OwnerRun) { const candidate = run.ledger?.deliverables?.value?.[0]?.title; return candidate || `Record ${run.run_id.slice(0, 6)}`; }
-function fieldSummary(value: unknown) { if (!value || typeof value !== "object") return "No extracted value."; const field = value as { value?: unknown; state?: string; source_artifact?: string }; const raw = Array.isArray(field.value) ? `${field.value.length} item(s)` : typeof field.value === "string" ? field.value : field.value ? "Value recorded" : "No value"; return `${raw}${field.state ? ` · ${field.state}` : ""}${field.source_artifact ? ` · ${field.source_artifact}` : ""}`; }
 function detailDescription(mode: DetailMode) { return { sources: "Every client-stated field must point back to the source material.", questions: "Only unresolved work should be sent to the client.", baseline: "Approved versions remain intact. New work takes a separate path.", evidence: "Put the proof beside the promise.", activity: "Events are append-only and ordered by sequence.", requests: "Scope proposals are not decisions until the freelancer confirms them." }[mode]; }

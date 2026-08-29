@@ -85,6 +85,35 @@ def test_submit_tanpa_baseline_aktif_409(published):
     assert r.status_code == 409
 
 
+def test_klien_submit_request_baru_menyimpan_usulan_guardrail(published, monkeypatch):
+    """Ketemu 29 Agu: endpoint ini sempat tidak pernah memanggil Gemini sama
+    sekali (beda dari POST /runs/{run_id}/requests versi freelancer), jadi
+    request yang klien kirim sendiri lewat portal ini selalu nongkrong tanpa
+    usulan klasifikasi. Test ini mengunci perbaikannya -- sama polanya
+    dengan test_guardrail_endpoint.py, propose_scope_classification
+    di-monkeypatch supaya tidak memanggil Gemini sungguhan."""
+    import app.api as api_module
+
+    async def _fake_proposal(raw_text, text_by_ref):
+        return {
+            "classification": "CHANGE_REQUEST",
+            "citations": [{"ref": "mobile-breakpoints", "quote": "Renders at 375px."}],
+        }
+
+    monkeypatch.setattr(api_module, "propose_scope_classification", _fake_proposal)
+
+    run_id = _run_with_active_baseline(published)
+    token = _new_request_token(run_id)
+    r = api.post("/client/%s/new-request" % token, json={"raw_text": "Bisa tambah 3 visual TikTok?"})
+    assert r.status_code == 201
+    body = r.json()
+    assert body["proposed_classification"] == "CHANGE_REQUEST"
+    assert body["confirmed_classification"] is None
+
+    events = [e["type"] for e in audit.list_events(run_id)]
+    assert "SCOPE_ANALYSIS_PROPOSED" in events
+
+
 def test_new_request_link_tidak_bisa_dipakai_untuk_purpose_lain(published):
     """Token NEW_REQUEST ditolak di endpoint CLARIFICATION, dan sebaliknya --
     purpose match, bukan cuma validitas token, yang menentukan."""

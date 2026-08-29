@@ -105,7 +105,10 @@ export type ActiveBaseline = {
     version: number;
     payload_hash: string;
     canonical_payload: {
-      deliverables: unknown[];
+      // Bentuknya dikunci backend lewat schemas.Deliverable ({id, title}).
+      // Sempat diketik `unknown[]`, sehingga `.map(String)` di UI lolos
+      // TypeScript dan menampilkan "[object Object]" di layar (ketemu 29 Agu).
+      deliverables: Deliverable[];
       in_scope: string[];
       out_of_scope: string[];
       timeline: Record<string, unknown>;
