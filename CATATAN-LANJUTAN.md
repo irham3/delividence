@@ -86,16 +86,39 @@ Python, jadi keduanya kini konsisten.
   produksi (create run → ekstraksi Gemini → clarification → confirm baseline
   → new-request klien + usulan Gemini → confirm classification → evidence →
   delivery review → proof md/json), semua hijau, log Cloud Run **nol error**.
-- **Frontend: BELUM live.** Vercel men-deploy dari branch **`main`**, bukan
-  `rifqi`. (Catatan lama soal Vercel memakai repo clone
-  `rifqiahmadpratama/delividence` sudah **tidak akurat** — clone itu stale
-  sejak 27 Agu, sementara halaman baru partner sudah live, jadi sumbernya
-  pasti `main` di repo ini.) Karena `main` branch kerja partner dan catatan
-  ini melarang push langsung ke sana, dibuat **PR #1**:
-  <https://github.com/irham3/delividence/pull/1> — fast-forward murni
-  (`main` adalah ancestor `rifqi`, tidak ada kerja partner yang hilang).
-  **Dua bug tampilan di atas masih terlihat di produksi sampai PR itu
-  di-merge.**
+- **Frontend: sudah live juga** (setelah PR #1 di-merge + sync ke repo clone,
+  lihat di bawah). Diverifikasi di produksi: deliverables tampil
+  `d1: Editing promo video for online store`, dan Source record menampilkan
+  `final deadline: next Wednesday · CLIENT_STATED` +
+  `rounds total: 2 · FREELANCER_POLICY` — keduanya sebelumnya salah.
+
+### Cara frontend sampai ke produksi — JANGAN salah lagi
+
+Ini sempat memakan waktu karena dugaan awal salah dua kali:
+
+1. `rifqi` **bukan** branch yang di-deploy Vercel — push ke sana tidak
+   mengubah apa pun di produksi.
+2. `main` di `irham3/delividence` **juga bukan**. PR #1 sudah di-merge ke
+   `main`, ditunggu 15 menit, bundle produksi tetap kode lama.
+3. **Yang benar: Vercel deploy dari repo clone privat
+   `rifqiahmadpratama/delividence` (branch `main`)** — repo terpisah dengan
+   histori sendiri (satu commit "Initial commit" hasil fitur Clone milik
+   Vercel), BUKAN fork/mirror. `gh repo view ... --json pushedAt` menyesatkan
+   di sini; yang membuktikan adalah isinya (file baru partner ada di sana).
+
+Cara sync yang dipakai (non-destruktif, tanpa menimpa histori clone):
+
+```bash
+git remote add vercelclone https://github.com/rifqiahmadpratama/delividence.git
+git fetch vercelclone
+TREE=$(git rev-parse HEAD^{tree})
+NEW=$(git commit-tree "$TREE" -p vercelclone/main -m "sync: ...")
+git push vercelclone "$NEW:refs/heads/main"
+```
+
+Deploy Vercel jalan otomatis ~60 detik setelah push itu. **Setiap perubahan
+frontend ke depan wajib ikut langkah ini**, kalau tidak perubahannya tidak
+akan pernah kelihatan di `delividence.vercel.app`.
 
 Status test setelah semua fix: backend **227 hijau**, frontend **9 unit
 (vitest)** + **5 e2e (Playwright)** hijau, `tsc --noEmit` bersih,
