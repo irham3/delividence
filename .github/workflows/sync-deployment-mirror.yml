@@ -1,0 +1,60 @@
+# Menjaga mirror deployment Vercel tetap sama dengan repo ini.
+#
+# Vercel membangun `delividence.vercel.app` dari repo privat
+# `rifqiahmadpratama/delividence`, bukan dari repo ini. Repo itu dibuat lewat
+# fitur "Clone" Vercel, jadi historinya terpisah dan tidak pernah menarik
+# perubahan dengan sendirinya. Tanpa sync, perubahan frontend yang sudah
+# di-merge ke `main` di sini TIDAK akan pernah muncul di produksi -- ini
+# sempat menyesatkan selama 15 menit pada 29 Agu.
+#
+# Workflow ini ikut tersalin ke mirror (karena sync menyalin seluruh tree),
+# dan `if` di bawah memastikan ia hanya benar-benar berjalan DI mirror.
+# Di repo ini sendiri ia sengaja tidak melakukan apa-apa.
+#
+# Tidak butuh secret: repo sumber publik, dan GITHUB_TOKEN bawaan sudah
+# cukup untuk push ke repo mirror itu sendiri.
+
+name: Sync deployment mirror
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-deployment-mirror
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'rifqiahmadpratama/delividence'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Copy the upstream tree onto this mirror
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/irham3/delividence.git
+          git fetch --depth=1 upstream main
+
+          upstream_tree=$(git rev-parse upstream/main^{tree})
+          local_tree=$(git rev-parse HEAD^{tree})
+          if [ "$upstream_tree" = "$local_tree" ]; then
+            echo "Mirror already matches upstream; nothing to deploy."
+            exit 0
+          fi
+
+          # Commit the upstream tree verbatim on top of the mirror's own
+          # history, so the mirror keeps its Vercel-created first commit and
+          # nothing here is ever force-pushed.
+          commit=$(git commit-tree "$upstream_tree" -p HEAD \
+            -m "sync: irham3/delividence@$(git rev-parse --short upstream/main)")
+          git push origin "$commit:refs/heads/main"
+          echo "Pushed $commit -- Vercel will build from it."
