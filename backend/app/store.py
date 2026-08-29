@@ -106,16 +106,17 @@ def list_runs(owner_id):
                 items.append(record)
         return sorted(items, key=lambda item: item.get("updated_at", ""), reverse=True)
 
-    from google.cloud import firestore
-
-    docs = (
-        _client()
-        .collection("runs")
-        .where("owner_id", "==", owner_id)
-        .order_by("updated_at", direction=firestore.Query.DESCENDING)
-        .stream()
-    )
-    return [doc.to_dict() for doc in docs]
+    # Urutannya sengaja dikerjakan di Python, bukan lewat .order_by() Firestore:
+    # equality filter di `owner_id` + order_by field lain (`updated_at`) menuntut
+    # composite index yang harus dibuat lebih dulu, dan query-nya gagal total
+    # (FailedPrecondition 400) selama index itu belum ada. Deployment baru --
+    # termasuk juri yang men-deploy ke project sendiri -- tidak akan punya index
+    # itu, jadi ketergantungannya dihapus. Satu freelancer hanya punya sedikit
+    # deal, sehingga sort in-memory di sini setara dan tidak butuh infra apa pun.
+    # Cabang LOCAL di atas sudah memakai kunci sort yang sama.
+    docs = _client().collection("runs").where("owner_id", "==", owner_id).stream()
+    items = [doc.to_dict() for doc in docs]
+    return sorted(items, key=lambda item: item.get("updated_at") or "", reverse=True)
 
 
 def update_run(run_id, **fields):
