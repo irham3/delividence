@@ -34,6 +34,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...kecuali contohnya: README menyuruh menyalin file ini, jadi ia harus ada
+# di repo. Tanpa baris ini pola .env* di atas ikut menelannya dan setiap
+# clone baru langsung patah dengan "Firebase is not configured".
+!.env.example
 
 # vercel
 .vercel

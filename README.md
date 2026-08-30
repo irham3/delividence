@@ -52,6 +52,31 @@ pnpm build
 pnpm dev
 ```
 
+Running the whole thing locally needs three terminals, because the API and the
+worker are the same image under two roles. Leave `GOOGLE_CLOUD_PROJECT` empty
+in `backend/.env` for local mode: the queue becomes a direct HTTP call to the
+worker and state goes to JSON files under `backend/.localdata/`.
+
+```powershell
+# terminal 1 - API on :8080
+cd backend
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8080 --env-file .env
+
+# terminal 2 - worker on :8081 (ROLE from the environment wins over .env)
+cd backend
+$env:ROLE = "worker"
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8081 --env-file .env
+
+# terminal 3 - web on :3000
+cd web
+pnpm dev
+```
+
+Owner sign-in verifies Firebase ID tokens through Application Default
+Credentials, so run `gcloud auth application-default login` once even in local
+mode. `GET http://127.0.0.1:8080/runs` answering `401` without a token is the
+expected healthy response. Step-by-step setup is in [docs/06-SETUP.md](docs/06-SETUP.md).
+
 ## Production handoff
 
 The only manual setup is intentionally documented, not hidden:
