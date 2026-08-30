@@ -1,1 +1,10 @@
-{}
+{
+  "01-outcome": ["shots/01a-workspace.jpg", "shots/01b-baseline-hash.jpg", "shots/05e-review-submitted.jpg"],
+  "02-problem": ["shots/02a-vague-brief.jpg", "shots/01c-activity-events.jpg"],
+  "03-handshake": ["shots/03a-agent-reading.jpg", "shots/03b-ledger-extracted.jpg", "shots/03c-client-portal.jpg", "shots/03d-client-filled.jpg", "shots/03e-plan-confirmed.jpg"],
+  "04-guardrail": ["shots/04a-client-new-request.jpg", "shots/04c-model-suggested.jpg", "shots/04d-classification-confirmed.jpg", "shots/04e-changes-tab.jpg"],
+  "05-proof": ["shots/05a-evidence-tab.jpg", "shots/05c-review-pending.jpg", "shots/05d-accept-and-pushback.jpg", "shots/05e-review-submitted.jpg"],
+  "06-preference": ["shots/06a-policy-default.jpg", "shots/03b-ledger-extracted.jpg"],
+  "07-cloud": ["card:cloud-proof", "shots/07a-architecture.png", "shots/07b-cloud-run-api.jpg"],
+  "08-close": ["card:closing"]
+}

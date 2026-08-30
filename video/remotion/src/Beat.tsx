@@ -9,6 +9,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
+import { renderCard } from "./cards";
 import type { NarrationBeat } from "./Demo";
 import { FPS, theme } from "./theme";
 
@@ -31,13 +32,19 @@ const Shot = ({ src, durationInFrames, even }: { src: string; durationInFrames: 
   const scale = even ? 1.06 - progress * 0.04 : 1.02 + progress * 0.04;
   const drift = even ? progress * -12 : progress * 12;
   const fade = interpolate(frame, [0, 12], [0, 1], { extrapolateRight: "clamp" });
+  // "card:<name>" bukan tangkapan layar melainkan panel yang digambar sendiri
+  // (bukti Cloud Run, kartu penutup) -- keduanya tidak punya screenshot yang
+  // jujur untuk diambil.
+  if (src.startsWith("card:")) {
+    return <AbsoluteFill style={{ opacity: fade }}>{renderCard(src.slice(5))}</AbsoluteFill>;
+  }
   return (
     <AbsoluteFill style={{ opacity: fade, alignItems: "center", justifyContent: "center" }}>
       <Img
         src={staticFile(src)}
         style={{
-          width: "100%",
-          height: "100%",
+          maxWidth: "100%",
+          maxHeight: "100%",
           objectFit: "contain",
           transform: `scale(${scale}) translateY(${drift}px)`,
         }}
@@ -115,9 +122,13 @@ export const Beat = ({ beat, shots, index, total, progressStart, totalFrames }: 
           >
             {String(index + 1).padStart(2, "0")} · {beat.title}
           </div>
-          <div style={{ marginTop: 18, fontSize: 46, lineHeight: 1.25, color: theme.ink, maxWidth: 1500 }}>
-            {beat.caption}
-          </div>
+          {/* Kartu penutup sudah memuat kalimatnya sendiri; mengulanginya di
+              caption hanya membuat layar terbaca dua kali. */}
+          {beat.id !== "08-close" && (
+            <div style={{ marginTop: 18, fontSize: 46, lineHeight: 1.25, color: theme.ink, maxWidth: 1500 }}>
+              {beat.caption}
+            </div>
+          )}
         </div>
       </AbsoluteFill>
 
@@ -133,7 +144,9 @@ export const Beat = ({ beat, shots, index, total, progressStart, totalFrames }: 
         </div>
       </AbsoluteFill>
 
-      <AbsoluteFill style={{ padding: 40, alignItems: "flex-end", justifyContent: "flex-start" }}>
+      {/* Ditaruh di pita caption, bukan di atas panel: beat 7 memakai kartu
+          gelap dan teks gelap di atasnya tidak terbaca. */}
+      <AbsoluteFill style={{ padding: 64, paddingBottom: 74, alignItems: "flex-end", justifyContent: "flex-end" }}>
         <div style={{ fontSize: 22, color: theme.muted, fontFamily: theme.monoStack }}>
           {index + 1}/{total} · delividence.vercel.app
         </div>
