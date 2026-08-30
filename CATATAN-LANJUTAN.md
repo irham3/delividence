@@ -208,6 +208,76 @@ clone Vercel (cara 29 Agu) sekarang JUSTRU akan ditimpa balik selama `main`
 belum berisi fix-nya. Jalur yang benar: merge PR ke `main` dulu, mirror
 menyusul sendiri.
 
+### Lanjutan — deploy terverifikasi & VIDEO DEMO SELESAI DIRENDER
+
+**Frontend sudah live** (PR #4 di-merge ke `main` oleh Rifqi, mirror di-sync
+lewat `gh workflow run`, Vercel build otomatis). Diverifikasi langsung di
+produksi:
+
+| Perbaikan | Bukti |
+|---|---|
+| Records 404 | Klik baris membuka record, bukan 404 |
+| Empat halaman kembar | Sources `EXTRACTED · 9 fields`, Review `CRITERIA · 2 criteria`, Activity `LAST UPDATE · 53m ago` |
+| Tab Changes | `Classification: CHANGE_REQUEST · confirmed by the freelancer` + kutipan |
+
+**Backend BELUM di-redeploy** — hanya memengaruhi teks aktivitas Inggris.
+Tidak menghalangi video (lihat di bawah). Perintahnya:
+
+```
+.\deploy\02-deploy.ps1 -ProjectId gen-lang-client-0104798459 -FrontendOrigin https://delividence.vercel.app -FirebaseProjectId gen-lang-client-0104798459 -ModelRuntime developer -GeminiModel gemini-3.6-flash
+```
+
+`-GeminiModel gemini-3.6-flash` wajib (default skrip 3.5, revisi live 3.6).
+
+### Video demo — `video/remotion/out/delividence-demo.mp4`
+
+**2 menit 13 detik**, 1920x1080, h264 + AAC, 58 MB. Batas lomba 4 menit.
+
+Cara membuat ulang dari nol:
+
+```powershell
+cd video\remotion
+pnpm install
+..\..\.venv\Scripts\python.exe scripts\narrate.py     # narasi TTS Gemini
+pnpm exec remotion render Demo out\delividence-demo.mp4
+pnpm exec remotion studio                              # kalau mau lihat/ubah timeline
+```
+
+- **Narasi**: TTS Gemini (`gemini-3.1-flash-tts-preview`, suara Kore), teks
+  persis naskah `docs/05-SUBMISSION-CHECKLIST.md` §4. 8 klip, 123,88 detik.
+  `scripts/narrate.py` punya backoff 429 + resume (klip yang sudah ada
+  dilewati; `--force` untuk paksa ulang).
+- **Durasi beat dihitung dari panjang audio terukur** (`src/narration.json`),
+  bukan angka tebakan -- jadi tidak bisa diam-diam melewati 4 menit.
+- **Semua visual = tangkapan produksi sungguhan** dari satu run yang
+  dijalankan dari nol untuk video ini: `eb478d396bd24682954ba098c6ab6165`
+  ("45-second product teaser"). Alurnya lengkap: ekstraksi Gemini -> portal
+  klien -> baseline v1 (+hash) -> klien minta TikTok cutdowns -> Guardrail
+  usul CHANGE_REQUEST + kutipan -> freelancer konfirmasi -> evidence 2
+  kriteria -> klien **accept satu, minta perubahan satu dalam satu submission**
+  (persis klaim narasi beat 5).
+- **Dua beat digambar, bukan difoto**, karena tidak ada tangkapan layar yang
+  jujur untuk itu (`src/cards.tsx`):
+  - Beat 7 kartu terminal berisi output gcloud ASLI: dua URL Cloud Run +
+    revisi, push subscription + dead-letter topic, dan baris log
+    `2026-08-30T11:27:46Z POST /pubsub/push 204` -- push itu memang yang
+    melanjutkan job untuk run yang ditampilkan di video.
+  - Beat 8 kartu penutup.
+- **GCP Console tidak dipakai**: Chrome ini login dengan akun Google berbeda
+  dari pemilik project, jadi Console-nya `PERMISSION_DENIED`. Bukti Google
+  Cloud diambil dari output CLI + diagram arsitektur + Swagger di domain
+  `*.run.app`. Kalau mau tangkapan Console asli, Rifqi tinggal login akun
+  `rifqiahmad234a@gmail.com` lalu rekam sendiri, tapi tidak wajib.
+- Tidak ada satu pun teks Indonesia di dalam video (tangkapan yang memuat
+  kartu "Latest activity" sudah di-crop), jadi redeploy backend tidak
+  menahan submission video.
+
+Aset hasil generate (audio 5,7 MB, `public/shots/`, `out/`) sengaja tidak
+ke-commit -- semuanya bisa dibuat ulang dari perintah di atas.
+
+**Sisa pekerjaan video**: upload ke YouTube publik (unlisted tidak sah),
+tempel linknya ke form Devpost, centang item §5 checklist.
+
 ### Temuan kecil yang SENGAJA dibiarkan
 
 - Field "Final deadline" di form klien tampil kosong padahal ledger punya
