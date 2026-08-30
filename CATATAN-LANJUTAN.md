@@ -19,6 +19,224 @@ Ditulis **25 Agustus 2026, sore**. Baca file ini dulu sebelum menyentuh apa pun.
 | Test | **220 hijau** (`cd backend; ..\.venv\Scripts\python.exe -m pytest -q`) |
 | Production | **LIVE** — lihat milestone 27 Agu di bawah untuk URL & detail |
 
+## MILESTONE 30 Agu (lanjutan) — audit produksi ulang sebelum rekaman: 1 bug 404 + 3 perbaikan, SEMUA MASIH LOKAL
+
+**Status: kode sudah diperbaiki & hijau di lokal, TAPI BELUM di-commit dan BELUM di-deploy.**
+Produksi saat ini masih memuat bug 404 di bawah.
+
+### Kenapa audit ini dijalankan
+
+Rifqi minta cek ulang total sebelum bikin video ("kalau ada error seperti tadi
+sama saja"). Dijalankan tiga lapis: test suite, produksi lewat Chrome, dan
+kode.
+
+### Yang terbukti SEHAT di produksi (run baru dari nol, `4614384828ff4458b014c6a21e0fd262`)
+
+Satu run penuh dijalankan di `delividence.vercel.app`, dari brief sampai proof:
+
+| Langkah | Hasil |
+|---|---|
+| Ekstraksi Gemini | 5 field ledger, semua `CLIENT_STATED · artifact:brief-1` |
+| Clarification link | Form klien terisi dari hasil ekstraksi (d1, english-subtitles, logo-placement, assumption raw footage) |
+| Confirm plan | "Baseline version 1 is now active" |
+| Guardrail | Klien minta versi TikTok 15 detik → Gemini usul **CHANGE_REQUEST** + kutipan verbatim `deliverables[0]` → freelancer konfirmasi |
+| Evidence | 2 kriteria terlampir |
+| Delivery review | Klien accept keduanya → ACCEPTED |
+| Proof | View JSON menghasilkan blob (fetch ber-token sukses) |
+
+Nol console error, semua request 200. Backend 227 test hijau (sebelum
+perubahan), `tsc` + eslint bersih.
+
+### BUG 1 (nyata, diperbaiki) — semua baris di halaman Records → 404
+
+Href baris di `/records` adalah `/records/{id}/records`, padahal section yang
+sah cuma `sources | questions | baseline | evidence | activity | requests`
+(`app/records/[runId]/[section]/page.tsx`). Jadi **setiap klik "Open" dari
+halaman Records berakhir 404** — menu pertama di sidebar, paling mungkin
+diklik juri duluan. Sources/Review/Activity selamat karena namanya kebetulan
+cocok (Review di-remap ke `evidence`). TypeScript tidak menangkapnya karena
+URL dirakit sebagai template string.
+
+Perbaikan (bukan tambal sulam): **satu sumber kebenaran** di
+`web/src/lib/record-href.ts` — `DETAIL_SECTIONS`, `isDetailSection()`,
+`recordHref()` — dipakai DUA-DUANYA: route `[section]/page.tsx` untuk
+validasi, dan `owner-routes.tsx` untuk merakit URL. Dulu terpisah, itu
+sebabnya bisa melenceng diam-diam.
+
+Diverifikasi di server sungguhan (`pnpm build` + `pnpm start -p 3111`), bukan
+cuma unit test:
+
+```
+/records/{id}           -> 200   (tujuan baru)
+/records/{id}/records   -> 404   (tujuan lama yang rusak)
+/records/{id}/sources   -> 200
+/records/{id}/evidence  -> 200
+/records/{id}/activity  -> 200
+/records/{id}/bogus     -> 404   (penjaga section masih utuh)
+```
+
+### PERBAIKAN 2 — pesan aktivitas worker jadi Inggris
+
+`backend/app/worker.py:133,148,150` menulis detail audit berbahasa Indonesia
+("Brief diekstrak lewat Gemini -- 5 field ledger terisi.") padahal produknya
+English-first, dan kalimat itu tampil di kartu "Latest activity" di workspace
+— akan terlihat di video. Ketiganya diganti ke Inggris. Satu test MEMANG mengunci
+teks lama (`test_slice.py::test_worker_menandai_failed_saat_model_gagal`
+meng-assert substring "gagal") -- assert-nya disesuaikan jadi "failed",
+maksud test-nya tidak berubah (status kegagalan harus jujur, bukan "done").
+
+**Konsekuensi: butuh redeploy backend Cloud Run** (`deploy/02-deploy.ps1`)
+supaya berlaku di produksi.
+
+### PERBAIKAN 3 — tab "Changes" akhirnya menampilkan usulan Guardrail
+
+Sebelumnya tab Changes cuma menulis "Awaiting freelancer classification";
+usulan model + kutipan hanya ada di workspace. Jadi fitur Guardrail tidak
+terlihat dari halaman yang justru bernama Changes. Sekarang komponen baru
+`RequestRow` menampilkan "Model suggested: X · awaiting freelancer
+confirmation" atau "Classification: X · confirmed by the freelancer",
+lengkap dengan daftar kutipan verbatim.
+
+### PERBAIKAN 4 — empat halaman daftar tidak lagi kembar
+
+Records/Sources/Review/Activity memakai komponen yang sama (`OwnerIndex`,
+endpoint `/runs` yang sama), jadi tabelnya identik — Rifqi yang menyadari ini.
+Sekarang kolom ketiga menjawab pertanyaan khas tiap halaman, semuanya dari
+read model `/runs` yang sudah ada (tanpa endpoint baru):
+
+| Halaman | Header kolom | Isi |
+|---|---|---|
+| Records | Baseline | `v2` / `Draft` |
+| Sources | Extracted | `5 fields` / `Nothing yet` |
+| Review | Criteria | `2 criteria` / `None yet` |
+| Activity | Last update | `Just now` / `30m ago` / `1d ago` |
+
+Logikanya murni di `web/src/lib/record-columns.ts` supaya bisa diuji tanpa
+render React (pola yang sama dengan `ledger-summary.ts`).
+
+### Status test setelah semua perubahan
+
+- Frontend unit test: **9 → 19 hijau** (`record-href.test.ts` 5 baru,
+  `record-columns.test.ts` 5 baru), `tsc --noEmit` bersih, eslint bersih,
+  `next build` sukses.
+- Backend: **227 hijau** setelah perubahan worker.py + penyesuaian assert.
+
+### YANG BELUM DIKERJAKAN — lanjutkan dari sini
+
+1. Commit semua perubahan di atas (TANPA trailer Co-Authored-By/Claude-Session).
+2. Push ke branch `rifqi`, lalu **sync manual ke repo clone Vercel**
+   `rifqiahmadpratama/delividence` — tanpa langkah ini frontend TIDAK berubah
+   di produksi (lihat milestone 29 Agu).
+3. Redeploy backend Cloud Run untuk perubahan `worker.py`.
+4. Verifikasi ulang di produksi: klik baris di halaman Records (harus buka
+   record, bukan 404), cek keempat halaman daftar sudah beda kolom, cek
+   pesan aktivitas sudah Inggris.
+5. Baru mulai capture video (Remotion + TTS Gemini, lihat milestone di atas).
+
+### Temuan kecil yang SENGAJA dibiarkan
+
+- Field "Final deadline" di form klien tampil kosong padahal ledger punya
+  `final deadline: next Wednesday` — inputnya `type="date"`, tidak bisa
+  menampung frasa. Bukan crash; nilai aslinya tetap terlihat di tab Sources.
+- `web/.gitignore` (`.env*`) masih menutupi `web/.env.example` sehingga file
+  itu tidak ada di repo (lihat milestone sebelumnya, fix satu baris).
+
+---
+
+## MILESTONE 30 Agu — sesi siap-rekam: env lokal diperbaiki, rekaman lama dibuang, jalur produksi video dikunci
+
+**Status sesi ini: berhenti di titik "siap mulai capture". Tinggal bilang "lanjutkan".**
+
+### 1. Error `Firebase is not configured` di lokal — SELESAI
+
+Gejala: buka `/register` (atau klik Sign in) di `pnpm dev` lokal → Runtime Error
+`Firebase is not configured: apiKey, authDomain, projectId, storageBucket,
+messagingSenderId, appId` dari `web/src/lib/firebase.ts:24`.
+
+Akar masalah: `web/.env` lokal isinya **cuma** `NEXT_PUBLIC_API_URL`. Enam
+variabel `NEXT_PUBLIC_FIREBASE_*` tidak pernah ada di situ (nilai yang pernah
+diisi kemungkinan masuk ke dashboard Vercel, bukan ke file lokal) — makanya
+produksi sehat tapi lokal patah.
+
+Fix: config web Firebase diambil langsung dari Firebase Management API pakai
+access token gcloud (bukan diketik manual), lalu ditulis ke `web/.env`:
+
+```
+GET https://firebase.googleapis.com/v1beta1/projects/gen-lang-client-0104798459/webApps/1:798836649371:web:97acf8c2adbed64475853e/config
+```
+
+`web/.env.example` juga diisi placeholder kosong + komentar cara mengambil
+config-nya. Tidak ada satu baris kode pun yang diubah, tidak ada commit.
+
+> **Ingat:** Next.js membaca `NEXT_PUBLIC_*` saat proses start. Setelah ini
+> `pnpm dev` WAJIB direstart, jangan cuma reload browser. Backend lokal juga
+> mati saat sesi ini (port 3000 & 8080 kosong) — nyalakan dengan
+> `uvicorn --env-file .env` kalau mau uji lokal penuh.
+
+### 2. TEMUAN BELUM DIPERBAIKI — `web/.env.example` tidak pernah masuk repo
+
+`web/.gitignore` baris 36 berisi `.env*` (bawaan Next.js) dan itu
+**mengalahkan** `!.env.example` di `.gitignore` root. `git ls-files` hanya
+menemukan `backend/.env.example`. Artinya juri yang clone repo lalu mengikuti
+README ("copy `web/.env.example` …") akan mencari file yang tidak ada dan kena
+error Firebase yang sama persis seperti di atas.
+
+Nyambung ke dua item checklist yang masih kosong: "spin-up instructions diuji
+di environment bersih" dan "environment variable table with placeholders only".
+
+**Fix satu baris (belum dikerjakan, menunggu aba-aba):** tambah
+`!.env.example` di `web/.gitignore`, lalu commit `web/.env.example`.
+
+### 3. Tiga rekaman lama di `video/` DIHAPUS
+
+Dibuang ke Recycle Bin (masih bisa dipulihkan beberapa hari):
+`2026-08-28 17-51-27.mp4` (2:43), `17-59-29.mp4` (3:52), `22-55-52.mp4` (4:18).
+
+Alasan — ketiganya capture layar penuh, bukan footage produk: panel kanan berisi
+terminal Claude Code (instruksi "Klik Create clarification link" terbaca jelas),
+browser cuma separuh layar ±960 px, ada tab YouTube terbuka, dan audio di
+rekaman 4:18 itu suara video YouTube (dua lainnya senyap total, −91 dB).
+
+### 4. Keputusan produksi video (dikunci sesi ini)
+
+| Aspek | Keputusan |
+|---|---|
+| Tool | **Remotion** (React → MP4, lokal, gratis, tanpa akun) — BUKAN HeyGen Hyperframes: presenter AI tidak membuktikan "agent bekerja + backend Google Cloud", dan butuh upload materi ke pihak ketiga |
+| Visual | **Claude yang menjalankan alur produksi asli** di `delividence.vercel.app`, tangkap frame bersih tiap langkah, lalu Remotion yang menganimasikan (zoom/highlight/caption). Tidak butuh Rifqi merekam OBS |
+| Audio | **TTS Gemini** narasi Inggris, pakai `GEMINI_API_KEY` yang sudah ada di `backend/.env` |
+| Durasi target | ±3:30, batas keras < 4:00 |
+
+Verifikasi ketersediaan TTS sudah dilakukan (key valid, 53 model terlihat):
+- `gemini-3.1-flash-tts-preview` — `generateContent` ✅ (pilihan utama)
+- cadangan: `gemini-2.5-flash-preview-tts`, `gemini-2.5-pro-preview-tts`
+
+### 5. Kondisi lingkungan saat sesi ditutup
+
+- Chrome profil Rifqi **sudah login** di produksi sebagai
+  `rifqiahmadpratama@gmail.com` — jadi popup Google (yang dulu memblokir
+  otomasi) TIDAK jadi masalah selama profil ini tidak sign out.
+- Viewport tab: 1540×732, dpr 1.25. Untuk capture 1080p, maksimalkan jendela
+  dulu.
+- Ada run sisa `f27c898f30ba467790057ac0487db287` berstatus **queued** di
+  workspace. Jangan dipakai untuk take — bikin run baru yang bersih.
+
+### 6. Langkah berikutnya saat "lanjutkan"
+
+1. Maksimalkan jendela, buat run baru bersih, jalankan alur penuh sambil
+   capture frame: brief → ekstraksi Gemini → clarification link klien →
+   confirm baseline → new request + usulan Guardrail → confirm classification →
+   evidence → delivery review → proof (md/json) → bukti Cloud Run/Gemini.
+   Ikuti gotcha di `docs/shot-list-video.md` (baca URL client link dari
+   accessibility tree, hapus blocker "Unresolved questions", dst).
+2. Bangun project Remotion di `video/remotion` (jangan di-commit dulu sebelum
+   diputuskan; `*.mp4` besar sebaiknya tetap di luar repo).
+3. Generate narasi Inggris lewat TTS Gemini, sinkronkan ke beat.
+4. Render MP4 < 4 menit, tonton ulang, perbaiki timing.
+5. Upload ke YouTube publik, isi item checklist §5 (video ≤4 menit + bukti
+   agent & Google Cloud), masukkan linknya ke form Devpost.
+
+---
+
 ## MILESTONE 29 Agu — audit penuh setelah merge partner: 3 bug produksi ketemu & diperbaiki
 
 Instruksi Rifqi: cek total aplikasi dari login sampai akhir langsung di
