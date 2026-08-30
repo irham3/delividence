@@ -8,14 +8,20 @@ PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT", "").strip()
 PUBSUB_TOPIC = os.environ.get("PUBSUB_TOPIC", "delividence-runs").strip()
 
 # 06 §2. Model terverifikasi di 10-KEPUTUSAN-DAN-VERIFIKASI.md: paket revisi
-# sempat menulis gemini-3.5-flash (dikoreksi -> 3.7, Google menyebutnya
-# legacy Flash model), lalu direvisi lagi 25 Agu malam ke 3.6: 3.7-flash
-# konsisten balas 503 "high demand" lewat extraction_agent (tool-calling +
-# system instruction) walau panggilan sederhana ke 3.7 tanpa tool berhasil --
-# 3.6-flash terbukti sukses end-to-end (kutipan verbatim tervalidasi, skema
-# valid) di percobaan yang sama. Ganti balik ke 3.7 kapan saja lewat env
-# GEMINI_MODEL begitu demand-nya mereda -- tidak ada kode yang perlu diubah.
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash").strip()
+# sempat menulis gemini-3.6-flash sebagai primary, tetapi live smoke 31 Agu
+# menunjukkan model itu bisa kena 503 high-demand sebelum fallback berhasil.
+# Untuk demo 4 menit, primary dibuat ke model stabil yang tetap memenuhi aturan
+# hackathon (Gemini 3.5+), sementara 3.6 tetap tersedia sebagai fallback.
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash").strip()
+# Model stabil kedua dipakai hanya setelah SDK selesai melakukan retry untuk
+# model utama dan tetap gagal. Daftar bisa dikosongkan atau dioverride lewat
+# env; deduplikasi dilakukan saat dipakai.
+GEMINI_FALLBACK_MODELS = tuple(
+    model.strip()
+    for model in os.environ.get("GEMINI_FALLBACK_MODELS", "gemini-3.6-flash").split(",")
+    if model.strip()
+)
+GEMINI_MODEL_TIMEOUT_SECONDS = float(os.environ.get("GEMINI_MODEL_TIMEOUT_SECONDS", "45"))
 GOOGLE_CLOUD_LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "asia-southeast2").strip()
 
 # Keputusan direvisi 25 Agu 2026: default sekarang Gemini Developer API (API
@@ -41,6 +47,13 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 # tidak lewat sini sama sekali -- itu opaque token sendiri).
 FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "").strip()
 
+# Session cookie hanya dipakai oleh Next.js untuk routing optimistis. Semua
+# endpoint owner tetap memverifikasi Firebase ID token di setiap request.
+# Lima hari menjaga login tetap nyaman tanpa memperpanjangnya sampai batas
+# maksimum Firebase (dua minggu); pembuatan cookie mensyaratkan login baru.
+SESSION_COOKIE_MAX_AGE_SECONDS = 5 * 24 * 60 * 60
+SESSION_COOKIE_RECENT_SIGN_IN_SECONDS = 5 * 60
+
 # Tanpa GOOGLE_CLOUD_PROJECT, jalan dalam mode lokal: antrean lewat HTTP langsung
 # ke worker, state ke file JSON. Bentuk envelope dan semantik klaim job dibuat
 # identik dengan produksi supaya yang diuji lokal adalah jalur yang sama.
@@ -63,3 +76,7 @@ ALLOWED_ORIGINS = [
 
 MAX_BRIEF_CHARS = 20_000
 SUPPORTED_OUTPUT_LANGUAGES = ("en", "id")
+
+
+def gemini_model_candidates():
+    return tuple(dict.fromkeys((GEMINI_MODEL, *GEMINI_FALLBACK_MODELS)))

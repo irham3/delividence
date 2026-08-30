@@ -30,6 +30,14 @@ export function indexColumnValue(mode: IndexColumnMode, record: OwnerRun, now: D
   return relativeTime(record.updated_at, now);
 }
 
+export function matchesRecordQuery(record: OwnerRun, query: string) {
+  const needle = query.trim().toLocaleLowerCase();
+  if (!needle) return true;
+  const title = record.ledger?.deliverables?.value?.[0]?.title ?? "";
+  return [record.run_id, record.status, record.brief, title, record.output_language]
+    .some((value) => value.toLocaleLowerCase().includes(needle));
+}
+
 export function relativeTime(iso: string | undefined, now: Date) {
   if (!iso) return "Unknown";
   const then = new Date(iso).getTime();

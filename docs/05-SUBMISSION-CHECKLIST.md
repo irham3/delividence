@@ -189,7 +189,7 @@ Delividence is a two-party AI scope and acceptance protocol. It converts a clien
 
 ### How we built it
 
-Gemini 3.6 Flash (via the Gemini Developer API) performs multimodal extraction and scope-change classification. Google ADK orchestrates the stateful workflow. Cloud Run hosts the API and the private worker; the frontend is Next.js on Vercel. Pub/Sub resumes worker jobs after client events; Firestore stores ledger versions, baselines, and audit events. Firebase Authentication verifies the freelancer owner; the client review link uses a separate scoped opaque token, no account required.
+Gemini 3.5 Flash (via the Gemini Developer API, with Gemini 3.6 Flash configured as fallback) performs multimodal extraction and scope-change classification. Google ADK orchestrates the stateful workflow. Cloud Run hosts the API and the private worker; the frontend is Next.js on Vercel. Pub/Sub resumes worker jobs after client events; Firestore stores ledger versions, baselines, and audit events. Firebase Authentication verifies the freelancer owner; the client review link uses a separate scoped opaque token, no account required.
 
 ### Why it is agentic
 

@@ -24,6 +24,12 @@ def test_agent_konstruksi_dengan_model_dan_dua_tool():
     assert agent.save_ledger_draft in agent.extraction_agent.tools
 
 
+def test_agent_factory_memungkinkan_fallback_model():
+    fallback = agent.extraction_agent_for("gemini-3.5-flash")
+    assert fallback.model == "gemini-3.5-flash"
+    assert fallback.tools == agent.extraction_agent.tools
+
+
 def test_instruksi_menyebut_semua_field_kritis():
     for field in CRITICAL_FIELDS:
         assert field in agent.extraction_agent.instruction

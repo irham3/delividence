@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Activity,
   ArrowRight,
@@ -10,7 +11,6 @@ import {
   ListChecks,
   Plus,
   RefreshCw,
-  Upload,
 } from "lucide-react";
 import { OwnerGate } from "@/components/delividence/owner-gate";
 import { fieldSummary } from "@/lib/ledger-summary";
@@ -23,7 +23,7 @@ import {
   type ScopeRequest,
 } from "@/lib/api";
 import { recordHref } from "@/lib/record-href";
-import { indexColumnHeader, indexColumnValue } from "@/lib/record-columns";
+import { indexColumnHeader, indexColumnValue, matchesRecordQuery } from "@/lib/record-columns";
 
 type IndexMode = "records" | "sources" | "review" | "activity" | "policies";
 type DetailMode = "sources" | "questions" | "baseline" | "evidence" | "activity" | "requests";
@@ -65,16 +65,24 @@ export function OwnerIndex({ mode }: { mode: IndexMode }) {
 
 function OwnerIndexContent({ mode }: { mode: IndexMode }) {
   const { items, loading, error, refresh } = useRuns();
+  const searchParams = useSearchParams();
   const meta = pageMeta[mode];
   if (mode === "policies") return <PolicyView />;
+  const query = searchParams.get("q")?.trim() ?? "";
+  const visibleItems = items.filter((item) => matchesRecordQuery(item, query));
 
   return (
     <section>
       <PageHeading title={meta.title} description={meta.description} action={<button onClick={refresh} className="tap focus-ring inline-flex items-center gap-2 rounded-[4px] border border-[var(--rule)] px-3 py-2 text-sm"><RefreshCw size={15} /> Refresh</button>} />
       {error && <Message tone="error">{error}</Message>}
-      {loading ? <RecordSkeleton /> : items.length === 0 ? <EmptyRecords /> : <RecordIndex mode={mode} records={items} />}
+      {query && !loading && <p className="mb-4 text-sm text-[var(--muted)]">{visibleItems.length} result{visibleItems.length === 1 ? "" : "s"} for <strong className="text-[var(--ink)]">&quot;{query}&quot;</strong></p>}
+      {loading ? <RecordSkeleton /> : items.length === 0 ? <EmptyRecords /> : visibleItems.length === 0 ? <NoSearchResults query={query} /> : <RecordIndex mode={mode} records={visibleItems} />}
     </section>
   );
+}
+
+function NoSearchResults({ query }: { query: string }) {
+  return <div className="paper-card rounded-[8px] px-6 py-14 text-center"><FolderOpen className="mx-auto text-[var(--accent)]" size={26} strokeWidth={1.5} aria-hidden="true" /><h2 className="mt-5 text-xl font-semibold">No matching records.</h2><p className="mt-3 text-sm text-[var(--muted)]">Try a project title, a phrase from the brief, a status, or a record ID instead of &quot;{query}&quot;.</p><Link href="/records" className="focus-ring mt-6 inline-flex text-sm text-[var(--accent)] underline">Clear search</Link></div>;
 }
 
 function RecordIndex({ mode, records }: { mode: Exclude<IndexMode, "policies">; records: OwnerRun[] }) {
@@ -124,13 +132,13 @@ function NewRecordContent() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not create this record."); }
     finally { setSaving(false); }
   }
-  return <section><PageHeading title="Start with the material you already have." description="Paste a brief, email export, chat note, transcript, screenshot reference, or video reference. The first build accepts text; upload adapters are prepared for the cloud handoff." />
+  return <section><PageHeading title="Start with the material you already have." description="Paste a brief, email export, chat note, transcript, or links to visual references. This form accepts text and URLs." />
     <form onSubmit={create} className="paper-card rounded-[8px] p-5 sm:p-7">
       <label htmlFor="brief" className="text-sm font-medium">Project material</label>
       <textarea id="brief" required value={brief} onChange={(event) => setBrief(event.target.value)} rows={12} placeholder="Paste the client material here..." className="focus-ring mt-3 w-full rounded-[4px] border border-[var(--rule)] bg-[var(--surface-strong)] p-4 text-sm leading-6 placeholder:text-[var(--faint)]" />
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-4"><label className="flex items-center gap-2 text-sm text-[var(--muted)]">Output language <select value={language} onChange={(event) => setLanguage(event.target.value)} className="focus-ring rounded-[4px] border border-[var(--rule)] bg-[var(--surface-strong)] px-2 py-1.5 text-[var(--ink)]"><option value="en">English</option><option value="id">Bahasa Indonesia</option></select></label><button disabled={saving || !brief.trim()} className="tap focus-ring inline-flex min-h-11 items-center gap-2 rounded-[4px] bg-[var(--accent)] px-4 text-sm font-medium text-white disabled:opacity-40"><Upload size={16} />{saving ? "Creating..." : "Read the material"}</button></div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4"><label className="flex items-center gap-2 text-sm text-[var(--muted)]">Output language <select value={language} onChange={(event) => setLanguage(event.target.value)} className="focus-ring rounded-[4px] border border-[var(--rule)] bg-[var(--surface-strong)] px-2 py-1.5 text-[var(--ink)]"><option value="en">English</option><option value="id">Bahasa Indonesia</option></select></label><button disabled={saving || !brief.trim()} className="tap focus-ring inline-flex min-h-11 items-center gap-2 rounded-[4px] bg-[var(--accent)] px-4 text-sm font-medium text-white disabled:opacity-40"><FileText size={16} />{saving ? "Creating..." : "Read the material"}</button></div>
       {error && <Message tone="error">{error}</Message>}
-      {result && <Message tone="success">Record created. <Link className="underline" href={`/records/${result.run_id}/sources`}>Open the source record.</Link></Message>}
+      {result && <Message tone="success">Record created. <Link className="underline" href={`/workspace?run=${result.run_id}#owner-controls`}>Continue to owner controls.</Link> <Link className="underline" href={`/records/${result.run_id}/sources`}>Or inspect the source record.</Link></Message>}
     </form></section>;
 }
 
@@ -161,7 +169,7 @@ function RecordDetailContent({ runId, mode }: { runId: string; mode: DetailMode 
     load(); return () => { active = false; };
   }, [mode, runId]);
   const title = mode === "sources" ? "Source record" : mode === "questions" ? "Questions" : mode === "baseline" ? "Baseline" : mode === "evidence" ? "Evidence" : mode === "activity" ? "Activity" : "Change requests";
-  return <section><PageHeading title={run ? `${recordTitle(run)} · ${title}` : title} description={detailDescription(mode)} action={<Link href="/records" className="focus-ring text-sm underline text-[var(--muted)]">All records</Link>} />
+  return <section><PageHeading title={run ? `${recordTitle(run)} · ${title}` : title} description={detailDescription(mode)} action={<div className="flex flex-wrap items-center gap-4"><Link href={`/workspace?run=${runId}#owner-controls`} className="tap focus-ring rounded-[4px] bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white">Open owner controls</Link><Link href="/records" className="focus-ring text-sm underline text-[var(--muted)]">All records</Link></div>} />
     {error && <Message tone="error">{error}</Message>}
     {!run ? <RecordSkeleton /> : <><RecordTabs runId={runId} active={mode} /><div className="mt-7">{mode === "sources" && <SourceDetail run={run} />}{mode === "questions" && <QuestionDetail run={run} />}{mode === "baseline" && <BaselineDetail baseline={baseline} />}{mode === "evidence" && <EvidenceDetail baseline={baseline} runId={runId} />}{mode === "activity" && <ActivityDetail items={activity} />}{mode === "requests" && <RequestsDetail items={requests} />}</div></>}
   </section>;
@@ -185,7 +193,7 @@ function BaselineDetail({ baseline }: { baseline: ActiveBaseline | null }) {
 
 function EvidenceDetail({ baseline, runId }: { baseline: ActiveBaseline | null; runId: string }) {
   if (!baseline) return <Message tone="neutral">Evidence is linked after a baseline is active.</Message>;
-  return <article className="paper-card rounded-[8px] p-5 sm:p-7"><p className="text-sm leading-6 text-[var(--muted)]">Attach an artifact to each criterion, then send a delivery review link. A visual check can assist, but the client records acceptance.</p><div className="mt-6 grid gap-3">{Object.entries(baseline.baseline.canonical_payload.criteria).map(([key, criterion]) => <div key={key} className="flex flex-col justify-between gap-3 border border-[var(--rule)] p-4 sm:flex-row sm:items-center"><div><p className="mono text-xs text-[var(--muted)]">{key}</p><p className="mt-1 text-sm">{criterion.text}</p></div><Link href={`/records/${runId}/evidence#${key}`} className="focus-ring text-sm text-[var(--accent)] underline">Add evidence</Link></div>)}</div></article>;
+  return <article className="paper-card rounded-[8px] p-5 sm:p-7"><p className="text-sm leading-6 text-[var(--muted)]">Attach an artifact to each criterion, then send a delivery review link. A visual check can assist, but the client records acceptance.</p><div className="mt-6 grid gap-3">{Object.entries(baseline.baseline.canonical_payload.criteria).map(([key, criterion]) => <div key={key} className="flex flex-col justify-between gap-3 border border-[var(--rule)] p-4 sm:flex-row sm:items-center"><div><p className="mono text-xs text-[var(--muted)]">{key}</p><p className="mt-1 text-sm">{criterion.text}</p></div><Link href={`/workspace?run=${runId}#owner-controls`} className="focus-ring text-sm text-[var(--accent)] underline">Add evidence</Link></div>)}</div></article>;
 }
 
 function ActivityDetail({ items }: { items: AuditEvent[] }) {
