@@ -1,0 +1,66 @@
+[
+  {
+    "id": "01-outcome",
+    "title": "Outcome first",
+    "caption": "A vague brief becomes a shared, versioned agreement.",
+    "vo": "Delividence turns a vague freelance brief into a shared, versioned agreement -- every fact traced back to the client's own words, and every change classified before it's accepted.",
+    "audio": "audio/01-outcome.wav",
+    "seconds": 14.4
+  },
+  {
+    "id": "02-problem",
+    "title": "Why not a chatbot",
+    "caption": "Not a marketplace \u00b7 Not legal e-signature \u00b7 A two-party scope protocol",
+    "vo": "A chatbot can rewrite this brief, but it cannot create shared state with the client, freeze an approved baseline, resume automatically when the client responds, or prove which acceptance criteria were actually met.",
+    "audio": "audio/02-problem.wav",
+    "seconds": 17.04
+  },
+  {
+    "id": "03-handshake",
+    "title": "Handshake",
+    "caption": "Gemini extracts the ledger. The client confirms it. Only then does it freeze.",
+    "vo": "Gemini extracts the deal ledger from the brief, but every quote is verified against the source text in code before it's shown. The plan only freezes once the client confirms it -- and the same ADK workflow resumes through Pub/Sub the moment that happens.",
+    "audio": "audio/03-handshake.wav",
+    "seconds": 18.44
+  },
+  {
+    "id": "04-guardrail",
+    "title": "Guardrail",
+    "caption": "No valid citation, no classification. The human decides.",
+    "vo": "The model cannot invent the boundary. A change is only labeled in-scope or a new request if it can be traced to an approved quote -- without a valid citation, it drops to ambiguous automatically. The human always makes the final call, and it's logged as theirs.",
+    "audio": "audio/04-guardrail.wav",
+    "seconds": 20.36
+  },
+  {
+    "id": "05-proof",
+    "title": "Proof",
+    "caption": "Defensible audit trail, not a certified legal signature.",
+    "vo": "Evidence is mapped to the exact criterion it supports. The client can accept some items and push back on others in a single submission, and the resulting Proof Manifest ties baseline, evidence, and every client decision together -- exportable as Markdown.",
+    "audio": "audio/05-proof.wav",
+    "seconds": 19.44
+  },
+  {
+    "id": "06-preference",
+    "title": "Persistent preference",
+    "caption": "Carried forward as the freelancer's policy - never as a client fact.",
+    "vo": "A confirmed preference carries into the next deal automatically, but it's labeled as the freelancer's policy, not a client fact -- it still has to go through the same client approval as everything else before it's binding.",
+    "audio": "audio/06-preference.wav",
+    "seconds": 14.24
+  },
+  {
+    "id": "07-cloud",
+    "title": "Google Cloud proof",
+    "caption": "Gemini via Google ADK on Cloud Run, Firestore and Pub/Sub.",
+    "vo": "Delividence runs on Gemini through Google ADK, with Cloud Run, Firestore, and Pub/Sub. The client event shown here resumed this exact worker job in Google Cloud -- not a local demo.",
+    "audio": "audio/07-cloud.wav",
+    "seconds": 14.08
+  },
+  {
+    "id": "08-close",
+    "title": "Close",
+    "caption": "Clear scope. Controlled change. Accepted work.",
+    "vo": "Clear scope. Controlled change. Accepted work.",
+    "audio": "audio/08-close.wav",
+    "seconds": 5.88
+  }
+]

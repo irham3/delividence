@@ -1,0 +1,6 @@
+node_modules/
+out/
+# Hasil generate, bukan sumber: audio dibuat ulang oleh scripts/narrate.py,
+# tangkapan layar dibuat ulang dari produksi.
+public/audio/
+public/shots/
