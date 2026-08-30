@@ -133,6 +133,81 @@ render React (pola yang sama dengan `ledger-summary.ts`).
    pesan aktivitas sudah Inggris.
 5. Baru mulai capture video (Remotion + TTS Gemini, lihat milestone di atas).
 
+### Lanjutan — lokal ikut diverifikasi & didokumentasikan (commit `dd7604e`)
+
+Rifqi mengingatkan partner memakai lokal, jadi jalur lokal ikut dijalankan
+sungguhan, bukan diasumsikan.
+
+**Dua penyebab lokal patah untuk clone baru, keduanya diperbaiki:**
+
+1. `web/.env.example` **tidak pernah ada di repo**. `.gitignore` bawaan
+   Next.js di `web/` berisi `.env*` dan itu mengalahkan `!.env.example` di
+   root. Siapa pun yang mengikuti README mencari file yang tidak ada, jalan
+   tanpa `NEXT_PUBLIC_FIREBASE_*`, lalu kena `Firebase is not configured`
+   persis seperti Rifqi pagi ini. Ditambahkan `!.env.example` + file
+   contohnya (placeholder kosong).
+2. `docs/06-SETUP.md` §3 masih menjelaskan struktur yang tidak pernah ada di
+   repo ini (`apps/web`, `services/api`, `services/worker`, port 8081/8082,
+   `npm`, `.env.local`). Ditulis ulang sesuai kenyataan, dan **setiap
+   perintahnya dijalankan dulu sebelum ditulis**. README dapat resep tiga
+   terminal yang sama.
+
+**Cara menjalankan lokal (terverifikasi 30 Agu):**
+
+| Terminal | Perintah | Port |
+|---|---|---|
+| API | `..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8080 --env-file .env` (dari `backend/`) | 8080 |
+| Worker | `$env:ROLE = "worker"` lalu perintah yang sama dengan `--port 8081` | 8081 |
+| Web | `pnpm dev` (dari `web/`) | 3000 |
+
+Temuan kecil yang berguna: **`ROLE` dari environment menang atas isi
+`--env-file`** (uvicorn memanggil `load_dotenv` tanpa override), jadi worker
+tidak butuh file env kedua. Diuji langsung: instance dengan `ROLE=worker`
+menjawab `POST /pubsub/push` 204 dan `GET /runs` 404 — app worker, bukan api.
+
+Mode lokal dipilih dengan **mengosongkan `GOOGLE_CLOUD_PROJECT`** di
+`backend/.env` (antrean HTTP langsung ke worker, state ke
+`backend/.localdata/`). Owner login tetap butuh `gcloud auth
+application-default login` walau mode lokal, karena `app/auth.py` memverifikasi
+ID token lewat `firebase_admin` + ADC — ini yang paling gampang bikin mesin
+baru mentok tanpa pesan yang jelas.
+
+**Hasil smoke test lokal:**
+
+```
+api  GET /runs (tanpa token)  -> 401 {"detail":"Missing or malformed Authorization header"}  (sehat)
+web  /  /register  /sign-in  /workspace  /records            -> 200
+web  /records/{id}            -> 200      (fix 404 ikut terbukti di lokal)
+web  /records/{id}/records    -> 404
+```
+
+`/register` dibuka di Chrome: render bersih, **tombol "Sign up with Google"
+diklik dan TIDAK lagi melempar `Firebase is not configured`** (popup-nya saja
+yang diblokir sandbox otomasi — bukan bug aplikasi). Nol console error.
+
+### DUA PERINTAH YANG MASIH HARUS DIJALANKAN RIFQI SENDIRI
+
+Keduanya diblokir classifier auto-mode, jadi Claude tidak bisa menjalankannya:
+
+```
+gh pr merge 4 --repo irham3/delividence --merge
+gh workflow run "Sync deployment mirror" --repo rifqiahmadpratama/delividence
+```
+
+```
+.\deploy\02-deploy.ps1 -ProjectId gen-lang-client-0104798459 -FrontendOrigin https://delividence.vercel.app -FirebaseProjectId gen-lang-client-0104798459 -ModelRuntime developer -GeminiModel gemini-3.6-flash
+```
+
+`-GeminiModel gemini-3.6-flash` WAJIB: default skripnya `gemini-3.5-flash`,
+sedangkan revisi yang sekarang live memakai 3.6 (sudah dicek langsung ke
+Cloud Run). Tanpa flag itu redeploy diam-diam menurunkan model.
+
+**PENTING soal mirror:** `sync-deployment-mirror.yml` menarik dari `main`
+repo partner tiap 15 menit dan menimpa isi mirror. Jadi push langsung ke repo
+clone Vercel (cara 29 Agu) sekarang JUSTRU akan ditimpa balik selama `main`
+belum berisi fix-nya. Jalur yang benar: merge PR ke `main` dulu, mirror
+menyusul sendiri.
+
 ### Temuan kecil yang SENGAJA dibiarkan
 
 - Field "Final deadline" di form klien tampil kosong padahal ledger punya
