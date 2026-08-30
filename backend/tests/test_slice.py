@@ -82,7 +82,7 @@ def test_worker_menandai_failed_saat_model_gagal(published, monkeypatch):
     assert worker.post("/pubsub/push", json=envelope({"run_id": run_id, "round": 1})).status_code == 204
     run = store.get_run(run_id)
     assert run["status"] == "failed"
-    assert "gagal" in run["audit_trail"][-1]["detail"]
+    assert "failed" in run["audit_trail"][-1]["detail"]
 
 
 def test_pengiriman_ganda_hanya_diproses_sekali(published):

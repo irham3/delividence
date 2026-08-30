@@ -22,6 +22,8 @@ import {
   type OwnerRun,
   type ScopeRequest,
 } from "@/lib/api";
+import { recordHref } from "@/lib/record-href";
+import { indexColumnHeader, indexColumnValue } from "@/lib/record-columns";
 
 type IndexMode = "records" | "sources" | "review" | "activity" | "policies";
 type DetailMode = "sources" | "questions" | "baseline" | "evidence" | "activity" | "requests";
@@ -79,15 +81,14 @@ function RecordIndex({ mode, records }: { mode: Exclude<IndexMode, "policies">; 
   const Icon = mode === "sources" ? FolderOpen : mode === "review" ? ListChecks : mode === "activity" ? Activity : FileText;
   return (
     <div className="paper-card overflow-hidden rounded-[8px]">
-      <div className="hidden grid-cols-[minmax(220px,1.4fr)_150px_120px_160px] gap-5 border-b border-[var(--rule)] px-6 py-3 text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--muted)] md:grid"><span>Record</span><span>Status</span><span>Baseline</span><span>Open</span></div>
+      <div className="hidden grid-cols-[minmax(220px,1.4fr)_150px_120px_160px] gap-5 border-b border-[var(--rule)] px-6 py-3 text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--muted)] md:grid"><span>Record</span><span>Status</span><span>{indexColumnHeader(mode)}</span><span>Open</span></div>
       {records.map((record) => {
-        const detailMode = mode === "review" ? "evidence" : mode;
-        const target = `/records/${record.run_id}/${detailMode}`;
+        const target = recordHref(mode, record.run_id);
         return (
           <Link key={record.run_id} href={target} className="tap focus-ring grid gap-3 border-b border-[var(--rule)] px-5 py-5 last:border-b-0 hover:surface-o45 md:grid-cols-[minmax(220px,1.4fr)_150px_120px_160px] md:items-center md:gap-5 md:px-6">
             <div className="min-w-0"><p className="truncate font-medium">{recordTitle(record)}</p><p className="mt-1 truncate text-sm text-[var(--muted)]">{record.brief}</p></div>
             <Status value={record.status} />
-            <span className="text-sm text-[var(--muted)]">{record.active_baseline_version ? `v${record.active_baseline_version}` : "Draft"}</span>
+            <span className="text-sm text-[var(--muted)]">{indexColumnValue(mode, record)}</span>
             <span className="inline-flex items-center gap-2 text-sm"><Icon size={15} className="text-[var(--accent)]" /> Open <ArrowRight size={15} className="text-[var(--accent)]" /></span>
           </Link>
         );
@@ -192,7 +193,20 @@ function ActivityDetail({ items }: { items: AuditEvent[] }) {
 }
 
 function RequestsDetail({ items }: { items: ScopeRequest[] }) {
-  return <article className="paper-card rounded-[8px] p-5 sm:p-7"><p className="text-sm leading-6 text-[var(--muted)]">New work is recorded separately from the baseline. The freelancer confirms the cited classification.</p><div className="mt-6 space-y-4">{items.length ? items.map((request) => <div key={request.request_id} className="border border-[var(--rule)] p-4"><p className="text-sm">{request.raw_text}</p><p className="mt-3 text-xs text-[var(--muted)]">{request.confirmed_classification ? `Classification: ${request.confirmed_classification}` : "Awaiting freelancer classification"}</p></div>) : <p className="text-sm text-[var(--muted)]">No requests recorded yet.</p>}</div></article>;
+  return <article className="paper-card rounded-[8px] p-5 sm:p-7"><p className="text-sm leading-6 text-[var(--muted)]">New work is recorded separately from the baseline. The freelancer confirms the cited classification.</p><div className="mt-6 space-y-4">{items.length ? items.map((request) => <RequestRow key={request.request_id} request={request} />) : <p className="text-sm text-[var(--muted)]">No requests recorded yet.</p>}</div></article>;
+}
+
+function RequestRow({ request }: { request: ScopeRequest }) {
+  // Usulan Gemini ditampilkan di sini juga, bukan hanya di workspace: halaman
+  // ini yang bernama "Changes", jadi Guardrail harus terlihat dari sini --
+  // tetap jelas bahwa usulan bukan keputusan (09-DOMAIN-RULES §8).
+  const confirmed = request.confirmed_classification;
+  const citations = confirmed ? request.citations : request.proposed_citations;
+  return <div className="border border-[var(--rule)] p-4">
+    <p className="text-sm">{request.raw_text}</p>
+    <p className="mt-3 text-xs text-[var(--muted)]">{confirmed ? <>Classification: <strong>{confirmed}</strong> · confirmed by the freelancer</> : request.proposed_classification ? <>Model suggested: <strong>{request.proposed_classification}</strong> · awaiting freelancer confirmation</> : "Awaiting freelancer classification"}</p>
+    {citations.length > 0 && <ul className="mt-2 space-y-1">{citations.map((citation, index) => <li key={`${citation.ref}-${index}`} className="mono text-xs text-[var(--muted)]">{citation.ref} - &quot;{citation.quote}&quot;</li>)}</ul>}
+  </div>;
 }
 
 function PolicyView() {

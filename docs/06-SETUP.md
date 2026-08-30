@@ -44,42 +44,70 @@ Cloud Run memakai Application Default Credentials melalui service account. Hinda
 
 ## 3. Local bootstrap
 
-PowerShell example setelah code tersedia:
+Perintah di bawah sudah diverifikasi apa adanya di repo ini (30 Agu 2026).
+Struktur foldernya `backend/` dan `web/` -- bukan `services/api`, `apps/web`
+seperti draf awal dokumen ini.
+
+Sekali saja, dari root repo:
 
 ```powershell
-gcloud auth login
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r backendequirements-dev.txt
+
+Copy-Item backend\.env.example backend\.env
+Copy-Item web\.env.example web\.env
+```
+
+Lalu isi dua file `.env` itu:
+
+- `backend/.env` -> `GEMINI_API_KEY` (gratis di <https://aistudio.google.com/apikey>)
+  dan `FIREBASE_PROJECT_ID`. Biarkan `GOOGLE_CLOUD_PROJECT` **kosong** untuk
+  mode lokal: antrean lewat HTTP langsung ke worker, state ke file JSON di
+  `backend/.localdata/`, tanpa Firestore/Pub-Sub sungguhan.
+- `web/.env` -> keenam `NEXT_PUBLIC_FIREBASE_*`. Ambil dari Firebase Console
+  (Project settings > Your apps > Web app). Tanpa ini halaman sign-in/register
+  melempar `Firebase is not configured` begitu tombolnya diklik.
+
+Owner login memverifikasi ID token lewat `firebase_admin` dengan Application
+Default Credentials, jadi ini tetap perlu walau mode lokal:
+
+```powershell
 gcloud auth application-default login
-gcloud config set project PROJECT_ID
-
-Set-Location apps/web
-npm install
-Copy-Item .env.example .env.local
-npm run dev
 ```
 
-Di terminal kedua:
+Terminal 1 -- API di :8080:
 
 ```powershell
-Set-Location services/api
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-Copy-Item .env.example .env
-uvicorn app.main:app --reload --port 8081
+Set-Location backend
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8080 --env-file .env
 ```
 
-Di terminal ketiga:
+Terminal 2 -- worker di :8081. Satu image, dua peran; `ROLE` dari environment
+menang atas isi `.env`, jadi tidak perlu file env kedua:
 
 ```powershell
-Set-Location services/worker
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-Copy-Item .env.example .env
-uvicorn app.main:app --reload --port 8082
+Set-Location backend
+$env:ROLE = "worker"
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8081 --env-file .env
 ```
 
-Untuk local-only iteration, API dapat memanggil worker test endpoint yang hanya aktif saat `ENV=local`; hosted demo wajib melewati Pub/Sub.
+Terminal 3 -- frontend di :3000:
+
+```powershell
+Set-Location web
+pnpm install
+pnpm dev
+```
+
+Cek cepat bahwa ketiganya benar:
+
+```powershell
+curl.exe -s -o NUL -w "%{http_code}`n" http://127.0.0.1:8080/runs   # 401 (auth jalan)
+curl.exe -s -o NUL -w "%{http_code}`n" http://127.0.0.1:3000/       # 200
+```
+
+`401 Missing or malformed Authorization header` dari `/runs` memang yang
+diharapkan tanpa token -- itu tanda auth owner hidup, bukan error.
 
 ## 4. Provision Google Cloud
 

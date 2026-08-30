@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/delividence/owner-routes";
-
-const sections = ["sources", "questions", "baseline", "evidence", "activity", "requests"] as const;
+import { isDetailSection } from "@/lib/record-href";
 
 export default async function RecordSectionPage({ params }: { params: Promise<{ runId: string; section: string }> }) {
   const { runId, section } = await params;
-  if (!sections.includes(section as (typeof sections)[number])) notFound();
-  return <RecordDetail runId={runId} mode={section as (typeof sections)[number]} />;
+  if (!isDetailSection(section)) notFound();
+  return <RecordDetail runId={runId} mode={section} />;
 }

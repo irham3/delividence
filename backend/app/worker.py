@@ -130,7 +130,7 @@ async def push(request: Request):
         log.exception("ekstraksi Gemini gagal untuk run %s", run_id)
         ledger_draft = None
         final_status = "failed"
-        detail = "Ekstraksi Gemini gagal (lihat log worker); ledger belum terisi."
+        detail = "Gemini extraction failed (see worker logs); the ledger stays empty."
     else:
         final_status = "done"
         ledger_draft, applied_preference = _merge_staged_preference(run, ledger_draft or {})
@@ -145,9 +145,9 @@ async def push(request: Request):
                     run_id, "PREFERENCE_CONFIRMED", "system", 0,
                     {"field": "revision_policy.rounds_total", "state": "FREELANCER_POLICY"},
                 )
-            detail = "Brief diekstrak lewat Gemini -- %d field ledger terisi." % len(ledger_draft)
+            detail = "Brief extracted with Gemini -- %d ledger field(s) filled." % len(ledger_draft)
         else:
-            detail = "Gemini tidak menghasilkan field ledger apa pun dari brief ini."
+            detail = "Gemini returned no ledger field for this brief."
     store.append_audit_step(run_id, "extraction", detail)
 
     store.update_run(run_id, status=final_status)
