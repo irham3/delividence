@@ -46,7 +46,8 @@ Snapshot versi, hash konten, timestamp server, provenance, dan tindakan approval
 8. [07-RISKS-DECISIONS.md](./07-RISKS-DECISIONS.md) — keputusan tetap, risiko, dan fallback.
 9. [09-DOMAIN-RULES.md](./09-DOMAIN-RULES.md) — aturan normatif criterion versioning, revision rounds, drift ledger, conflict resolution, event log, dan authority.
 10. [10-KEPUTUSAN-DAN-VERIFIKASI.md](./10-KEPUTUSAN-DAN-VERIFIKASI.md) — keputusan terkunci (nama, repo, stack, profil modul) dan fakta aturan hackathon yang sudah diverifikasi ke halaman resmi. **Baca setelah 00.**
-11. [arsip-dealready/](./arsip-dealready/) — paket rencana DealReady sebelum pivot. Riwayat, bukan rujukan.
+11. [12-HANDOVER-LOKAL.md](./12-HANDOVER-LOKAL.md) — daftar serah-terima untuk menjalankan di mesin sendiri: dua file env yang tidak ikut repo, prasyarat, dan perintah yang sudah diuji.
+12. [arsip-dealready/](./arsip-dealready/) — paket rencana DealReady sebelum pivot. Riwayat, bukan rujukan.
 
 ## Definition of done hackathon
 

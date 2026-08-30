@@ -278,6 +278,34 @@ ke-commit -- semuanya bisa dibuat ulang dari perintah di atas.
 **Sisa pekerjaan video**: upload ke YouTube publik (unlisted tidak sah),
 tempel linknya ke form Devpost, centang item §5 checklist.
 
+### Serah-terima ke partner — apa yang harus dikirim supaya bisa jalan di lokal
+
+Dokumen lengkapnya: **`docs/12-HANDOVER-LOKAL.md`** (sudah di repo, tinggal
+kirim link). Ringkasnya:
+
+Seluruh KODE sudah ada di repo. Yang tidak ikut hanya **dua file env** karena
+gitignored — dicek dengan `git status --ignored`, dan memang hanya dua itu
+yang relevan (`.localdata/`, `public/shots|audio/`, `out/` semuanya hasil
+generate; `web/CLAUDE.md`/`AGENTS.md` instruksi agent, bukan kebutuhan run).
+
+| File | Boleh dikirim apa adanya? |
+|---|---|
+| `web/.env` | **Ya.** Config web Firebase memang public — nilai yang sama sudah tertanam di bundle JS `delividence.vercel.app` |
+| `backend/.env` | **Strukturnya saja.** `GEMINI_API_KEY` JANGAN dibagi — partner generate sendiri gratis di aistudio.google.com/apikey, karena free tier terikat akun dan kuotanya saling dorong (`429`) kalau dipakai berdua |
+
+Di `backend/.env` partner, **`GOOGLE_CLOUD_PROJECT` dikosongkan** = mode lokal
+(antrean HTTP langsung ke worker, state JSON di `backend/.localdata/`, tanpa
+Firestore/Pub-Sub). Diisi hanya kalau sengaja mau menyambung ke data produksi,
+dan itu butuh akses IAM + menjalankan `local_pubsub_forwarder.py`.
+
+**`gcloud auth application-default login` tetap wajib walau mode lokal** —
+`app/auth.py` memverifikasi Firebase ID token lewat `firebase_admin` + ADC.
+Ini penyebab mentok yang pesan errornya paling tidak membantu.
+Secara kode verifikasi token tidak memanggil API project (hanya mencocokkan
+tanda tangan JWT ke sertifikat publik Google), jadi akun Google mana pun
+mestinya bisa — **belum diuji dengan akun selain pemilik project**; kalau
+partner mentok di situ, tambahkan akunnya ke project Firebase.
+
 ### Temuan kecil yang SENGAJA dibiarkan
 
 - Field "Final deadline" di form klien tampil kosong padahal ledger punya
