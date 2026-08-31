@@ -1,6 +1,10 @@
 # Release verification - 2026-08-31
 
-Commit verified locally: `8a4e2f0` (`Fix auth session flow and demo reliability`).
+Commits verified locally and pushed:
+
+- `8a4e2f0` (`Fix auth session flow and demo reliability`)
+- `e4e03a9` (`Add screen-record demo pipeline`)
+- `0ecb35b` (`Fail Vercel mirror sync on git errors`)
 
 ## Fixed
 
@@ -23,44 +27,44 @@ Commit verified locally: `8a4e2f0` (`Fix auth session flow and demo reliability`
 - Live ADK/Gemini extraction smoke: passed with ledger fields `acceptance_criteria`, `deliverables`, `out_of_scope`, `revision_policy`, and `timeline`.
 - Live ADK/Gemini guardrail smoke: passed with `CHANGE_REQUEST` and citation `out_of_scope[0] -> payment processing`.
 
-## Production state observed before deploy
+## Production verification after Cloud Run deploy
 
-- `https://delividence.vercel.app/sign-in` still served the old sign-in button with text `G`.
-- `https://delividence-api-3jww7h7koq-et.a.run.app/auth/session` still returned `404`.
+- Cloud Run project: `gen-lang-client-0104798459`
+- Region: `asia-southeast2`
+- API revision: `delividence-api-00004-5jr`, serving 100% traffic.
+- Worker revision: `delividence-worker-00004-lrp`, serving 100% traffic.
+- API health: `GET /health` returns `{"status":"ok","role":"api","local":false}`.
+- Session bridge: `POST /auth/session` with an invalid Firebase token returns `401` (`Invalid or expired ID token`), not the stale `404`.
+- Frontend session route: `POST https://delividence.vercel.app/api/auth/session` with an invalid token returns the user-safe JSON error `Google could not verify this sign-in. Choose your account again to continue.`
+- Frontend logout route: `DELETE https://delividence.vercel.app/api/auth/session` returns `204`.
+- CORS preflight from `https://delividence.vercel.app` to `POST /runs` returns `200` with `access-control-allow-origin: https://delividence.vercel.app`.
+- Worker privacy: unauthenticated `GET /health` on `delividence-worker` returns `403`, as expected for the private worker.
+- Pub/Sub push subscription `delividence-runs-push` is `ACTIVE`, points to `/pubsub/push`, uses OIDC service account `delividence-pubsub@gen-lang-client-0104798459.iam.gserviceaccount.com`, has 60s ack deadline, retry policy, and DLQ.
+- Frontend production routing: protected `/records/run-123?tab=evidence` redirects to `/sign-in?next=%2Frecords%2Frun-123%3Ftab%3Devidence`; public `/client/not-a-real-token` is not redirected to owner sign-in.
+- Frontend production Google button: one `google-g` image asset is rendered and the old text placeholder `>G<` is absent.
 
-Production is therefore not complete until Cloud Run and Vercel are redeployed and a hosted smoke is run.
+## Remaining production E2E limitation
 
-## Blocking item
+The only unverified hosted path is a full owner-authenticated browser/API journey after actual Firebase sign-in. The code path is covered locally and the production session endpoint is live, but automated production owner E2E needs one of these:
 
-`gcloud auth list` returned no active account. A `gcloud auth login --brief` flow was started and is waiting for the browser OAuth callback. After login with an account that can deploy to project `gen-lang-client-0104798459`, run:
+- Grant `roles/iam.serviceAccountTokenCreator` on `delividence-api@gen-lang-client-0104798459.iam.gserviceaccount.com` to the deploy/testing account, so a short-lived Firebase custom token can be minted for smoke testing.
+- Or run the hosted Google sign-in in a browser session and provide a safe test ID token/session for the smoke script.
 
-```powershell
-.\deploy\02-deploy.ps1 `
-  -ProjectId gen-lang-client-0104798459 `
-  -Region asia-southeast2 `
-  -FrontendOrigin https://delividence.vercel.app `
-  -FirebaseProjectId gen-lang-client-0104798459 `
-  -ModelRuntime developer `
-  -GeminiModel gemini-3.5-flash
-```
+Attempts that failed safely:
 
-Then verify:
-
-```powershell
-curl.exe -s https://delividence-api-3jww7h7koq-et.a.run.app/health
-curl.exe -s -o NUL -w "%{http_code}`n" -X POST https://delividence-api-3jww7h7koq-et.a.run.app/auth/session -H "Authorization: Bearer invalid"
-```
-
-Expected: health `200`, invalid session token `401` rather than `404`.
+- Exchanging the Cloud SDK OAuth token through Firebase returned `INVALID_IDP_RESPONSE` because the OAuth audience belongs to Cloud SDK, not this Firebase web app.
+- Minting a Firebase custom token via IAM returned `403 iam.serviceAccounts.signJwt`.
+- Temporary email/password Firebase sign-up returned `OPERATION_NOT_ALLOWED` because that provider is disabled.
+- Manual Vercel mirror sync could not fetch `https://github.com/rifqiahmadpratama/delividence.git` from this machine (`Repository not found`). `deploy/03-sync-vercel-mirror.ps1` now fails hard on that condition instead of printing a false success.
 
 ## Demo artifact
 
-Fallback MP4 created locally:
+Screen-record style MP4 created locally:
 
 ```text
-D:\Work\00\delividence\video\remotion\out\delividence-demo.mp4
+D:\Work\00\delividence\video\screen-record-demo\out\delividence-demo-screen-record.mp4
 ```
 
-Properties: 1920x1080, H.264 video, AAC mono audio, 119 seconds.
+Properties: 1920x1080, H.264 video, AAC mono audio, 96.4 seconds.
 
-Refresh the Cloud proof card after production deploy so it shows the latest Cloud Run revision/log timestamp.
+This version is generated from a browser recording pipeline with typed input, clicks, visible cursor, live state changes, safe margins, and neural narration. It replaces the earlier screenshot-style fallback at `video/remotion/out/delividence-demo.mp4`.
