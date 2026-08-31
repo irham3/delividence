@@ -1,0 +1,46 @@
+[
+  {
+    "caption": "Delividence starts where freelance projects usually get messy: vague promises, scattered messages, and no shared proof.",
+    "text": "Delividence starts where freelance projects usually get messy: vague promises, scattered messages, and no shared proof."
+  },
+  {
+    "caption": "The owner signs in with Google, then lands in a protected workspace. Client links stay separate and token-based.",
+    "text": "The owner signs in with Google, then lands in a protected workspace. Client links stay separate and token based, so clients never need a freelancer account."
+  },
+  {
+    "caption": "Paste the client material once. The agent extracts deliverables, criteria, dates, exclusions, and revision policy.",
+    "text": "Now we paste the client material once. The agent extracts deliverables, acceptance criteria, dates, exclusions, and revision policy into a structured record."
+  },
+  {
+    "caption": "The worker runs in the background, records each step, and only asks for facts the source cannot answer.",
+    "text": "The worker runs in the background, records each step, and only asks for facts the source cannot answer. That keeps the handoff small and auditable."
+  },
+  {
+    "caption": "The freelancer creates a clarification link. The client reviews the plan, answers missing details, and confirms the hash.",
+    "text": "The freelancer creates a secure clarification link. The client reviews the plan, answers missing details, and confirms the exact hash of the agreement."
+  },
+  {
+    "caption": "After confirmation, v1 is locked. New asks go through Guardrail instead of silently changing the agreement.",
+    "text": "After confirmation, version one is locked. A new ask now goes through Guardrail instead of silently changing what was already approved."
+  },
+  {
+    "caption": "Guardrail suggests CHANGE_REQUEST with citations. The freelancer still confirms the decision explicitly.",
+    "text": "Guardrail proposes a change request with citations from the baseline. The model does not decide on its own; the freelancer confirms the classification explicitly."
+  },
+  {
+    "caption": "The change is staged as v2, then confirmed through the same client review path.",
+    "text": "The change is staged as version two, then confirmed through the same client review path, without overwriting version one."
+  },
+  {
+    "caption": "Delivery evidence is attached directly to acceptance criteria, then sent back for client review.",
+    "text": "When the work is delivered, evidence is attached directly to acceptance criteria, then sent back through a delivery review link."
+  },
+  {
+    "caption": "The client accepts or requests changes criterion by criterion. The review becomes part of the audit trail.",
+    "text": "The client accepts or requests changes criterion by criterion. The review session becomes part of the audit trail."
+  },
+  {
+    "caption": "The final proof packet exports baseline hash, evidence, client decisions, and audit events as JSON or Markdown.",
+    "text": "The final proof packet exports the baseline hash, evidence, client decisions, and audit events as JSON or Markdown. That is the operational utility: fewer disputes, less follow-up, and a clean record of what really happened."
+  }
+]

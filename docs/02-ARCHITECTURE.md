@@ -2,7 +2,9 @@
 
 ## 1. Sasaran arsitektur
 
-Arsitektur harus membuktikan empat hal di demo: Gemini memahami brief multimodal, ADK mengelola workflow stateful, tindakan klien melanjutkan proses secara event-driven, dan semua state penting tersimpan di Google Cloud. Sistem sengaja tidak memakai banyak agent; kompleksitas berada pada state transition dan evidence integrity.
+Arsitektur harus membuktikan empat hal di demo: Gemini memahami brief teks dan request scope, ADK mengelola workflow stateful, tindakan klien melanjutkan proses secara event-driven, dan semua state penting tersimpan di Google Cloud. Sistem sengaja tidak memakai banyak agent; kompleksitas berada pada state transition dan evidence integrity.
+
+Catatan implementasi 31 Agustus 2026: workflow submission saat ini menerima brief teks dan evidence berupa teks/URL. Direct binary upload, automatic image/audio/video analysis, dan Cloud Storage artifact adapter adalah stretch work pasca-core; jangan mengklaim fitur itu sebagai bagian demo sampai adapter tersebut benar-benar masuk kode dan dites end-to-end.
 
 ## 2. Bentuk sistem
 
@@ -11,13 +13,12 @@ Owner browser                         Client browser (no account)
      │ Firebase ID token                   │ scoped opaque token
      └──────────────┬───────────────────────┘
                     ▼
-          Web UI — Next.js / Cloud Run
+          Web UI — Next.js / Vercel or local dev
                     │ HTTPS
                     ▼
           API — FastAPI / Cloud Run
-           │         │          │
-           │         │          └── Cloud Storage (images/evidence)
-           │         └───────────── Firestore (deal state/audit)
+           │         │
+           │         └───────────── Firestore (run state/audit)
            └─────────────────────── Pub/Sub topic
                                          │ authenticated push
                                          ▼
@@ -33,12 +34,12 @@ UI melakukan polling status run setiap 2–3 detik untuk MVP. WebSocket/SSE tida
 
 | Teknologi | Fungsi nyata |
 |---|---|
-| Gemini 3.5 Flash | ekstraksi text/image, ambiguity detection, question ranking, scope comparison, structured explanation |
+| Gemini 3.5 Flash | ekstraksi brief teks, ambiguity detection, question ranking, scope comparison, structured explanation |
 | Google ADK | workflow state, orchestration, tool calls, resume setelah event |
-| Cloud Run | web, API, dan private worker |
-| Firestore | deals, append-only approved snapshots, preferences, jobs, audit events |
+| Cloud Run | API dan private worker |
+| Vercel / Next.js | hosted web UI dan local dev UI |
+| Firestore | runs, append-only approved snapshots, preferences, jobs, audit events |
 | Pub/Sub | queue dan resume ketika artifact/client response masuk |
-| Cloud Storage | source screenshot dan evidence image |
 | Cloud Logging | bukti run, latency, error, dan Pub/Sub delivery |
 
 Keputusan direvisi 25 Agustus 2026 (lihat `10-KEPUTUSAN-DAN-VERIFIKASI.md` §1): model dipanggil melalui Google Gen AI/ADK pada **Gemini Developer API** (`GEMINI_API_KEY`, `GOOGLE_GENAI_USE_VERTEXAI=FALSE`) — billing GCP tidak aktif, Developer API punya free tier tanpa kartu, dan aturan hackathon eksplisit mengizinkan keduanya. Vertex AI + Application Default Credentials tetap jalur produksi kalau billing aktif (tinggal ganti `GOOGLE_GENAI_USE_VERTEXAI=TRUE` + isi `GOOGLE_CLOUD_PROJECT`, tidak ada kode yang berubah).
@@ -56,7 +57,8 @@ Keputusan direvisi 25 Agustus 2026 (lihat `10-KEPUTUSAN-DAN-VERIFIKASI.md` §1):
 
 - Memverifikasi owner identity dan ownership setiap deal.
 - Memvalidasi client token, expiry, purpose, dan deal binding.
-- Menerima upload kecil melalui API, menulis artifact ke Cloud Storage, lalu membuat metadata, job, dan Pub/Sub message. MVP tidak memakai signed upload URL.
+- Menerima brief teks, client response, new request, dan evidence teks/URL; membuat metadata, job, dan Pub/Sub message.
+- Direct binary upload dan Cloud Storage artifact write path belum termasuk submission build.
 - Menjalankan operasi deterministik: readiness, canonicalization/hash, version increment, approval gate.
 - Tidak menjalankan model request panjang di request client.
 
@@ -91,7 +93,7 @@ Status berubah melalui fungsi domain deterministik. Model hanya menghasilkan str
 | Tool | Hak | Catatan |
 |---|---|---|
 | `load_deal_context` | read | hanya deal yang tercantum di job |
-| `read_artifact` | read | text atau Cloud Storage object milik deal melalui server authorization |
+| `read_artifact` | read | text artifact milik run melalui server authorization |
 | `save_ledger_draft` | write | schema tervalidasi; tidak dapat membuat `AGREED` |
 | `save_questions` | write | menyimpan daftar kandidat; tidak menentukan atau mengaktifkan final top-three |
 | `save_scope_analysis` | write | proposal + cited baseline references |
@@ -160,7 +162,7 @@ Hash mendeteksi perubahan isi setelah snapshot, tetapi bukan bukti identitas ata
 
 ### Evidence item
 
-Evidence menyimpan type, URI/object path, checksum bila berupa file, upload timestamp, uploader role, stable `criterion_key`, dan caption. Acceptance Matrix memisahkan artifact integrity, optional deterministic checks, `AI_ASSISTED` assessment, dan client decision agar model judgment tidak tampil sebagai fakta. Client UI mengumpulkan semua keputusan criterion dan mengirim satu payload; service membuat tepat satu `review_session_id` dan event per criterion dalam transaksi yang konsisten. Status `ACCEPTED`, `CHANGES_REQUESTED`, `SUPERSEDED`, atau `WITHDRAWN` selalu diturunkan menurut `09-DOMAIN-RULES.md` Modul A.
+Evidence saat ini menyimpan type, URI atau text, uploader role, stable `criterion_key`, dan caption. File checksum/object path dipertahankan sebagai desain untuk adapter binary berikutnya. Acceptance Matrix memisahkan artifact integrity, optional deterministic checks, `AI_ASSISTED` assessment, dan client decision agar model judgment tidak tampil sebagai fakta. Client UI mengumpulkan semua keputusan criterion dan mengirim satu payload; service membuat tepat satu `review_session_id` dan event per criterion dalam transaksi yang konsisten. Status `ACCEPTED`, `CHANGES_REQUESTED`, `SUPERSEDED`, atau `WITHDRAWN` selalu diturunkan menurut `09-DOMAIN-RULES.md` Modul A.
 
 ## 6. Model data Firestore
 
@@ -232,7 +234,7 @@ Criteria tidak memiliki mutable collection terpisah. Approved snapshots dan audi
 - Client link berhenti valid setelah workflow purpose selesai atau direvoke.
 - Firestore server SDK melewati Security Rules, sehingga authorization wajib dilakukan di setiap API/service method dan diperkuat IAM service account.
 - Worker Cloud Run tidak publik; Pub/Sub push memakai OIDC service account dengan invoker role minimum.
-- Storage object path di-scope per deal; upload memvalidasi MIME, size, dan extension. MVP menerima text, PNG/JPEG/WebP, maksimal 10 MB.
+- Current submission scope accepts text and URL evidence. A future Cloud Storage upload path must scope object paths per run/deal and validate MIME, size, extension, checksum, and authorization before enabling binary evidence.
 - Artifact diperlakukan sebagai untrusted data. System prompt melarang mengikuti instruksi dari artifact dan tool allowlist membatasi dampak.
 - Jawaban client portal juga untrusted data. Model tidak memiliki tool untuk approval, `AGREED`, conflict resolution, atau revision consumption, sehingga injection tidak dapat memperoleh kapabilitas tersebut.
 - Secret tidak ditaruh di frontend, repo, prompt, log, atau audit event.

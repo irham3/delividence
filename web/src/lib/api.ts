@@ -5,9 +5,14 @@ export const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
 // tetap dipakai apa adanya oleh portal klien (client/[token]/*), yang TIDAK
 // pernah butuh Firebase Auth (02 §8: client pakai opaque token, bukan akun).
 let getAuthToken: () => Promise<string | null> = async () => null;
+let onUnauthorized: (() => void | Promise<void>) | null = null;
 
 export function setAuthTokenProvider(fn: () => Promise<string | null>) {
   getAuthToken = fn;
+}
+
+export function setUnauthorizedHandler(fn: (() => void | Promise<void>) | null) {
+  onUnauthorized = fn;
 }
 
 export type LedgerField<T> = { value: T; state: string };
@@ -150,6 +155,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
+    if (res.status === 401 && onUnauthorized) void onUnauthorized();
     throw new ApiError(res.status, `${res.status} ${res.statusText}${detail ? `: ${detail}` : ""}`);
   }
   if (res.status === 204) return undefined as T;

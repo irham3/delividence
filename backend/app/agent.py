@@ -118,13 +118,17 @@ Aturan wajib:
 """.format(critical_fields=", ".join(CRITICAL_FIELDS))
 
 
-extraction_agent = LlmAgent(
-    name="extraction_agent",
-    description="Mengekstrak Deal Ledger terstruktur dari brief freelance dengan provenance per field.",
-    model=config.GEMINI_MODEL,
-    instruction=_INSTRUCTION,
-    tools=[validate_quote_candidate, save_ledger_draft],
-)
+def extraction_agent_for(model: str):
+    return LlmAgent(
+        name="extraction_agent",
+        description="Mengekstrak Deal Ledger terstruktur dari brief freelance dengan provenance per field.",
+        model=model,
+        instruction=_INSTRUCTION,
+        tools=[validate_quote_candidate, save_ledger_draft],
+    )
+
+
+extraction_agent = extraction_agent_for(config.GEMINI_MODEL)
 
 
 class CitationCandidate(BaseModel):
@@ -181,13 +185,17 @@ Aturan wajib:
 - Usulanmu bukan keputusan akhir -- freelancer tetap yang mengonfirmasi.
 """
 
-guardrail_agent = LlmAgent(
-    name="guardrail_agent",
-    description=(
-        "Mengusulkan classification (IN_SCOPE/AMBIGUOUS/CHANGE_REQUEST) + citation "
-        "untuk satu scope request baru, terhadap baseline aktif."
-    ),
-    model=config.GEMINI_MODEL,
-    instruction=_GUARDRAIL_INSTRUCTION,
-    tools=[propose_classification],
-)
+def guardrail_agent_for(model: str):
+    return LlmAgent(
+        name="guardrail_agent",
+        description=(
+            "Mengusulkan classification (IN_SCOPE/AMBIGUOUS/CHANGE_REQUEST) + citation "
+            "untuk satu scope request baru, terhadap baseline aktif."
+        ),
+        model=model,
+        instruction=_GUARDRAIL_INSTRUCTION,
+        tools=[propose_classification],
+    )
+
+
+guardrail_agent = guardrail_agent_for(config.GEMINI_MODEL)

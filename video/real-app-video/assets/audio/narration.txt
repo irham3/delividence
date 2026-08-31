@@ -1,0 +1,17 @@
+Most freelance scope problems do not start with bad intent. They start when the brief, the decision, and the proof live in different places.
+
+This is Delividence. The owner starts with the real landing page, signs in, and creates a record from a plain client brief.
+
+Gemini turns that brief into working project state: source material, acceptance criteria, and an activity trail that shows what the agent did. The important thing is that this is not just a chat answer. It becomes a shared ledger the project can actually run on.
+
+The client receives a no-account portal and confirms the first baseline. Now both sides know exactly what version one means before delivery starts.
+
+Here is the guardrail. When the client asks for three vertical TikTok visuals, Delividence checks the request against the accepted baseline, cites the original deliverable, and recommends a change request. A human can confirm the classification before the scope changes.
+
+Then the owner proposes the new criterion, attaches proof, and sends the delivery review back to the client. The client can accept one item and request changes on another, so review becomes precise instead of emotional.
+
+The main app also has the operational views judges should expect: Records for every project, Sources for what was used, Review for current decisions, Activity for the audit trail, and Policies for default review rules.
+
+The backend is running on Google Cloud Run: a public API service, a private worker service, Pub/Sub for asynchronous jobs, Firestore for durable state, Firebase Auth for secure sessions, and Gemini for extraction and scope classification.
+
+The value is simple: Delividence removes the manual chasing around scope, evidence, and approvals, while keeping a human in control of the decisions that matter.

@@ -38,3 +38,13 @@ test("reduced-motion users can still reach the full landing content", async ({ p
   await page.getByRole("link", { name: "How it works" }).click();
   await expect(page.getByRole("heading", { name: "Turn scattered material into a working record." })).toBeInViewport();
 });
+
+test("sign-in uses the official Google asset instead of a text placeholder", async ({ page }) => {
+  await page.goto("/sign-in");
+
+  const button = page.getByRole("button", { name: "Continue with Google" });
+  await expect(button).toBeVisible();
+  await expect(button.locator("img")).toBeVisible();
+  await expect(button.locator("img")).toHaveAttribute("src", /google-g\.png/);
+  await expect(button.getByText("G", { exact: true })).toHaveCount(0);
+});

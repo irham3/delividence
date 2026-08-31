@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Delividence demo recording</title>
+  <style>
+    :root {
+      --ink: #25231f;
+      --muted: #68655e;
+      --faint: #908b80;
+      --paper: #f3eee4;
+      --surface: #fffaf0;
+      --strong: #fffdf6;
+      --rule: #d3cbbc;
+      --accent: #b76c26;
+      --accent-dark: #894815;
+      --good: #256f4c;
+      --warn: #9b6500;
+      --danger: #a0392c;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(183, 108, 38, 0.12), transparent 34%),
+        linear-gradient(135deg, #f7f2e9, #ebe2d3);
+    }
+    button, input, textarea, select { font: inherit; }
+    .safe {
+      position: fixed;
+      inset: 38px 58px;
+      display: grid;
+      overflow: hidden;
+      border: 1px solid rgba(128, 113, 90, 0.28);
+      border-radius: 30px;
+      background: rgba(255, 251, 242, 0.92);
+      box-shadow: 0 30px 80px rgba(67, 50, 29, 0.18);
+    }
+    .landing {
+      display: grid;
+      grid-template-rows: 86px 1fr;
+      min-height: 0;
+    }
+    .landing header, .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      border-bottom: 1px solid var(--rule);
+      padding: 0 44px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; font-size: 24px; font-weight: 760; letter-spacing: -0.04em; }
+    .mark {
+      display: grid; place-items: center;
+      width: 32px; height: 32px; border-radius: 10px;
+      color: white; background: linear-gradient(145deg, var(--accent), #da984c);
+      font-weight: 800;
+    }
+    .nav { display: flex; gap: 30px; color: var(--muted); font-size: 14px; }
+    .hero {
+      display: grid;
+      grid-template-columns: 0.95fr 1.05fr;
+      gap: 44px;
+      padding: 56px 76px 48px;
+      align-items: center;
+      min-height: 0;
+    }
+    .eyebrow { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; letter-spacing: 0.14em; color: var(--accent); text-transform: uppercase; }
+    h1 { margin: 18px 0 0; font-size: 64px; line-height: 0.96; letter-spacing: -0.065em; }
+    h2 { margin: 0; font-size: 34px; line-height: 1; letter-spacing: -0.045em; }
+    h3 { margin: 0; font-size: 20px; letter-spacing: -0.02em; }
+    p { margin: 0; }
+    .lead { margin-top: 22px; max-width: 650px; color: var(--muted); font-size: 20px; line-height: 1.55; }
+    .ctaRow { margin-top: 34px; display: flex; gap: 14px; align-items: center; }
+    .btn {
+      border: 1px solid var(--rule);
+      border-radius: 12px;
+      background: var(--strong);
+      color: var(--ink);
+      min-height: 46px;
+      padding: 0 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(82, 61, 31, 0.07);
+    }
+    .btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+    .btn.small { min-height: 34px; padding: 0 12px; font-size: 13px; border-radius: 9px; }
+    .btn.danger { color: var(--danger); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .card {
+      background: rgba(255, 253, 246, 0.82);
+      border: 1px solid var(--rule);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 18px 36px rgba(80, 61, 35, 0.09);
+    }
+    .mockPanel {
+      min-height: 560px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 16px;
+    }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 30px;
+      border-radius: 999px;
+      border: 1px solid var(--rule);
+      padding: 0 10px;
+      color: var(--muted);
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.5);
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      min-height: 0;
+      height: 100%;
+    }
+    aside {
+      border-right: 1px solid var(--rule);
+      padding: 28px 22px;
+      background: rgba(250, 244, 233, 0.64);
+    }
+    .sideNav { margin-top: 44px; display: grid; gap: 8px; }
+    .sideNav div { padding: 11px 12px; border-radius: 10px; color: var(--muted); font-size: 14px; }
+    .sideNav .active { background: #f2dfc7; color: var(--ink); }
+    .appMain { display: grid; grid-template-rows: 70px 1fr; min-width: 0; min-height: 0; }
+    .topbar { padding: 0 34px; }
+    .search { width: 380px; min-height: 38px; border: 1px solid var(--rule); border-radius: 10px; background: #fffaf3; padding: 0 14px; color: var(--faint); }
+    .canvas { min-height: 0; overflow: hidden; padding: 26px 34px 30px; }
+    .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 24px; min-height: 0; }
+    .stack { display: grid; gap: 18px; }
+    textarea, input, select {
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      background: #fffcf5;
+      color: var(--ink);
+      padding: 12px 14px;
+      outline: none;
+    }
+    textarea { width: 100%; min-height: 150px; resize: none; line-height: 1.45; }
+    .table { border: 1px solid var(--rule); border-radius: 16px; overflow: hidden; background: rgba(255,255,255,0.42); }
+    .table .head, .table .item { display: grid; grid-template-columns: 1.2fr 120px 110px 1fr; gap: 16px; align-items: center; padding: 14px 18px; }
+    .table .head { color: var(--faint); font: 11px ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.12em; border-bottom: 1px solid var(--rule); }
+    .table .item { font-size: 14px; }
+    .status { color: var(--good); background: rgba(37,111,76,0.12); border-color: rgba(37,111,76,0.24); }
+    .warn { color: var(--warn); background: rgba(155,101,0,0.10); }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .list { margin: 0; padding-left: 18px; color: var(--muted); line-height: 1.85; font-size: 14px; }
+    .event { border-left: 2px solid var(--accent); padding-left: 14px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .clientFrame {
+      display: grid;
+      place-items: center;
+      height: 100%;
+      padding: 44px;
+      background: linear-gradient(145deg, rgba(247,242,233,0.92), rgba(235,226,211,0.92));
+    }
+    .clientCard { width: min(1120px, 100%); }
+    .criteria { display: grid; gap: 10px; }
+    .criteriaRow {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) 160px;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid var(--rule);
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: #fffcf5;
+      font-size: 14px;
+    }
+    .hash { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+    .modalBackdrop {
+      position: absolute; inset: 0; display: none; place-items: center;
+      background: rgba(37,35,31,0.24); backdrop-filter: blur(4px);
+    }
+    .modalBackdrop.show { display: grid; }
+    .modal { width: 460px; background: #fffaf0; border: 1px solid var(--rule); border-radius: 18px; padding: 24px; box-shadow: 0 32px 70px rgba(0,0,0,0.22); }
+    .caption {
+      position: absolute;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      max-width: 1100px;
+      border-radius: 999px;
+      background: rgba(37,35,31,0.76);
+      color: white;
+      padding: 10px 18px;
+      font-size: 20px;
+      line-height: 1.25;
+      text-align: center;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.15);
+    }
+    .cursor {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      pointer-events: none;
+      z-index: 50;
+      left: 360px;
+      top: 280px;
+      transition: left 460ms cubic-bezier(.2,.8,.2,1), top 460ms cubic-bezier(.2,.8,.2,1), transform 160ms ease;
+      filter: drop-shadow(0 8px 12px rgba(0,0,0,.22));
+    }
+    .cursor svg { width: 100%; height: 100%; }
+    .cursor.click { transform: scale(0.82); }
+    .fade { animation: fade .36s ease both; }
+    @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .progress { height: 8px; border-radius: 999px; background: #ead9c5; overflow: hidden; }
+    .progress span { display: block; height: 100%; width: 0%; background: var(--accent); transition: width 1.8s ease; }
+    .safe pre { margin: 0; white-space: pre-wrap; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="safe" id="stage"></div>
+  <div class="cursor" id="cursor" aria-hidden="true">
+    <svg viewBox="0 0 32 32" fill="none"><path d="M5 3l20 15-9 1.5 5 8.5-4 2.3-5-8.5L6.5 29 5 3z" fill="#24221e" stroke="white" stroke-width="2"/></svg>
+  </div>
+  <div class="caption" id="caption">Delividence turns fuzzy client requests into a signed, evidence-backed record.</div>
+  <script>
+    const stage = document.getElementById("stage");
+    const caption = document.getElementById("caption");
+    const cursor = document.getElementById("cursor");
+    const briefText = "Client: Launch the new landing page by September 30. One responsive page, mobile at 375px, hero copy, testimonials, and a muted hero video. No paid ads. Two revision rounds.";
+    const state = { link: "", request: "", citation: "" };
+
+    function googleG() {
+      return `<svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.3.3 24 .3 14.7.3 6.7 5.6 2.8 13.3l7.8 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.6h12.4c-.5 2.8-2.1 5.2-4.5 6.8l7 5.4c4.1-3.8 7.2-9.4 7.2-16.3z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.8-6.1C1.2 16.5.3 20.1.3 24s.9 7.5 2.5 10.7l7.8-6.1z"/><path fill="#34A853" d="M24 47.7c6.3 0 11.6-2.1 15.5-5.7l-7-5.4c-1.9 1.3-4.5 2.1-8.5 2.1-6.3 0-11.6-4.1-13.4-9.7l-7.8 6.1C6.7 42.4 14.7 47.7 24 47.7z"/></svg>`;
+    }
+
+    function chrome() {
+      return `<div class="landing">
+        <header><div class="brand"><span class="mark">D</span>Delividence</div><nav class="nav"><span>Agent workflow</span><span>Proof</span><span>Review</span></nav></header>
+        <section class="hero fade">
+          <div><p class="eyebrow">All things agentic hackathon</p><h1>Agreement proof for freelance delivery.</h1><p class="lead">The agent extracts commitments, asks only missing questions, protects the baseline, and creates a proof packet when the work is delivered.</p><div class="ctaRow"><button class="btn primary" data-action="signin">Start with Google</button><span class="pill">Gemini + ADK + auditable state</span></div></div>
+          <div class="card mockPanel"><div class="row"><span class="eyebrow">Live record</span><span class="pill status">Ready</span></div><div class="stack">
+            <div class="event"><strong>Brief received</strong><br/>Client wants a landing page, mobile, deadline, revision policy.</div>
+            <div class="event"><strong>Agent extracts ledger</strong><br/>Deliverables, criteria, out-of-scope, timeline.</div>
+            <div class="event"><strong>Client confirms</strong><br/>Hash-locked baseline becomes version 1.</div>
+            <div class="event"><strong>Proof packet</strong><br/>Evidence and review decisions are exported.</div>
+          </div><button class="btn" data-action="sample">Preview the workflow</button></div>
+        </section>
+      </div>`;
+    }
+
+    function shell(inner, active = "Workspace", rail = true) {
+      const nav = ["Workspace", "Records", "Sources", "Review", "Activity"];
+      return `<div class="app fade"><aside><div class="brand"><span class="mark">D</span>Delividence</div><div class="sideNav">${nav.map(n => `<div class="${n === active ? "active" : ""}">${n}</div>`).join("")}</div><div class="sideNav" style="margin-top:54px"><div>Policies</div><div>Help</div></div></aside>
+        <div class="appMain"><div class="topbar"><input class="search" value="Search records" readonly /><div class="row"><button class="btn small primary" data-action="new-record">New record</button><button class="btn small" data-action="logout">Sign out</button></div></div>
+        <main class="canvas">${rail ? `<div class="grid2"><div>${inner}</div><div class="stack"><div class="card"><h3>Supported inputs</h3><ul class="list"><li>Briefs, emails, transcripts</li><li>Delivery URLs or written tests</li></ul></div><div class="card"><h3>How decisions work</h3><ul class="list"><li>Gemini extraction with citations</li><li>ADK resumes after client input</li><li>Client acceptance stays explicit</li></ul></div></div></div>` : inner}</main></div></div>`;
+    }
+
+    function workspace() {
+      return shell(`<div class="stack">
+        <section class="card"><p class="eyebrow">Workspace</p><h2>Good morning. Here’s what’s next.</h2><p class="lead" style="font-size:16px">Create one source-of-truth record before delivery starts.</p></section>
+        <section class="card"><div class="row"><div><h2>Create a project record</h2><p style="margin-top:10px;color:var(--muted)">Paste the client material. The agent reads it in the background.</p></div><span class="pill">Resumable</span></div><textarea id="brief" placeholder="Paste the client material here..."></textarea><div class="row"><select><option>English</option><option>Bahasa Indonesia</option></select><button class="btn primary" data-action="analyse">Analyse brief</button></div></section>
+      </div>`);
+    }
+
+    function processing() {
+      return shell(`<div class="stack">
+        <section class="card"><div class="row"><div><p class="eyebrow">Run activity</p><h2>Agent is reading the brief</h2></div><span class="pill warn">Processing</span></div><div class="progress" style="margin-top:22px"><span id="bar"></span></div></section>
+        <section class="card"><div class="event"><strong>Material stored</strong><br/>Append-only run created.</div><div class="event"><strong>Gemini extraction started</strong><br/>The worker extracts claims with source states.</div><div class="event"><strong>Readiness checked</strong><br/>Only unresolved facts will go to the client.</div></section>
+      </div>`);
+      setTimeout(() => document.getElementById("bar").style.width = "100%", 120);
+    }
+
+    function ownerReady() {
+      return shell(`<div class="stack">
+        <section class="card"><div class="row"><div><p class="eyebrow">Current project record</p><h2>Landing page · Ready for review</h2></div><span class="pill status">done</span></div></section>
+        <section class="split"><div class="card"><h3>Extracted ledger</h3><ul class="list"><li>Deliverable: Landing page</li><li>Criterion: Renders at 375px</li><li>Out of scope: No paid ads</li><li>Revision policy: 2 rounds</li></ul></div><div class="card"><h3>Owner controls</h3><p style="color:var(--muted);line-height:1.6">Send a secure clarification link so the client can review the plan and confirm the baseline.</p><button class="btn primary" data-action="clarify" style="margin-top:18px">Create clarification link</button><p class="hash" id="clarifyLink" style="margin-top:14px"></p></div></section>
+      </div>`);
+    }
+
+    function clientPortal() {
+      return `<div class="clientFrame fade"><section class="card clientCard"><div class="row"><div><p class="eyebrow">Client portal</p><h2>Confirm the project plan</h2><p style="margin-top:12px;color:var(--muted)">The link does not require a freelancer account. It only grants this one step.</p></div><span class="pill">Secure client link</span></div>
+        <div class="split" style="margin-top:22px"><div><h3>Plan summary</h3><ul class="list"><li>Landing page</li><li>Mobile layout at 375px</li><li>Muted hero video</li><li>No paid ads</li></ul></div><div><h3>Missing client answer</h3><input id="answer" style="width:100%;margin-top:12px" placeholder="Any responsibility from your side?" /><button class="btn" data-action="save-answer" style="margin-top:12px">Save answer</button></div></div>
+        <div class="row" style="margin-top:26px"><span class="hash">payload hash sha256:87f4c9a1…</span><button class="btn primary" data-action="confirm-plan">Confirm project plan</button></div></section></div>`;
+    }
+
+    function baseline() {
+      return shell(`<div class="stack">
+        <section class="card"><div class="row"><div><p class="eyebrow">Baseline active</p><h2>Version 1 is locked</h2><p style="margin-top:12px;color:var(--muted)">New requests now travel through guardrails instead of mutating the agreement.</p></div><span class="pill status">v1 confirmed</span></div></section>
+        <section class="card"><h3>New requests (Guardrail)</h3><p style="margin-top:8px;color:var(--muted)">Classify post-approval asks with citations before changing scope.</p><div class="row" style="margin-top:14px"><input id="request" style="flex:1" placeholder="What did the client ask for?" /><button class="btn primary" data-action="log-request">Log request</button></div><div id="requestBox" style="margin-top:16px"></div></section>
+      </div>`);
+    }
+
+    function requestLogged() {
+      return shell(`<div class="stack">
+        <section class="card"><p class="eyebrow">Guardrail result</p><h2>Client asked for new vertical TikTok visuals</h2><p style="margin-top:12px;color:var(--muted)">The model proposes CHANGE_REQUEST because the confirmed plan only covers the landing page and muted hero video.</p></section>
+        <section class="card"><div class="row"><span class="pill warn">Model suggested: CHANGE_REQUEST</span><button class="btn primary" data-action="confirm-classification">Confirm classification</button></div><ul class="list" style="margin-top:16px"><li><strong>mobile-breakpoints</strong> — “Renders at 375px.”</li><li><strong>deliverables[0]</strong> — “Landing page.”</li></ul></section>
+      </div>`);
+    }
+
+    function changeProposal() {
+      return shell(`<div class="stack">
+        <section class="card"><p class="eyebrow">Scope change</p><h2>Propose v2 without overwriting v1</h2><p style="margin-top:12px;color:var(--muted)">The freelancer stages a new acceptance criterion, then sends a fresh client confirmation link.</p></section>
+        <section class="card"><div class="row"><input id="criterion" style="flex:1" placeholder="new criterion key" /><input id="criterionText" style="flex:2" placeholder="verbatim acceptance text" /><button class="btn primary" data-action="propose">Propose change</button></div><p id="proposalResult" class="hash" style="margin-top:14px"></p></section>
+      </div>`);
+    }
+
+    function evidence() {
+      return shell(`<div class="stack">
+        <section class="card"><div class="row"><div><p class="eyebrow">Evidence</p><h2>Attach proof beside each promise</h2></div><span class="pill status">baseline v2</span></div></section>
+        <section class="card"><div class="row"><select><option>mobile-breakpoints</option><option>hero-video</option></select><input id="evidenceUrl" style="flex:1" placeholder="https://..." /><input id="captionText" style="flex:1" placeholder="caption" /><button class="btn primary" data-action="attach">Attach</button></div><p id="evidenceResult" class="hash" style="margin-top:14px"></p></section>
+        <section class="card"><h3>Delivery review</h3><p style="margin-top:8px;color:var(--muted)">Now send a delivery review link to the client.</p><button class="btn primary" data-action="review-link" style="margin-top:14px">Create delivery review link</button></section>
+      </div>`);
+    }
+
+    function review() {
+      return `<div class="clientFrame fade"><section class="card clientCard"><div class="row"><div><p class="eyebrow">Delivery review</p><h2>Client reviews evidence against the agreement</h2></div><span class="pill">client decision</span></div><div class="criteria" style="margin-top:24px"><div class="criteriaRow"><span>1</span><span>Renders at 375px with attached browser capture.</span><select><option>Accepted</option><option>Needs changes</option></select></div><div class="criteriaRow"><span>2</span><span>Hero video autoplays muted.</span><select><option>Accepted</option><option>Needs changes</option></select></div></div><textarea id="reviewNote" style="margin-top:18px" placeholder="Optional review note"></textarea><div class="row" style="margin-top:18px"><span class="hash">Review session will be written to audit trail.</span><button class="btn primary" data-action="submit-review">Submit review</button></div></section></div>`;
+    }
+
+    function proof() {
+      return shell(`<div class="stack">
+        <section class="card"><div class="row"><div><p class="eyebrow">Acceptance Record</p><h2>Proof packet is ready</h2><p style="margin-top:12px;color:var(--muted)">JSON and Markdown exports show the baseline hash, evidence, review decision, and append-only audit trail.</p></div><span class="pill status">accepted</span></div></section>
+        <section class="split"><div class="card"><h3>Proof manifest</h3><pre>{
+  "baseline": "v2",
+  "payload_hash": "sha256:87f4c9a1...",
+  "criteria": [
+    { "key": "mobile-breakpoints", "decision": "ACCEPTED" },
+    { "key": "hero-video", "decision": "ACCEPTED" }
+  ]
+}</pre></div><div class="card"><h3>Audit trail</h3><div class="event"><strong>CLIENT_CONFIRMED</strong><br/>Baseline v2 approved.</div><div class="event"><strong>EVIDENCE_ATTACHED</strong><br/>Browser capture linked.</div><div class="event"><strong>REVIEW_SUBMITTED</strong><br/>Client accepted delivery.</div><button class="btn" data-action="logout" style="margin-top:18px">Sign out</button></div></section>
+      </div>`);
+    }
+
+    function signin() {
+      return `<div class="clientFrame fade"><section class="card" style="width:500px"><p class="eyebrow">Welcome back</p><h2>Continue the record.</h2><p style="margin-top:14px;color:var(--muted);line-height:1.6">Choose your Google account. Delividence then creates a secure owner session and redirects to the workspace.</p><button class="btn" data-action="google" style="width:100%;margin-top:24px">${googleG()} Continue with Google</button><p style="margin-top:18px;text-align:center;color:var(--muted)">New to Delividence? Create an account.</p></section></div>`;
+    }
+
+    function show(name) {
+      const map = { landing: chrome, signin, workspace, processing, ownerReady, clientPortal, baseline, requestLogged, changeProposal, evidence, review, proof };
+      stage.innerHTML = map[name]();
+      bind();
+    }
+
+    function setCaption(text) { caption.textContent = text; }
+    function moveCursor(x, y) { cursor.style.left = `${x}px`; cursor.style.top = `${y}px`; }
+    function pulseCursor() { cursor.classList.add("click"); setTimeout(() => cursor.classList.remove("click"), 180); }
+    function bind() {
+      stage.querySelectorAll("[data-action]").forEach(el => {
+        el.addEventListener("click", () => {
+          const a = el.getAttribute("data-action");
+          if (a === "signin") show("signin");
+          if (a === "google") show("workspace");
+          if (a === "analyse") show("processing");
+          if (a === "clarify") { document.getElementById("clarifyLink").textContent = "http://localhost:3000/client/demo-clarification"; }
+          if (a === "save-answer") { document.getElementById("answer").value = "We will provide brand photos today."; }
+          if (a === "confirm-plan") show("baseline");
+          if (a === "log-request") show("requestLogged");
+          if (a === "confirm-classification") show("changeProposal");
+          if (a === "propose") { document.getElementById("proposalResult").textContent = "Change proposed. Fresh client confirmation link created for baseline v2."; }
+          if (a === "attach") { document.getElementById("evidenceResult").textContent = "Evidence attached to mobile-breakpoints."; }
+          if (a === "review-link") show("review");
+          if (a === "submit-review") show("proof");
+          if (a === "logout") document.getElementById("modal").classList.add("show");
+        });
+      });
+      if (!document.getElementById("modal")) {
+        const div = document.createElement("div");
+        div.innerHTML = `<div class="modalBackdrop" id="modal"><div class="modal"><h3>Sign out of Delividence?</h3><p style="margin-top:10px;color:var(--muted);line-height:1.6">Your saved records stay intact. You will need to choose your Google account again to continue.</p><div class="row" style="margin-top:22px;justify-content:flex-end"><button class="btn small" onclick="document.getElementById('modal').classList.remove('show')">Cancel</button><button class="btn small primary">Sign out</button></div></div></div>`;
+        document.body.appendChild(div.firstElementChild);
+      }
+    }
+    window.demo = { show, setCaption, moveCursor, pulseCursor, briefText };
+    show("landing");
+  </script>
+</body>
+</html>

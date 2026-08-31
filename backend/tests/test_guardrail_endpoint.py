@@ -13,6 +13,52 @@ from app.api import app as api_app
 
 api = TestClient(api_app)
 
+
+def test_guardrail_beralih_ke_model_fallback(monkeypatch):
+    import asyncio
+    from app import api as api_module
+    from app import config as config_module
+
+    attempts = []
+
+    async def _try(raw_text, text_by_ref, model):
+        attempts.append(model)
+        if model == "primary-model":
+            raise RuntimeError("503 high demand")
+        return {"classification": "AMBIGUOUS", "citations": []}
+
+    monkeypatch.setattr(config_module, "GEMINI_MODEL", "primary-model")
+    monkeypatch.setattr(config_module, "GEMINI_FALLBACK_MODELS", ("fallback-model",))
+    monkeypatch.setattr(api_module, "_propose_scope_classification_with_model", _try)
+
+    result = asyncio.run(api_module._propose_scope_classification_with_fallback("request", {}))
+    assert attempts == ["primary-model", "fallback-model"]
+    assert result == {"classification": "AMBIGUOUS", "citations": []}
+
+
+def test_guardrail_timeout_beralih_ke_model_fallback(monkeypatch):
+    import asyncio
+    from app import api as api_module
+    from app import config as config_module
+
+    attempts = []
+
+    async def _try(raw_text, text_by_ref, model):
+        attempts.append(model)
+        if model == "slow-model":
+            await asyncio.sleep(1)
+        return {"classification": "AMBIGUOUS", "citations": []}
+
+    monkeypatch.setattr(config_module, "GEMINI_MODEL", "slow-model")
+    monkeypatch.setattr(config_module, "GEMINI_FALLBACK_MODELS", ("fallback-model",))
+    monkeypatch.setattr(config_module, "GEMINI_MODEL_TIMEOUT_SECONDS", 0.01)
+    monkeypatch.setattr(api_module, "_propose_scope_classification_with_model", _try)
+
+    result = asyncio.run(api_module._propose_scope_classification_with_fallback("request", {}))
+    assert attempts == ["slow-model", "fallback-model"]
+    assert result == {"classification": "AMBIGUOUS", "citations": []}
+
+
 _READY_ANSWERS = [
     {"field": "deliverables", "value": [{"id": "d1", "title": "Landing page"}]},
     {

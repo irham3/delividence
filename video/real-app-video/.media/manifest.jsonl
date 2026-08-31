@@ -1,0 +1,13 @@
+{"id":"image_001","type":"image","path":"assets/images/01-landing.png","source":"existing","description":"01 landing","width":1218,"height":801,"provenance":{"provider":"local","adopted":true}}
+{"id":"image_002","type":"image","path":"assets/images/02-workspace.png","source":"existing","description":"02 workspace","width":1218,"height":801,"provenance":{"provider":"local","adopted":true}}
+{"id":"image_003","type":"image","path":"assets/images/03-gemini-receipt.png","source":"existing","description":"03 gemini receipt","width":1218,"height":801,"provenance":{"provider":"local","adopted":true}}
+{"id":"image_004","type":"image","path":"assets/images/04-client-baseline.png","source":"existing","description":"04 client baseline","width":1232,"height":811,"provenance":{"provider":"local","adopted":true}}
+{"id":"image_005","type":"image","path":"assets/images/05-guardrail.png","source":"existing","description":"05 guardrail","width":1218,"height":801,"provenance":{"provider":"local","adopted":true}}
+{"id":"image_006","type":"image","path":"assets/images/06-client-review.png","source":"existing","description":"06 client review","width":1218,"height":801,"provenance":{"provider":"local","adopted":true}}
+{"id":"image_007","type":"image","path":"assets/images/07-menu-sources.png","source":"existing","description":"07 menu sources","width":1232,"height":811,"provenance":{"provider":"local","adopted":true}}
+{"id":"image_008","type":"image","path":"assets/images/08-menu-review.png","source":"existing","description":"08 menu review","width":1232,"height":811,"provenance":{"provider":"local","adopted":true}}
+{"id":"image_009","type":"image","path":"assets/images/09-menu-activity.png","source":"existing","description":"09 menu activity","width":1232,"height":811,"provenance":{"provider":"local","adopted":true}}
+{"id":"image_010","type":"image","path":"assets/images/10-menu-policies.png","source":"existing","description":"10 menu policies","width":1232,"height":811,"provenance":{"provider":"local","adopted":true}}
+{"id":"image_011","type":"image","path":"assets/images/11-menu-records.png","source":"existing","description":"11 menu records","width":1232,"height":811,"provenance":{"provider":"local","adopted":true}}
+{"id":"image_012","type":"image","path":"assets/images/12-cloud-services.png","source":"existing","description":"12 cloud services","width":1232,"height":811,"provenance":{"provider":"local","adopted":true}}
+{"id":"image_013","type":"image","path":"assets/images/13-cloud-api.png","source":"existing","description":"13 cloud api","width":1232,"height":811,"provenance":{"provider":"local","adopted":true}}

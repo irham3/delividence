@@ -32,12 +32,15 @@ Gunakan placeholders di `.env.example`; jangan commit nilai nyata.
 | `GOOGLE_CLOUD_LOCATION` | worker | region model/Vertex AI |
 | `GOOGLE_GENAI_USE_VERTEXAI` | worker | direvisi 25 Agu 2026: default `FALSE` (Gemini Developer API, billing GCP tidak aktif) -- lihat `10-KEPUTUSAN-DAN-VERIFIKASI.md` §1. Set `TRUE` untuk Vertex AI kalau billing aktif |
 | `GEMINI_API_KEY` | worker | key dari aistudio.google.com/apikey, dipakai kalau `GOOGLE_GENAI_USE_VERTEXAI=FALSE` |
-| `GEMINI_MODEL` | worker | target `gemini-3.7-flash`, setelah diverifikasi |
+| `GEMINI_MODEL` | worker | model utama; default implementasi `gemini-3.5-flash` |
+| `GEMINI_FALLBACK_MODELS` | worker | model stabil cadangan dipisah koma; default implementasi `gemini-3.6-flash` |
+| `GEMINI_MODEL_TIMEOUT_SECONDS` | API/worker | batas tunggu per kandidat model sebelum fallback; default `45` |
 | `PUBSUB_TOPIC` | API | `scope-events` |
 | `STORAGE_BUCKET` | API/worker | bucket artifact |
 | `WEB_ORIGIN` | API | hosted web origin untuk CORS |
 | `API_BASE_URL` | web | hosted/local API URL |
 | `FIREBASE_PROJECT_ID` | web/API | Firebase project ID |
+| `FIREBASE_SESSION_COOKIE_SERVICE_ACCOUNT` | local API only (optional) | Service account to impersonate when minting Firebase session cookies; use the deployed API service account so a developer's personal account needs only `Service Account Token Creator` on that identity |
 | `NEXT_PUBLIC_FIREBASE_*` | web | public Firebase web config; bukan secret |
 
 Cloud Run memakai Application Default Credentials melalui service account. Hindari long-lived service-account key dan jangan menaruh Gemini/API key di client.
@@ -52,7 +55,7 @@ Sekali saja, dari root repo:
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\python.exe -m pip install -r backendequirements-dev.txt
+.venv\Scripts\python.exe -m pip install -r backend\requirements-dev.txt
 
 Copy-Item backend\.env.example backend\.env
 Copy-Item web\.env.example web\.env

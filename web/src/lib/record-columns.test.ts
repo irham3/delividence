@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OwnerRun } from "./api";
-import { indexColumnHeader, indexColumnValue, relativeTime } from "./record-columns";
+import { indexColumnHeader, indexColumnValue, matchesRecordQuery, relativeTime } from "./record-columns";
 
 const NOW = new Date("2026-08-30T10:00:00Z");
 
@@ -45,5 +45,20 @@ describe("kolom daftar per halaman", () => {
     expect(indexColumnValue("activity", run({ updated_at: "2026-08-30T09:30:00Z" }), NOW)).toBe("30m ago");
     expect(indexColumnValue("activity", run({ updated_at: "2026-08-29T10:00:00Z" }), NOW)).toBe("1d ago");
     expect(relativeTime(undefined, NOW)).toBe("Unknown");
+  });
+
+  it("pencarian mencocokkan id, brief, status, dan judul deliverable", () => {
+    const item = run({
+      run_id: "run-alpha-42",
+      status: "queued",
+      brief: "Redesign the launch page",
+      ledger: { deliverables: { value: [{ id: "d1", title: "Mobile hero" }], state: "CLIENT_STATED" } },
+    });
+
+    expect(matchesRecordQuery(item, "alpha-42")).toBe(true);
+    expect(matchesRecordQuery(item, "LAUNCH")).toBe(true);
+    expect(matchesRecordQuery(item, "queued")).toBe(true);
+    expect(matchesRecordQuery(item, "mobile hero")).toBe(true);
+    expect(matchesRecordQuery(item, "invoice")).toBe(false);
   });
 });

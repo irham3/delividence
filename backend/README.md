@@ -31,6 +31,9 @@ Isi minimal untuk fitur inti benar-benar jalan (bukan cuma antrean kosong):
 - `GEMINI_API_KEY` — dari https://aistudio.google.com/apikey, punya kamu
   sendiri, gratis tanpa kartu. Tanpa ini, ekstraksi & Guardrail akan gagal
   dengan pesan jujur di `audit_trail`, bukan crash diam-diam.
+- `GEMINI_MODEL` memilih model utama; `GEMINI_FALLBACK_MODELS` berisi daftar
+  model stabil cadangan (dipisah koma) yang dicoba setelah retry SDK untuk
+  model utama tetap gagal.
 - `FIREBASE_PROJECT_ID` — proyek Firebase dengan Google Sign-In aktif.
   **Wajib diisi kalau mau tes endpoint owner** (`POST /runs` dst) — lihat
   bagian Auth di bawah. Boleh dikosongkan kalau cuma menyentuh

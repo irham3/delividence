@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #f3efe6;
+        color: #171814;
+        font-family: Inter, Arial, sans-serif;
+      }
+
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #f3efe6;
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        background: #f3efe6;
+        opacity: 0;
+      }
+
+      #scene-landing {
+        opacity: 1;
+      }
+
+      .backdrop {
+        position: absolute;
+        inset: -64px;
+        background-position: center;
+        background-size: cover;
+        filter: blur(28px) saturate(0.92);
+        opacity: 0.42;
+        transform: scale(1.08);
+      }
+
+      .screen {
+        position: absolute;
+        left: 160px;
+        top: 14px;
+        width: 1600px;
+        height: 1052px;
+        border: 1px solid rgba(23, 24, 20, 0.18);
+        background: #f7f4ec;
+        box-shadow: 0 28px 90px rgba(27, 24, 18, 0.24);
+        overflow: hidden;
+      }
+
+      .screen.dark {
+        background: #1b1f23;
+        border-color: rgba(255, 255, 255, 0.18);
+        box-shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+      }
+
+      .screen img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+
+      .label {
+        position: absolute;
+        left: 190px;
+        bottom: 42px;
+        z-index: 20;
+        max-width: 980px;
+        border: 1px solid rgba(23, 24, 20, 0.16);
+        background: rgba(247, 244, 236, 0.92);
+        box-shadow: 0 18px 50px rgba(27, 24, 18, 0.18);
+        padding: 18px 22px;
+      }
+
+      .label.dark {
+        border-color: rgba(255, 255, 255, 0.16);
+        background: rgba(18, 22, 27, 0.88);
+        color: #f6f3ea;
+      }
+
+      .eyebrow {
+        margin-bottom: 8px;
+        color: #a66a00;
+        font-family: "JetBrains Mono", Consolas, monospace;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .headline {
+        font-size: 34px;
+        font-weight: 750;
+        letter-spacing: 0;
+        line-height: 1.14;
+      }
+
+      .label {
+        display: none;
+      }
+
+      #subtitle {
+        position: absolute;
+        left: 50%;
+        bottom: 24px;
+        z-index: 50;
+        width: 1280px;
+        min-height: 56px;
+        transform: translateX(-50%);
+        border-radius: 8px;
+        background: rgba(20, 19, 16, 0.78);
+        color: #fffaf0;
+        padding: 13px 24px;
+        text-align: center;
+        font-size: 27px;
+        font-weight: 560;
+        line-height: 1.25;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.32);
+      }
+
+      .cursor {
+        position: absolute;
+        z-index: 60;
+        left: 0;
+        top: 0;
+        width: 36px;
+        height: 36px;
+        filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.28));
+        opacity: 0;
+        transform-origin: 7px 7px;
+      }
+
+      .cursor svg {
+        display: block;
+        width: 36px;
+        height: 36px;
+      }
+
+      .ripple {
+        position: absolute;
+        z-index: 58;
+        width: 52px;
+        height: 52px;
+        margin-left: -20px;
+        margin-top: -20px;
+        border: 4px solid rgba(166, 106, 0, 0.78);
+        border-radius: 999px;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .bug {
+        position: absolute;
+        right: 190px;
+        top: 118px;
+        z-index: 30;
+        display: none;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid rgba(23, 24, 20, 0.14);
+        background: rgba(247, 244, 236, 0.88);
+        box-shadow: 0 16px 46px rgba(27, 24, 18, 0.16);
+        padding: 14px 17px;
+        color: #2a281f;
+        font-family: "JetBrains Mono", Consolas, monospace;
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+      }
+
+      .bug.dark {
+        border-color: rgba(255, 255, 255, 0.12);
+        background: rgba(17, 21, 25, 0.84);
+        color: #e9f5ee;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #30c46c;
+        box-shadow: 0 0 0 8px rgba(48, 196, 108, 0.16);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="104"
+      data-width="1920"
+      data-height="1080"
+    >
+      <audio
+        id="narration"
+        class="clip"
+        src="assets/audio/narration.mp3"
+        data-start="0"
+        data-duration="102.024"
+        data-volume="1"
+      ></audio>
+
+      <section id="scene-landing" class="scene">
+        <div class="backdrop" style="background-image: url('assets/images/01-landing.png')"></div>
+        <div class="screen"><img src="assets/images/01-landing.png" alt="Delividence landing page" /></div>
+        <div class="label">
+          <p class="eyebrow">Start</p>
+          <p class="headline">The actual local app landing page, not a mock.</p>
+        </div>
+      </section>
+
+      <section id="scene-signin" class="scene">
+        <div class="backdrop" style="background-image: url('assets/images/01b-sign-in.png')"></div>
+        <div class="screen"><img src="assets/images/01b-sign-in.png" alt="Google sign in route" /></div>
+        <div class="label">
+          <p class="eyebrow">Authentication</p>
+          <p class="headline">The real /sign-in route uses the official Google button.</p>
+        </div>
+      </section>
+
+      <section id="scene-workspace" class="scene">
+        <div class="backdrop" style="background-image: url('assets/images/02-workspace.png')"></div>
+        <div class="screen"><img src="assets/images/02-workspace.png" alt="Owner workspace" /></div>
+        <div class="label">
+          <p class="eyebrow">Owner Workspace</p>
+          <p class="headline">A record is created and resumed from the sidebar workflow.</p>
+        </div>
+      </section>
+
+      <section id="scene-gemini" class="scene">
+        <div class="backdrop" style="background-image: url('assets/images/03-gemini-receipt.png')"></div>
+        <div class="screen"><img src="assets/images/03-gemini-receipt.png" alt="Gemini extraction receipt" /></div>
+        <div class="label">
+          <p class="eyebrow">Gemini Extraction</p>
+          <p class="headline">Gemini fills the ledger and the activity trail records it.</p>
+        </div>
+      </section>
+
+      <section id="scene-client" class="scene">
+        <div class="backdrop" style="background-image: url('assets/images/04-client-baseline.png')"></div>
+        <div class="screen"><img src="assets/images/04-client-baseline.png" alt="Client baseline confirmation" /></div>
+        <div class="label">
+          <p class="eyebrow">Client Portal</p>
+          <p class="headline">The client confirms baseline version one without an account.</p>
+        </div>
+      </section>
+
+      <section id="scene-guardrail" class="scene">
+        <div class="backdrop" style="background-image: url('assets/images/05-guardrail.png')"></div>
+        <div class="screen"><img src="assets/images/05-guardrail.png" alt="Scope guardrail classification" /></div>
+        <div class="label">
+          <p class="eyebrow">AI Guardrail</p>
+          <p class="headline">A TikTok request is classified as a change request with a citation.</p>
+        </div>
+      </section>
+
+      <section id="scene-review" class="scene">
+        <div class="backdrop" style="background-image: url('assets/images/06-client-review.png')"></div>
+        <div class="screen"><img src="assets/images/06-client-review.png" alt="Client delivery review" /></div>
+        <div class="label">
+          <p class="eyebrow">Delivery Review</p>
+          <p class="headline">The client accepts one item and requests changes on another.</p>
+        </div>
+      </section>
+
+      <section id="scene-sources" class="scene">
+        <div class="backdrop" style="background-image: url('assets/images/07-menu-sources.png')"></div>
+        <div class="screen"><img src="assets/images/07-menu-sources.png" alt="Sources menu" /></div>
+        <div class="label">
+          <p class="eyebrow">Sources</p>
+          <p class="headline">Source material stays inspectable from the sidebar.</p>
+        </div>
+      </section>
+
+      <section id="scene-menu-review" class="scene">
+        <div class="backdrop" style="background-image: url('assets/images/08-menu-review.png')"></div>
+        <div class="screen"><img src="assets/images/08-menu-review.png" alt="Review menu" /></div>
+        <div class="label">
+          <p class="eyebrow">Review</p>
+          <p class="headline">Open decisions and acceptance criteria stay visible.</p>
+        </div>
+      </section>
+
+      <section id="scene-activity" class="scene">
+        <div class="backdrop" style="background-image: url('assets/images/09-menu-activity.png')"></div>
+        <div class="screen"><img src="assets/images/09-menu-activity.png" alt="Activity menu" /></div>
+        <div class="label">
+          <p class="eyebrow">Activity</p>
+          <p class="headline">Every handoff and model action is audit-ready.</p>
+        </div>
+      </section>
+
+      <section id="scene-policies" class="scene">
+        <div class="backdrop" style="background-image: url('assets/images/10-menu-policies.png')"></div>
+        <div class="screen"><img src="assets/images/10-menu-policies.png" alt="Policies menu" /></div>
+        <div class="label">
+          <p class="eyebrow">Policies</p>
+          <p class="headline">Default review rules are configurable in the app.</p>
+        </div>
+      </section>
+
+      <section id="scene-records" class="scene">
+        <div class="backdrop" style="background-image: url('assets/images/11-menu-records.png')"></div>
+        <div class="screen"><img src="assets/images/11-menu-records.png" alt="Records menu" /></div>
+        <div class="label">
+          <p class="eyebrow">Records</p>
+          <p class="headline">The record list gives judges the reproducible project history.</p>
+        </div>
+      </section>
+
+      <section id="scene-cloud-services" class="scene">
+        <div class="backdrop" style="background-image: url('assets/images/12-cloud-services.png')"></div>
+        <div class="screen dark"><img src="assets/images/12-cloud-services.png" alt="Google Cloud Run services" /></div>
+        <div class="label dark">
+          <p class="eyebrow">Google Cloud</p>
+          <p class="headline">Cloud Run shows the public API and private worker services.</p>
+        </div>
+        <div class="bug dark" data-layout-allow-overlap><span class="dot"></span><span>Cloud Run live</span></div>
+      </section>
+
+      <section id="scene-cloud-api" class="scene">
+        <div class="backdrop" style="background-image: url('assets/images/13-cloud-api.png')"></div>
+        <div class="screen dark"><img src="assets/images/13-cloud-api.png" alt="Google Cloud Run API metrics" /></div>
+        <div class="label dark">
+          <p class="eyebrow">Production Proof</p>
+          <p class="headline">The API service detail page shows the live Cloud Run URL and metrics.</p>
+        </div>
+        <div class="bug dark" data-layout-allow-overlap><span class="dot"></span><span>Gemini + Firebase + Firestore</span></div>
+      </section>
+
+      <div id="subtitle"></div>
+      <div id="ripple" class="ripple"></div>
+      <div id="cursor" class="cursor" aria-hidden="true">
+        <svg viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 4L32 27L20.7 28.2L16 38L8 4Z" fill="#171814" stroke="#fffaf0" stroke-width="2" />
+        </svg>
+      </div>
+    </div>
+
+    <script>
+      const TOTAL = 104;
+      const sceneIds = [
+        "scene-landing",
+        "scene-signin",
+        "scene-workspace",
+        "scene-gemini",
+        "scene-client",
+        "scene-guardrail",
+        "scene-review",
+        "scene-sources",
+        "scene-menu-review",
+        "scene-activity",
+        "scene-policies",
+        "scene-records",
+        "scene-cloud-services",
+        "scene-cloud-api",
+      ];
+
+      const beats = [
+        { id: "scene-landing", at: 0 },
+        { id: "scene-signin", at: 8.1 },
+        { id: "scene-workspace", at: 15.4 },
+        { id: "scene-gemini", at: 23.5 },
+        { id: "scene-client", at: 30.3 },
+        { id: "scene-guardrail", at: 38.7 },
+        { id: "scene-review", at: 54.3 },
+        { id: "scene-sources", at: 67.2 },
+        { id: "scene-menu-review", at: 69.6 },
+        { id: "scene-activity", at: 72.0 },
+        { id: "scene-policies", at: 74.4 },
+        { id: "scene-records", at: 76.8 },
+        { id: "scene-cloud-services", at: 78.6 },
+        { id: "scene-cloud-api", at: 86.7 },
+      ];
+
+      const cues = [
+        { s: 0.05, e: 3.481, t: "Most freelance scope problems do not start with bad intent." },
+        { s: 3.481, e: 8.095, t: "They start when the brief, the decision, and the proof live in different places." },
+        { s: 8.095, e: 9.591, t: "This is Delividence." },
+        { s: 9.591, e: 15.163, t: "The owner starts with the real landing page, signs in, and creates a record from a plain client brief." },
+        { s: 15.163, e: 23.528, t: "Gemini turns that brief into working project state: source material, acceptance criteria, and an activity trail that shows what the agent did." },
+        { s: 23.528, e: 26.787, t: "The important thing is that this is not just a chat answer." },
+        { s: 26.787, e: 30.373, t: "It becomes a shared ledger the project can actually run on." },
+        { s: 30.373, e: 34.275, t: "The client receives a no-account portal and confirms the first baseline." },
+        { s: 34.275, e: 38.703, t: "Now both sides know exactly what version one means before delivery starts." },
+        { s: 38.703, e: 40.303, t: "Here is the guardrail." },
+        { s: 40.303, e: 50.327, t: "When the client asks for three vertical TikTok visuals, Delividence checks the request against the accepted baseline, cites the original deliverable, and recommends a change request." },
+        { s: 50.327, e: 54.314, t: "A human can confirm the classification before the scope changes." },
+        { s: 54.314, e: 60.689, t: "Then the owner proposes the new criterion, attaches proof, and sends the delivery review back to the client." },
+        { s: 60.689, e: 67.418, t: "The client can accept one item and request changes on another, so review becomes precise instead of emotional." },
+        { s: 67.418, e: 78.574, t: "Records, Sources, Review, Activity, and Policies cover the full operational workflow." },
+        { s: 78.574, e: 92.546, t: "The backend is running on Google Cloud Run with Pub/Sub, Firestore, Firebase Auth, and Gemini." },
+        { s: 92.546, e: 101.985, t: "Delividence removes the manual chasing around scope, evidence, and approvals while keeping a human in control." },
+      ];
+
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true, defaults: { ease: "power2.out" } });
+      const subtitle = document.getElementById("subtitle");
+      const cursor = document.getElementById("cursor");
+      const ripple = document.getElementById("ripple");
+      const progress = { t: 0 };
+
+      function showSubtitle(time) {
+        const cue = cues.find((item) => time >= item.s && time < item.e);
+        subtitle.textContent = cue ? cue.t : "";
+        gsap.set(subtitle, { opacity: cue ? 1 : 0 });
+      }
+
+      tl.to(progress, {
+        t: TOTAL,
+        duration: TOTAL,
+        ease: "none",
+        onUpdate: () => showSubtitle(progress.t),
+      }, 0);
+
+      for (let i = 1; i < beats.length; i += 1) {
+        const previous = document.getElementById(beats[i - 1].id);
+        const current = document.getElementById(beats[i].id);
+        const at = beats[i].at;
+        tl.set(current, { opacity: 1, zIndex: i + 2 }, at);
+        tl.fromTo(current.querySelector(".screen"), { x: 74, scale: 0.985 }, { x: 0, scale: 1, duration: 0.62, ease: "power3.out" }, at);
+        tl.fromTo(current.querySelector(".label"), { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power2.out" }, at + 0.12);
+        tl.to(previous, { opacity: 0, x: -38, filter: "blur(8px)", duration: 0.46, ease: "power2.inOut" }, at);
+        tl.set(previous, { x: 0, filter: "none" }, at + 0.48);
+      }
+
+      sceneIds.forEach((id, index) => {
+        const scene = document.getElementById(id);
+        const start = beats[index].at;
+        const next = beats[index + 1] ? beats[index + 1].at : TOTAL;
+        const mid = start + Math.max(0.8, (next - start) * 0.18);
+        tl.fromTo(scene.querySelector(".screen"), { y: 7 }, { y: -7, duration: Math.max(2, next - start), ease: "sine.inOut" }, start);
+        tl.fromTo(scene.querySelector(".backdrop"), { scale: 1.08 }, { scale: 1.12, duration: Math.max(2, next - start), ease: "sine.inOut" }, start);
+        tl.fromTo(scene.querySelector(".label"), { opacity: index === 0 ? 0 : 1 }, { opacity: 1, duration: 0.4 }, mid);
+      });
+
+      const cursorMoves = [
+        { at: 3.1, x: 292, y: 902, click: true },
+        { at: 10.0, x: 950, y: 590, click: true },
+        { at: 17.2, x: 1360, y: 58, click: true },
+        { at: 24.2, x: 1392, y: 654, click: true },
+        { at: 32.4, x: 1320, y: 304, click: true },
+        { at: 42.2, x: 1430, y: 765, click: true },
+        { at: 50.7, x: 1450, y: 798, click: true },
+        { at: 58.7, x: 1170, y: 677, click: true },
+        { at: 68.0, x: 82, y: 260, click: true },
+        { at: 70.4, x: 82, y: 315, click: true },
+        { at: 72.8, x: 82, y: 372, click: true },
+        { at: 75.1, x: 82, y: 516, click: true },
+        { at: 77.3, x: 82, y: 203, click: true },
+        { at: 81.2, x: 830, y: 536, click: true },
+        { at: 88.6, x: 1510, y: 134, click: false },
+      ];
+
+      tl.set(cursor, { opacity: 0, x: 260, y: 900 }, 0);
+      tl.to(cursor, { opacity: 1, duration: 0.35 }, 2.6);
+      cursorMoves.forEach((move, index) => {
+        const previous = index === 0 ? { x: 260, y: 900 } : cursorMoves[index - 1];
+        tl.fromTo(cursor, { x: previous.x, y: previous.y }, { x: move.x, y: move.y, duration: 0.78, ease: "power2.inOut" }, move.at);
+        if (move.click) {
+          tl.to(cursor, { scale: 0.86, duration: 0.08, ease: "power1.in" }, move.at + 0.78);
+          tl.to(cursor, { scale: 1, duration: 0.18, ease: "back.out(2.8)" }, move.at + 0.86);
+          tl.set(ripple, { x: move.x + 9, y: move.y + 9, scale: 0.25, opacity: 0.88 }, move.at + 0.8);
+          tl.to(ripple, { scale: 1.5, opacity: 0, duration: 0.45, ease: "power2.out" }, move.at + 0.8);
+        }
+      });
+      tl.to(cursor, { opacity: 0, duration: 0.35 }, 97.2);
+      tl.to("#scene-cloud-api", { opacity: 0.72, duration: 1.5, ease: "sine.inOut" }, 101.8);
+      tl.to(subtitle, { opacity: 0, duration: 0.4 }, 102.6);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
+from datetime import datetime, timezone
 
-from app import auth
+from app import auth, config
 from app.api import app as api_app
 
 api = TestClient(api_app)
@@ -50,3 +51,104 @@ def test_owner_sendiri_tetap_bisa_baca_run(published):
     run_id = api.post("/runs", json={"brief": "punya owner-a"}).json()["run_id"]
 
     assert api.get(f"/runs/{run_id}").status_code == 200
+
+
+def test_session_cookie_hanya_dibuat_dari_login_baru(monkeypatch):
+    api_app.dependency_overrides.pop(auth.require_owner, None)
+    now = int(datetime.now(timezone.utc).timestamp())
+
+    class FakeFirebaseAuth:
+        @staticmethod
+        def verify_id_token(token, app):
+            assert token == "fresh-id-token"
+            return {"uid": "owner-a", "auth_time": now}
+
+        @staticmethod
+        def create_session_cookie(token, expires_in, app):
+            assert token == "fresh-id-token"
+            assert int(expires_in.total_seconds()) > 0
+            return "signed-session-cookie"
+
+    monkeypatch.setattr(auth, "_app", lambda: object())
+    monkeypatch.setattr(auth, "_firebase_auth_module", lambda: FakeFirebaseAuth)
+
+    response = api.post(
+        "/auth/session", headers={"Authorization": "Bearer fresh-id-token"}
+    )
+    assert response.status_code == 200
+    assert response.json()["session_cookie"] == "signed-session-cookie"
+
+
+def test_session_cookie_menolak_token_dengan_auth_time_lama(monkeypatch):
+    api_app.dependency_overrides.pop(auth.require_owner, None)
+    old = int(datetime.now(timezone.utc).timestamp()) - 600
+
+    class FakeFirebaseAuth:
+        @staticmethod
+        def verify_id_token(token, app):
+            return {"uid": "owner-a", "auth_time": old}
+
+    monkeypatch.setattr(auth, "_app", lambda: object())
+    monkeypatch.setattr(auth, "_firebase_auth_module", lambda: FakeFirebaseAuth)
+
+    response = api.post(
+        "/auth/session", headers={"Authorization": "Bearer stale-id-token"}
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "A recent sign-in is required"
+
+
+def test_app_uses_configured_session_cookie_credential(monkeypatch):
+    marker = object()
+    calls = []
+    monkeypatch.setattr(config, "FIREBASE_PROJECT_ID", "test-project")
+    monkeypatch.setattr(auth, "_firebase_credential", lambda: marker)
+    monkeypatch.setattr(auth, "_firebase_app", None)
+
+    class FakeFirebaseAdmin:
+        @staticmethod
+        def initialize_app(credential, options):
+            calls.append((credential, options))
+            return object()
+
+    monkeypatch.setattr(auth, "_firebase_admin_module", lambda: FakeFirebaseAdmin)
+
+    auth._app()
+
+    assert calls == [(marker, {"projectId": "test-project"})]
+
+
+def test_session_cookie_credential_pins_impersonation_to_firebase_project(monkeypatch):
+    class FakeSourceCredential:
+        def with_quota_project(self, project_id):
+            assert project_id == "firebase-project"
+            return "source-with-firebase-quota"
+
+    class FakeImpersonatedCredential:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    class FakeCredentialsModule:
+        @staticmethod
+        def _ExternalCredentials(credential):
+            return credential
+
+    monkeypatch.setattr(config, "FIREBASE_PROJECT_ID", "firebase-project")
+    monkeypatch.setattr(
+        config,
+        "FIREBASE_SESSION_COOKIE_SERVICE_ACCOUNT",
+        "api@firebase-project.iam.gserviceaccount.com",
+    )
+
+    import google.auth
+    from google.auth import impersonated_credentials
+    from firebase_admin import credentials
+
+    monkeypatch.setattr(google.auth, "default", lambda scopes: (FakeSourceCredential(), "firebase-project"))
+    monkeypatch.setattr(impersonated_credentials, "Credentials", FakeImpersonatedCredential)
+    monkeypatch.setattr(credentials, "_ExternalCredentials", FakeCredentialsModule._ExternalCredentials)
+
+    credential = auth._firebase_credential()
+
+    assert credential.kwargs["source_credentials"] == "source-with-firebase-quota"
+    assert credential.kwargs["quota_project_id"] == "firebase-project"

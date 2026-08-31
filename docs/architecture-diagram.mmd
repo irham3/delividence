@@ -1,0 +1,20 @@
+flowchart TB
+  owner["Freelancer owner<br/>Firebase Google sign-in"] -->|Firebase ID token| web["Next.js web app<br/>Vercel / local development"]
+  client["Client<br/>no-account scoped link"] -->|opaque, purpose-bound token| web
+
+  subgraph gcp["Google Cloud"]
+    api["Cloud Run: delividence-api<br/>FastAPI public API"]
+    fs[("Firestore<br/>run state, baselines, evidence, audit")]
+    ps["Pub/Sub<br/>job topic + retry/DLQ"]
+    worker["Cloud Run: delividence-worker<br/>private OIDC push target"]
+    adk["Google ADK workflow<br/>constrained tools"]
+  end
+
+  web -->|HTTPS + owner/client authorization| api
+  api -->|verify ID token| firebase["Firebase Authentication"]
+  api <--> fs
+  api -->|publish job| ps
+  ps -->|OIDC push| worker
+  worker --> adk
+  adk -->|structured extraction / guardrail proposal| gemini["Gemini Developer API<br/>gemini-3.5-flash<br/>gemini-3.6-flash fallback"]
+  worker <--> fs

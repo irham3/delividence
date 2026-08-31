@@ -87,14 +87,16 @@ stabil saat ini:
 | `gemini-3.6-flash` | Stabil (GA) | *"Our previous-generation Flash model, balancing speed and multimodal capabilities"* |
 | `gemini-3.5-flash` | Stabil (GA) | *"Our legacy Flash model, providing baseline speed"* |
 
-**Keputusan:** default **`gemini-3.7-flash`**. Ketiganya memenuhi syarat "3.5 or
-newer", jadi memakai 3.5 berarti sengaja memilih yang paling tua tanpa alasan.
-Kalau jalur multimodal (§4) diambil, evaluasi `gemini-3.6-flash` — deskripsi
-resminya secara eksplisit menyebut kemampuan multimodal.
+**Keputusan final 31 Agustus 2026:** default **`gemini-3.5-flash`** untuk demo
+dan deploy, dengan **`gemini-3.6-flash`** sebagai fallback. Keduanya memenuhi
+syarat "3.5 or newer". Live smoke 31 Agustus menunjukkan extraction berhasil
+melalui ADK dengan provenance valid, sementara guardrail sempat menerima 503
+high-demand dari `gemini-3.6-flash` sebelum fallback `gemini-3.5-flash`
+berhasil. Untuk video empat menit dan demo juri, reliabilitas primary lebih
+penting daripada memilih model yang lebih baru tetapi sedang padat.
 
-`[verifikasi]` masih harus dibuktikan dengan panggilan API nyata; catat metadata
-respons sebagai bukti, dan pastikan ketersediaan model di region yang dipilih
-kalau memakai Vertex AI (`06 §3` mem-pin `asia-southeast2`).
+Kalau memakai Vertex AI (`06 §3` mem-pin `asia-southeast2`), pastikan
+ketersediaan model di region yang dipilih pada hari demo.
 
 ## 4. Rekonsiliasi scope — dua kritik, satu anggaran jam
 

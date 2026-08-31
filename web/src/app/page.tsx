@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { User } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
@@ -9,25 +8,28 @@ import {
   AlertCircle,
   Clock3,
   FileText,
-  Image as ImageIcon,
   RotateCcw,
   Send,
   ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppShell, RailPanel, WorkspaceHeader } from "../components/delividence/app-shell";
+import { ConfirmDialog } from "../components/delividence/confirm-dialog";
 import { LandingPage } from "../components/delividence/landing";
 import {
   ApiError,
   apiFetch,
   openAuthedInNewTab,
   setAuthTokenProvider,
+  setUnauthorizedHandler,
   type AcceptanceCriterion,
   type Citation,
   type Ledger,
   type ScopeRequest,
 } from "@/lib/api";
-import { getFirebaseAuth, signInWithGoogle, signOutOwner } from "@/lib/firebase";
+import { signOutAndEndSession } from "@/lib/auth-flow";
+import { getFirebaseAuth, signOutOwner } from "@/lib/firebase";
+import { signInHref } from "@/lib/route-policy";
 
 setAuthTokenProvider(() => {
   try {
@@ -53,9 +55,8 @@ type Run = {
 
 const RUN_ID_STORAGE_KEY = "delividence_run_id";
 const incomingMaterial: Array<[string, string, LucideIcon]> = [
-  ["Brief", "Paste text, email exports, or chat notes.", FileText],
-  ["Media", "Attach screenshot, audio, video, or a file URL.", ImageIcon],
-  ["Proof", "Link evidence to a confirmed criterion.", ShieldCheck],
+  ["Project material", "Paste a brief, email export, transcript, or chat note as text.", FileText],
+  ["Delivery evidence", "After confirmation, attach a URL or a written test result to a criterion.", ShieldCheck],
 ];
 
 export default function PublicHome() {
@@ -79,14 +80,13 @@ export default function PublicHome() {
 // A visitor can understand the product before Firebase is configured, while all
 // authenticated actions still live behind OwnerGate on /workspace and /records.
 export function WorkspaceApp() {
+  const router = useRouter();
   const [brief, setBrief] = useState("");
   const [language, setLanguage] = useState("en");
   // Persisted so refreshing the page (or coming back later) doesn't lose the
   // freelancer's in-progress run -- the actions panel below is otherwise
   // unreachable again without it.
-  const [runId, setRunId] = useState<string | null>(() =>
-    typeof window !== "undefined" ? localStorage.getItem(RUN_ID_STORAGE_KEY) : null
-  );
+  const [runId, setRunId] = useState<string | null>(null);
   const [run, setRun] = useState<Run | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -116,6 +116,27 @@ export function WorkspaceApp() {
       unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    try {
+      const requestedRun = new URLSearchParams(window.location.search).get("run");
+      setRunId(requestedRun || localStorage.getItem(RUN_ID_STORAGE_KEY));
+    } catch {
+      // Storage/query access can be unavailable in hardened browser modes.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authReady && !user && !error) router.replace(signInHref("/workspace"));
+  }, [authReady, error, router, user]);
+
+  useEffect(() => {
+    setUnauthorizedHandler(async () => {
+      await signOutAndEndSession(signOutOwner).catch(() => signOutOwner());
+      router.replace(signInHref("/workspace"));
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [router]);
 
   useEffect(() => {
     try {
@@ -205,22 +226,26 @@ export function WorkspaceApp() {
 
   if (!user) {
     return (
-      <LandingPage
-        error={error}
-        onSample={() =>
-          setBrief(
-            "Can you redesign our landing page hero, tighten the copy, keep the hero video muted, and send a mobile version too? The screenshot is the main visual reference. We need this by next Wednesday, but we have not agreed on revision rounds yet."
-          )
-        }
-        onRegister={() => signInWithGoogle().catch((e) => setError(e instanceof Error ? e.message : "Sign-in failed"))}
-      />
+      <main className="paper-texture flex min-h-[100dvh] items-center justify-center px-6">
+        <div className="paper-card max-w-md rounded-[8px] p-5 text-sm text-[var(--muted)]">
+          {error ? (
+            <><p role="alert" className="text-[var(--danger)]">{error}</p><button type="button" onClick={() => router.push("/sign-in")} className="focus-ring mt-4 underline">Return to sign in</button></>
+          ) : (
+            <p role="status">Taking you to sign in...</p>
+          )}
+        </div>
+      </main>
     );
   }
 
   return (
     <AppShell
       email={user.email}
-      onSignOut={() => signOutOwner()}
+      onSignOut={async () => {
+        await signOutAndEndSession(signOutOwner);
+        router.replace("/sign-in");
+        router.refresh();
+      }}
       onNewRecord={() => {
         setRunId(null);
         setRun(null);
@@ -229,12 +254,7 @@ export function WorkspaceApp() {
       }}
       rightRail={
         <>
-          <RailPanel title="Incoming material">
-            <div className="mb-4 rounded-[6px] border border-[var(--rule)] surface-o45 p-3">
-              <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.12em] text-[var(--muted)]"><span>Latest call</span><span>09:02 AM</span></div>
-              <Image src="/assets/waveform-sample.svg" alt="" aria-hidden="true" width={320} height={52} className="mt-3 h-9 w-full text-[var(--ink)] opacity-65" />
-              <p className="mt-2 text-xs text-[var(--muted)]">call_0429.mp3 · transcript ready</p>
-            </div>
+          <RailPanel title="Supported inputs">
             <div className="space-y-3 text-sm">
               {incomingMaterial.map(([title, description, Icon]) => (
                 <div key={title} className="rounded-[6px] border border-[var(--rule)] surface-o45 p-3">
@@ -244,7 +264,7 @@ export function WorkspaceApp() {
               ))}
             </div>
           </RailPanel>
-          <RailPanel title="Judge proof">
+          <RailPanel title="How decisions work">
             <ul className="space-y-3 text-sm text-[var(--muted)]">
               <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 text-[var(--accepted)]" /> Gemini extraction with citations.</li>
               <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 text-[var(--accepted)]" /> ADK workflow resumes after client input.</li>
@@ -339,7 +359,7 @@ export function WorkspaceApp() {
             <p className="text-sm">
               Status: <strong>{run?.status ?? "queued"}</strong>
             </p>
-            {run?.status === "done" && !run.active_baseline_version && (
+            {(run?.status === "failed" || (run?.status === "done" && !run.ledger)) && !run.active_baseline_version && (
               <button
                 onClick={retryExtraction}
                 disabled={retrying}
@@ -449,6 +469,7 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
   });
   const [linkError, setLinkError] = useState<string | null>(null);
   const [revoking, setRevoking] = useState<LinkPurpose | null>(null);
+  const [pendingRevoke, setPendingRevoke] = useState<LinkPurpose | null>(null);
 
   const [criterionKey, setCriterionKey] = useState("");
   const [evidenceType, setEvidenceType] = useState<"url" | "text">("url");
@@ -481,6 +502,7 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
     try {
       await apiFetch(`/runs/${runId}/client-links/${link.token}/revoke`, { method: "POST" });
       setLinks((s) => ({ ...s, [purpose]: null }));
+      setPendingRevoke(null);
     } catch (e) {
       setLinkError(e instanceof Error ? e.message : "Failed to revoke link.");
     } finally {
@@ -516,7 +538,7 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
   const hasBaseline = !!run?.active_baseline_version;
 
   return (
-    <section className="mt-8 paper-card rounded-[8px] p-5 sm:p-6">
+    <section id="owner-controls" className="mt-8 paper-card scroll-mt-24 rounded-[8px] p-5 sm:p-6">
       <div className="flex flex-col justify-between gap-3 border-b border-[var(--rule)] pb-5 sm:flex-row sm:items-center">
         <div>
           <p className="mono text-xs uppercase tracking-[0.12em] text-[var(--muted)]">Owner controls</p>
@@ -542,7 +564,7 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
             <>
               <code className="truncate text-xs text-[var(--muted)]">{links.CLARIFICATION.url}</code>
               <button
-                onClick={() => revokeLink("CLARIFICATION")}
+                onClick={() => setPendingRevoke("CLARIFICATION")}
                 disabled={revoking === "CLARIFICATION"}
                 className="shrink-0 text-xs text-[var(--faint)] underline hover:text-[var(--danger)] disabled:opacity-40"
               >
@@ -571,7 +593,7 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
             <>
               <code className="truncate text-xs text-[var(--muted)]">{links.DELIVERY_REVIEW.url}</code>
               <button
-                onClick={() => revokeLink("DELIVERY_REVIEW")}
+                onClick={() => setPendingRevoke("DELIVERY_REVIEW")}
                 disabled={revoking === "DELIVERY_REVIEW"}
                 className="shrink-0 text-xs text-[var(--faint)] underline hover:text-[var(--danger)] disabled:opacity-40"
               >
@@ -600,7 +622,7 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
             <>
               <code className="truncate text-xs text-[var(--muted)]">{links.NEW_REQUEST.url}</code>
               <button
-                onClick={() => revokeLink("NEW_REQUEST")}
+                onClick={() => setPendingRevoke("NEW_REQUEST")}
                 disabled={revoking === "NEW_REQUEST"}
                 className="shrink-0 text-xs text-[var(--faint)] underline hover:text-[var(--danger)] disabled:opacity-40"
               >
@@ -694,6 +716,22 @@ function FreelancerActions({ runId, run }: { runId: string; run: Run | null }) {
 
       {hasBaseline && <ChangeProposalPanel runId={runId} run={run} />}
       {hasBaseline && <GuardrailPanel runId={runId} />}
+      <ConfirmDialog
+        open={pendingRevoke !== null}
+        title="Revoke this client link?"
+        description="Anyone using this link will immediately lose access. Create a new link if the client still needs to continue this step."
+        confirmLabel="Revoke link"
+        busyLabel="Revoking..."
+        busy={revoking !== null}
+        error={linkError}
+        destructive
+        onCancel={() => {
+          if (!revoking) setPendingRevoke(null);
+        }}
+        onConfirm={() => {
+          if (pendingRevoke) void revokeLink(pendingRevoke);
+        }}
+      />
     </section>
   );
 }

@@ -13,7 +13,7 @@ The product is deliberately not a marketplace or a chatbot. Gemini reads materia
 - Public editorial landing page and responsive product routes for workspace, records, sources, review, activity, policies, sign-in, and registration.
 - Cloud Run API + private worker, Firestore, Pub/Sub with dead-letter topic, Secret Manager-aware deployment scripts.
 
-The detailed product contract is in [docs](docs/README.md). The visual system, previews, component decisions, and cloud handoff are in [web/design](web/design/README.md).
+The detailed product contract is in [docs](docs/README.md). The visual system, previews, component decisions, and cloud handoff are in [web/design](web/design/README.md). The submission-ready diagram and Devpost copy are in [docs/ARCHITECTURE-DIAGRAM.md](docs/ARCHITECTURE-DIAGRAM.md), [docs/architecture-diagram.svg](docs/architecture-diagram.svg), and [docs/DEVPOST-SUBMISSION.md](docs/DEVPOST-SUBMISSION.md).
 
 ## Architecture
 
@@ -29,7 +29,7 @@ Browser ── Firebase Auth ──> Cloud Run API (public)
                            Google ADK + Gemini
 ```
 
-Cloud Run is the required Google Cloud proof. The agent can use either Vertex AI or the Gemini Developer API; the deploy script makes the choice explicit.
+Cloud Run is the required Google Cloud proof. The deployed workflow currently uses Gemini through the Gemini Developer API (`gemini-3.5-flash`, with `gemini-3.6-flash` fallback); the deploy script makes a Vertex AI switch explicit if that path is selected later.
 
 ## Local development
 
@@ -74,8 +74,13 @@ pnpm dev
 
 Owner sign-in verifies Firebase ID tokens through Application Default
 Credentials, so run `gcloud auth application-default login` once even in local
-mode. `GET http://127.0.0.1:8080/runs` answering `401` without a token is the
-expected healthy response. Step-by-step setup is in [docs/06-SETUP.md](docs/06-SETUP.md).
+mode. If your individual developer identity is deliberately not a Firebase Auth
+administrator, set `FIREBASE_SESSION_COOKIE_SERVICE_ACCOUNT` to the deployed
+API service account after it has granted you `roles/iam.serviceAccountTokenCreator`.
+That lets local session-cookie creation impersonate the narrow production API
+identity rather than broadening developer permissions. `GET
+http://127.0.0.1:8080/runs` answering `401` without a token is the expected
+healthy response. Step-by-step setup is in [docs/06-SETUP.md](docs/06-SETUP.md).
 
 ## Production handoff
 

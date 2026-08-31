@@ -1,8 +1,9 @@
+import asyncio
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -63,6 +64,19 @@ class CreateRunRequest(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok", "role": "api", "local": config.LOCAL}
+
+
+@app.post("/auth/session")
+def create_auth_session(authorization: str = Header(default="")):
+    """Server-to-server bridge untuk route handler Next.js.
+
+    Browser tidak menyimpan nilai response ini di JavaScript. Next.js segera
+    mengubahnya menjadi cookie HttpOnly pada origin frontend.
+    """
+    return {
+        "session_cookie": auth.create_owner_session_cookie(authorization),
+        "expires_in": config.SESSION_COOKIE_MAX_AGE_SECONDS,
+    }
 
 
 @app.post("/runs", status_code=202)
@@ -673,11 +687,30 @@ async def propose_scope_classification(raw_text, text_by_ref):
     persis pola worker.run_extraction. Wiring ini diverifikasi manual lewat
     uvicorn (CATATAN-LANJUTAN.md), bukan di test suite.
     """
+    return await _propose_scope_classification_with_fallback(raw_text, text_by_ref)
+
+
+async def _propose_scope_classification_with_fallback(raw_text, text_by_ref):
+    last_error = None
+    for model in config.gemini_model_candidates():
+        try:
+            return await asyncio.wait_for(
+                _propose_scope_classification_with_model(raw_text, text_by_ref, model),
+                timeout=config.GEMINI_MODEL_TIMEOUT_SECONDS,
+            )
+        except Exception as error:
+            last_error = error
+    if last_error:
+        raise last_error
+    raise RuntimeError("No Gemini guardrail model is configured")
+
+
+async def _propose_scope_classification_with_model(raw_text, text_by_ref, model):
     from google.adk.runners import InMemoryRunner
     from google.genai import types as genai_types
 
     session_id = uuid.uuid4().hex
-    runner = InMemoryRunner(agent=agent.guardrail_agent, app_name="delividence")
+    runner = InMemoryRunner(agent=agent.guardrail_agent_for(model), app_name="delividence")
     await runner.session_service.create_session(
         app_name="delividence", user_id="api", session_id=session_id,
         state={"citable_text": text_by_ref},

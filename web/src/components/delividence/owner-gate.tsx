@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { ArrowLeft, LockKeyhole } from "lucide-react";
 import { AppShell } from "@/components/delividence/app-shell";
-import { getFirebaseAuth, signInWithGoogle, signOutOwner } from "@/lib/firebase";
-import { setAuthTokenProvider } from "@/lib/api";
+import { signOutAndEndSession } from "@/lib/auth-flow";
+import { getFirebaseAuth, signOutOwner } from "@/lib/firebase";
+import { setAuthTokenProvider, setUnauthorizedHandler } from "@/lib/api";
+import { signInHref } from "@/lib/route-policy";
 
 setAuthTokenProvider(() => {
   try {
@@ -18,6 +22,8 @@ setAuthTokenProvider(() => {
 });
 
 export function OwnerGate({ children }: { children: (user: User) => ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,18 +51,35 @@ export function OwnerGate({ children }: { children: (user: User) => ReactNode })
     };
   }, []);
 
+  useEffect(() => {
+    if (ready && !user && !error) router.replace(signInHref(pathname));
+  }, [error, pathname, ready, router, user]);
+
+  useEffect(() => {
+    setUnauthorizedHandler(async () => {
+      await signOutAndEndSession(signOutOwner).catch(() => signOutOwner());
+      router.replace(signInHref(pathname));
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [pathname, router]);
+
   if (!ready) {
     return <main className="paper-texture flex min-h-[100dvh] items-center justify-center px-5"><p className="text-sm text-[var(--muted)]">Loading Delividence...</p></main>;
   }
 
   if (!user) {
-    return <OwnerSignIn error={error} onSignIn={() => signInWithGoogle().catch((e) => setError(e instanceof Error ? e.message : "Sign-in failed."))} />;
+    if (error) return <OwnerSignIn error={error} onSignIn={() => router.push("/sign-in")} />;
+    return <main className="paper-texture flex min-h-[100dvh] items-center justify-center px-5"><p role="status" className="text-sm text-[var(--muted)]">Taking you to sign in...</p></main>;
   }
 
   return (
     <AppShell
       email={user.email}
-      onSignOut={() => signOutOwner()}
+      onSignOut={async () => {
+        await signOutAndEndSession(signOutOwner);
+        router.replace("/sign-in");
+        router.refresh();
+      }}
       onNewRecord={() => undefined}
     >
       {children(user)}
@@ -64,7 +87,19 @@ export function OwnerGate({ children }: { children: (user: User) => ReactNode })
   );
 }
 
-export function OwnerSignIn({ error, onSignIn, register = false }: { error?: string | null; onSignIn: () => void; register?: boolean }) {
+export function OwnerSignIn({ error, onSignIn, register = false }: { error?: string | null; onSignIn: () => unknown | Promise<unknown>; register?: boolean }) {
+  const [signingIn, setSigningIn] = useState(false);
+
+  async function handleSignIn() {
+    if (signingIn) return;
+    setSigningIn(true);
+    try {
+      await onSignIn();
+    } finally {
+      setSigningIn(false);
+    }
+  }
+
   return (
     <main className="paper-texture grid min-h-[100dvh] grid-rows-[72px_1fr_auto] px-5 sm:px-8">
       <header className="mx-auto flex w-full max-w-[1344px] items-center justify-between border-b border-[var(--rule)]">
@@ -76,9 +111,14 @@ export function OwnerSignIn({ error, onSignIn, register = false }: { error?: str
           <p className="mono text-[11px] font-medium tracking-[0.1em] text-[var(--accent)]">{register ? "START A RECORD" : "WELCOME BACK"}</p>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight">{register ? "Make the next decision easier." : "Continue the record."}</h1>
           <p className="mt-4 max-w-sm text-sm leading-6 text-[var(--muted)]">{register ? "Create a workspace for material, agreement, and proof." : "Sign in to the work you are keeping clear."}</p>
-          <button onClick={onSignIn} className="tap focus-ring mt-8 flex min-h-12 w-full items-center justify-center gap-3 rounded-[4px] border border-[var(--ink)] bg-[var(--surface-strong)] text-sm font-medium">
-            <span className="grid h-5 w-5 place-items-center font-semibold text-[#4285f4]" aria-hidden="true">G</span>
-            {register ? "Sign up with Google" : "Continue with Google"}
+          <button
+            type="button"
+            onClick={() => void handleSignIn()}
+            disabled={signingIn}
+            className="tap focus-ring mt-8 flex min-h-12 w-full items-center justify-center gap-3 rounded-[4px] border border-[#747775] bg-white text-sm font-medium text-[#1f1f1f] disabled:cursor-wait disabled:opacity-65"
+          >
+            <Image src="/assets/google-g.png" alt="" aria-hidden="true" width={20} height={20} className="h-5 w-5" />
+            {signingIn ? "Connecting to Google..." : register ? "Sign up with Google" : "Continue with Google"}
           </button>
           <p className="mt-6 text-center text-sm text-[var(--muted)]">{register ? <>Already have an account? <Link href="/sign-in" className="focus-ring text-[var(--ink)] underline">Sign in.</Link></> : <>New to Delividence? <Link href="/register" className="focus-ring text-[var(--ink)] underline">Create an account.</Link></>}</p>
           {register && <p className="mt-5 text-center text-xs leading-5 text-[var(--muted)]">By continuing, you agree to the Terms and Privacy Policy.</p>}

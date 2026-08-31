@@ -85,6 +85,51 @@ def test_worker_menandai_failed_saat_model_gagal(published, monkeypatch):
     assert "failed" in run["audit_trail"][-1]["detail"]
 
 
+def test_extraction_beralih_ke_model_fallback(monkeypatch):
+    from app import config as config_module
+    from app import worker as worker_module
+
+    attempts = []
+
+    async def _try(run_id, brief, model):
+        attempts.append(model)
+        if model == "primary-model":
+            raise RuntimeError("503 high demand")
+        return {"out_of_scope": {"value": []}}
+
+    monkeypatch.setattr(config_module, "GEMINI_MODEL", "primary-model")
+    monkeypatch.setattr(config_module, "GEMINI_FALLBACK_MODELS", ("fallback-model",))
+    monkeypatch.setattr(worker_module, "_run_extraction_with_model", _try)
+
+    import asyncio
+    result = asyncio.run(worker_module._run_extraction_with_fallback("run-1", "brief"))
+    assert attempts == ["primary-model", "fallback-model"]
+    assert result == {"out_of_scope": {"value": []}}
+
+
+def test_extraction_timeout_beralih_ke_model_fallback(monkeypatch):
+    from app import config as config_module
+    from app import worker as worker_module
+
+    attempts = []
+
+    async def _try(run_id, brief, model):
+        attempts.append(model)
+        if model == "slow-model":
+            await asyncio.sleep(1)
+        return {"deliverables": {"value": []}}
+
+    import asyncio
+    monkeypatch.setattr(config_module, "GEMINI_MODEL", "slow-model")
+    monkeypatch.setattr(config_module, "GEMINI_FALLBACK_MODELS", ("fallback-model",))
+    monkeypatch.setattr(config_module, "GEMINI_MODEL_TIMEOUT_SECONDS", 0.01)
+    monkeypatch.setattr(worker_module, "_run_extraction_with_model", _try)
+
+    result = asyncio.run(worker_module._run_extraction_with_fallback("run-1", "brief"))
+    assert attempts == ["slow-model", "fallback-model"]
+    assert result == {"deliverables": {"value": []}}
+
+
 def test_pengiriman_ganda_hanya_diproses_sekali(published):
     """Pub/Sub menjamin at-least-once, jadi pesan yang sama pasti datang dua kali."""
     run_id = api.post("/runs", json={"brief": "brief apa adanya"}).json()["run_id"]

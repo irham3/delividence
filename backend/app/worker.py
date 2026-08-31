@@ -1,4 +1,5 @@
 import base64
+import asyncio
 import json
 import logging
 
@@ -42,10 +43,30 @@ async def run_extraction(run_id, brief):
     suite cepat, deterministik, dan tidak butuh GEMINI_API_KEY. Wiring ini
     diverifikasi manual lewat uvicorn (CATATAN-LANJUTAN.md), bukan di sini.
     """
+    return await _run_extraction_with_fallback(run_id, brief)
+
+
+async def _run_extraction_with_fallback(run_id, brief):
+    last_error = None
+    for model in config.gemini_model_candidates():
+        try:
+            return await asyncio.wait_for(
+                _run_extraction_with_model(run_id, brief, model),
+                timeout=config.GEMINI_MODEL_TIMEOUT_SECONDS,
+            )
+        except Exception as error:
+            last_error = error
+            log.warning("Gemini extraction model %s gagal; mencoba kandidat berikutnya", model)
+    if last_error:
+        raise last_error
+    raise RuntimeError("No Gemini extraction model is configured")
+
+
+async def _run_extraction_with_model(run_id, brief, model):
     from google.adk.runners import InMemoryRunner
     from google.genai import types as genai_types
 
-    runner = InMemoryRunner(agent=agent.extraction_agent, app_name="delividence")
+    runner = InMemoryRunner(agent=agent.extraction_agent_for(model), app_name="delividence")
     await runner.session_service.create_session(
         app_name="delividence",
         user_id="worker",
