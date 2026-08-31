@@ -37,3 +37,7 @@ video/**/.hyperframes/
 
 # State lokal
 .localdata/
+
+# Dokumentasi & Demo
+docs/
+demo/
