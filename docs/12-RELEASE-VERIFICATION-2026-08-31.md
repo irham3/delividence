@@ -5,6 +5,7 @@ Commits verified locally and pushed:
 - `8a4e2f0` (`Fix auth session flow and demo reliability`)
 - `e4e03a9` (`Add screen-record demo pipeline`)
 - `0ecb35b` (`Fail Vercel mirror sync on git errors`)
+- pending follow-up: `deploy/prod-smoke.py` and Firebase Auth IAM setup notes from the final production smoke.
 
 ## Fixed
 
@@ -42,18 +43,35 @@ Commits verified locally and pushed:
 - Pub/Sub push subscription `delividence-runs-push` is `ACTIVE`, points to `/pubsub/push`, uses OIDC service account `delividence-pubsub@gen-lang-client-0104798459.iam.gserviceaccount.com`, has 60s ack deadline, retry policy, and DLQ.
 - Frontend production routing: protected `/records/run-123?tab=evidence` redirects to `/sign-in?next=%2Frecords%2Frun-123%3Ftab%3Devidence`; public `/client/not-a-real-token` is not redirected to owner sign-in.
 - Frontend production Google button: one `google-g` image asset is rendered and the old text placeholder `>G<` is absent.
+- Full production E2E smoke: `PASS production_e2e run_id=3e1cbcf734064be3b35d108de74701a8 uid=prod-smoke-owner-1788160789`.
+  - Firebase custom-token exchange succeeded.
+  - Vercel `/api/auth/session` created the HttpOnly `delividence_session` cookie.
+  - Owner API created a run.
+  - Pub/Sub pushed to the private worker and Gemini extraction completed.
+  - Public client clarification link rendered and confirmed baseline v1.
+  - Guardrail proposed `CHANGE_REQUEST` with one citation.
+  - Freelancer classification confirmation, change proposal, v2 client confirmation, evidence, delivery review, and proof JSON export all succeeded.
+  - Temporary Firebase Auth user was deleted at the end of the smoke.
 
-## Remaining production E2E limitation
+## Production fixes found during final smoke
 
-The only unverified hosted path is a full owner-authenticated browser/API journey after actual Firebase sign-in. The code path is covered locally and the production session endpoint is live, but automated production owner E2E needs one of these:
+The first custom-token smoke proved that `verify_id_token()` worked in Cloud Run (`POST /runs` returned `202`), but `create_session_cookie()` returned `401 Could not create owner session`. The API runtime service account was missing Firebase Auth session-cookie permission.
 
-- Grant `roles/iam.serviceAccountTokenCreator` on `delividence-api@gen-lang-client-0104798459.iam.gserviceaccount.com` to the deploy/testing account, so a short-lived Firebase custom token can be minted for smoke testing.
-- Or run the hosted Google sign-in in a browser session and provide a safe test ID token/session for the smoke script.
+Fixed by granting:
 
-Attempts that failed safely:
+```powershell
+gcloud projects add-iam-policy-binding gen-lang-client-0104798459 `
+  --member="serviceAccount:delividence-api@gen-lang-client-0104798459.iam.gserviceaccount.com" `
+  --role="roles/firebaseauth.editor" `
+  --condition=None
+```
+
+`deploy/01-setup-gcp.ps1` now includes the same binding so future GCP setup does not miss it.
+
+Earlier attempts that failed safely before the final smoke:
 
 - Exchanging the Cloud SDK OAuth token through Firebase returned `INVALID_IDP_RESPONSE` because the OAuth audience belongs to Cloud SDK, not this Firebase web app.
-- Minting a Firebase custom token via IAM returned `403 iam.serviceAccounts.signJwt`.
+- Minting a Firebase custom token via IAM initially returned `403 iam.serviceAccounts.signJwt`; the user then granted `roles/iam.serviceAccountTokenCreator` on the API service account to the deploy/testing account.
 - Temporary email/password Firebase sign-up returned `OPERATION_NOT_ALLOWED` because that provider is disabled.
 - Manual Vercel mirror sync could not fetch `https://github.com/rifqiahmadpratama/delividence.git` from this machine (`Repository not found`). `deploy/03-sync-vercel-mirror.ps1` now fails hard on that condition instead of printing a false success.
 
