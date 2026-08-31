@@ -82,6 +82,26 @@ identity rather than broadening developer permissions. `GET
 http://127.0.0.1:8080/runs` answering `401` without a token is the expected
 healthy response. Step-by-step setup is in [docs/06-SETUP.md](docs/06-SETUP.md).
 
+## Reproducible testing
+
+The fastest way to verify is the live deployment — no local setup required.
+
+1. Open [https://delividence.vercel.app](https://delividence.vercel.app).
+2. Click **Create a record** or **Sign in** and authenticate with Google.
+3. On the Workspace page, paste any brief into the **Create a project record** input (e.g. `"Launch one responsive landing page for Northstar Studio. Desktop and mobile. Hero video, three sections, contact form."`).
+4. Wait ~10 seconds. The extraction agent runs asynchronously; refresh or watch the work queue status change from `processing` to `done`.
+5. Open the created record. You will see the AI-extracted ledger: deliverables, acceptance criteria, in-scope items, assumptions, and unresolved questions — each linked back to the source text.
+6. In the **Freelancer actions** panel, click **Create clarification link** and open the generated URL in an incognito window to see the no-account client portal. Confirm the plan to freeze baseline v1.
+7. Back in the owner view, click **Create new-request link** and open it. Submit a request that was not in the original brief (e.g. `"Please also create three vertical TikTok visuals"`). The Guardrail agent classifies it against the accepted baseline and cites its reasoning.
+8. Attach evidence to a criterion (text or URL), then click **Create delivery review link** and open it to see the client acceptance view with per-criterion status.
+
+To run the backend test suite locally:
+
+```powershell
+cd backend
+..\.venv\Scripts\python.exe -m pytest -q
+```
+
 ## Production handoff
 
 The only manual setup is intentionally documented, not hidden:
