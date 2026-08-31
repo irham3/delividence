@@ -40,6 +40,7 @@ Gunakan placeholders di `.env.example`; jangan commit nilai nyata.
 | `WEB_ORIGIN` | API | hosted web origin untuk CORS |
 | `API_BASE_URL` | web | hosted/local API URL |
 | `FIREBASE_PROJECT_ID` | web/API | Firebase project ID |
+| `FIREBASE_SESSION_COOKIE_SERVICE_ACCOUNT` | local API only (optional) | Service account to impersonate when minting Firebase session cookies; use the deployed API service account so a developer's personal account needs only `Service Account Token Creator` on that identity |
 | `NEXT_PUBLIC_FIREBASE_*` | web | public Firebase web config; bukan secret |
 
 Cloud Run memakai Application Default Credentials melalui service account. Hindari long-lived service-account key dan jangan menaruh Gemini/API key di client.

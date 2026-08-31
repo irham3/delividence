@@ -21,14 +21,51 @@ def _firebase_auth_module():
     return firebase_auth
 
 
+def _firebase_admin_module():
+    import firebase_admin
+    return firebase_admin
+
+
+def _firebase_credential():
+    """Return the least-privileged credential allowed to mint sessions.
+
+    Production runs as the Cloud Run API service account. Local development
+    can impersonate that same identity instead of granting Firebase Auth admin
+    permissions to every developer's personal Google account.
+    """
+    from firebase_admin import credentials
+
+    target_principal = config.FIREBASE_SESSION_COOKIE_SERVICE_ACCOUNT
+    if not target_principal:
+        return credentials.ApplicationDefault()
+
+    import google.auth
+    from google.auth import impersonated_credentials
+
+    source_credentials, _ = google.auth.default(
+        scopes=["https://www.googleapis.com/auth/cloud-platform"]
+    )
+    # A developer's ADC can retain an unrelated quota project.  Pin the
+    # impersonation request to the Firebase project instead, so the IAM
+    # Credentials API is consumed by the project that owns this application.
+    if config.FIREBASE_PROJECT_ID and hasattr(source_credentials, "with_quota_project"):
+        source_credentials = source_credentials.with_quota_project(config.FIREBASE_PROJECT_ID)
+    impersonated = impersonated_credentials.Credentials(
+        source_credentials=source_credentials,
+        target_principal=target_principal,
+        target_scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        quota_project_id=config.FIREBASE_PROJECT_ID or None,
+    )
+    # firebase-admin accepts a google.auth credential through this wrapper.
+    # It keeps the user ADC out of Firebase Auth administration calls.
+    return credentials._ExternalCredentials(impersonated)
+
+
 def _app():
     global _firebase_app
     if _firebase_app is None:
-        import firebase_admin
-        from firebase_admin import credentials
-
-        _firebase_app = firebase_admin.initialize_app(
-            credentials.ApplicationDefault(), {"projectId": config.FIREBASE_PROJECT_ID}
+        _firebase_app = _firebase_admin_module().initialize_app(
+            _firebase_credential(), {"projectId": config.FIREBASE_PROJECT_ID}
         )
     return _firebase_app
 

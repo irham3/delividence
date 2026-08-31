@@ -31,5 +31,9 @@ Thumbs.db
 # Arsip
 *.zip
 
+# Generated video artifacts
+video/**/renders/
+video/**/.hyperframes/
+
 # State lokal
 .localdata/

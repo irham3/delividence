@@ -347,8 +347,14 @@ export default function ClientClarificationPage({
         </button>
         <button
           onClick={confirmPlan}
-          disabled={!view.readiness.ready || confirming}
-          title={!view.readiness.ready ? "Resolve all blockers first" : undefined}
+          disabled={!view.readiness.ready || confirming || saving}
+          title={
+            !view.readiness.ready
+              ? "Resolve all blockers first"
+              : saving
+                ? "Wait for your saved changes before confirming"
+                : undefined
+          }
           className="tap focus-ring rounded-[6px] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
         >
           {confirming ? "Confirming..." : "Confirm project plan"}

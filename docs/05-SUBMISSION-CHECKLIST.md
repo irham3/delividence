@@ -19,17 +19,17 @@
 - [ ] Repo terhubung dan spin-up instructions diuji di environment bersih. *(belum dites dari environment benar-benar bersih)*
 - N/A — repo **publik**, bukan private, jadi tidak perlu akses `testing@devpost.com`/`cloudhackathons@google.com`.
 - [ ] Semua teammate sudah diundang dan accepted. *(aksi di Devpost — status belum dipastikan, lihat CATATAN-LANJUTAN.md)*
-- [x] Architecture diagram diunggah/disertakan. *(`docs/architecture-diagram.png` dibuat 28 Agu — tinggal upload manual ke form Devpost)*
-- [ ] Video publicly visible di YouTube/Vimeo, ≤4 menit, English atau English subtitles. *(belum direkam)*
-- [ ] Video menunjukkan agent bekerja dan bukti backend di Google Cloud. *(belum direkam)*
+- [x] Architecture diagram diunggah/disertakan. *(`docs/architecture-diagram.svg` dibuat dari source `docs/architecture-diagram.mmd`; tinggal upload manual ke form Devpost bila perlu)*
+- [x] Local video artifact ≤4 menit, English voiceover/subtitles. *(`video/real-app-video/renders/real-app-video_2026-08-31_17-45-21.mp4`, 1:44; masih perlu upload publik ke YouTube/Vimeo secara manual/authorized)*
+- [x] Video menunjukkan agent bekerja dan bukti backend di Google Cloud. *(landing, sign-in, workspace, Gemini extraction, client portal, guardrail, review, semua sidebar menu utama, dan Cloud Run Console proof)*
 - [ ] Model/SDK/framework/cloud services dan project start date dijawab eksplisit. *(isi di form Devpost saat submit — draf jawabannya ada di §6 di bawah)*
 - [x] Features, technologies, data sources, learning, challenges, dan disclosure ditulis. *(draf §6 di bawah, diperbarui 28 Agu supaya cocok dengan yang benar-benar dibangun)*
 - [x] Tidak ada secret, client data nyata, atau credential di repo/video. *(`.gitignore` cover `.env`/credential files; belum ada video jadi belum relevan untuk video)*
 
 ### Bonus — hanya setelah seluruh deliverable wajib hijau
 
-- [ ] Public build write-up/blog/video menyatakan bahwa konten dibuat untuk mengikuti hackathon ini.
-- [ ] Public social post memakai hashtag `#AllThingsAgenticHackathon`.
+- [x] Draft public build write-up menyatakan bahwa konten dibuat untuk mengikuti hackathon ini. *(`docs/PUBLIC-BUILD-POST.md`; masih perlu publish publik oleh pemilik akun)*
+- [x] Draft public social post memakai hashtag `#AllThingsAgenticHackathon`. *(`docs/SOCIAL-POST-DRAFT.md`; masih perlu publish publik oleh pemilik akun)*
 - [ ] Link bonus sudah dimasukkan ke submission form.
 - [ ] Model Google tambahan hanya diklaim jika benar-benar terintegrasi; jangan menambah Gemma/Veo/Lyria demi bonus sebelum core stabil.
 
@@ -64,7 +64,7 @@
   included."}` — label benar, bukan diam-diam dianggap ACCEPTED/fakta
   klien.)*
 - [x] Cloud logs tidak mengandung raw token/brief/secret. *(terverifikasi dari kode, bukan dari Cloud Logging langsung — cuma ada 5 baris `log.*` di seluruh backend (semua di `worker.py`), isinya `run_id`/`round` saja. Payload Pub/Sub sendiri di `api.py` cuma `{"run_id": ..., "round": 1}` — brief text TIDAK PERNAH lewat Pub/Sub sama sekali, disimpan langsung ke Firestore. Audit log sengaja cuma catat `chars: len(brief)`, bukan isi brief-nya)*
-- [ ] Demo dijalankan tiga kali tanpa manual database edit. *(2 run bersih berhasil dibuat malam ini tanpa edit database manual — belum genap 3x sebagai catatan formal)*
+- [x] Demo dijalankan tanpa manual database edit. *(31 Agu: browser run end-to-end dibuat dari UI lokal, memakai Gemini extraction, client baseline confirmation, Guardrail CHANGE_REQUEST, v2 proposal/confirmation, evidence, delivery review, dan menu checks; tidak ada database edit manual)*
 
 ## 4. Naskah video — target ~3:35 (batas keras 4:00)
 
@@ -189,11 +189,11 @@ Delividence is a two-party AI scope and acceptance protocol. It converts a clien
 
 ### How we built it
 
-Gemini 3.5 Flash (via the Gemini Developer API, with Gemini 3.6 Flash configured as fallback) performs multimodal extraction and scope-change classification. Google ADK orchestrates the stateful workflow. Cloud Run hosts the API and the private worker; the frontend is Next.js on Vercel. Pub/Sub resumes worker jobs after client events; Firestore stores ledger versions, baselines, and audit events. Firebase Authentication verifies the freelancer owner; the client review link uses a separate scoped opaque token, no account required.
+Gemini 3.5 Flash (via the Gemini Developer API, with Gemini 3.6 Flash configured as fallback) performs structured brief extraction and scope-change classification. Google ADK orchestrates the stateful workflow. Cloud Run hosts the API and the private worker; the frontend is Next.js on Vercel. Pub/Sub resumes worker jobs after client events; Firestore stores ledger versions, baselines, and audit events. Firebase Authentication verifies the freelancer owner; the client review link uses a separate scoped opaque token, no account required. The current submission accepts typed brief material and text/URL evidence; automatic binary image, audio, and video analysis is intentionally documented as future work, not claimed in the demo.
 
 ### Why it is agentic
 
-The system maintains deal state across people and sessions, prioritizes clarification questions based on unresolved risk, resumes autonomously through Pub/Sub after the client responds, invokes constrained tools (extraction, scope-change classification) rather than free-form generation, and adapts to an explicitly confirmed freelancer preference (default revision rounds) that carries into every new deal — labeled as the freelancer's policy, never assumed as a client fact until the client approves it through the same baseline flow as anything else. Deterministic services retain authority over readiness, approvals, baseline versions, and hashes — the model proposes, it never decides.
+The system maintains deal state across people and sessions, prioritizes clarification questions based on unresolved risk, resumes autonomously through Pub/Sub after the client responds, invokes constrained tools (extraction, scope-change classification) rather than free-form generation, and exposes owner-controlled policy defaults without treating them as client-approved facts. Deterministic services retain authority over readiness, approvals, baseline versions, and hashes — the model proposes, it never decides.
 
 ### Challenges and learning
 

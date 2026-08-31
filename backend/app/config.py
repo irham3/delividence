@@ -46,6 +46,13 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 # proyek Firebase tetap dipakai walau LOCAL=True (client link/portal klien
 # tidak lewat sini sama sekali -- itu opaque token sendiri).
 FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "").strip()
+# On a developer machine, the person who signs in is intentionally not given
+# Firebase Auth admin rights.  They may instead impersonate the narrow API
+# runtime identity that owns session-cookie creation.  Cloud Run leaves this
+# empty because its own runtime identity already has that permission.
+FIREBASE_SESSION_COOKIE_SERVICE_ACCOUNT = os.environ.get(
+    "FIREBASE_SESSION_COOKIE_SERVICE_ACCOUNT", ""
+).strip()
 
 # Session cookie hanya dipakai oleh Next.js untuk routing optimistis. Semua
 # endpoint owner tetap memverifikasi Firebase ID token di setiap request.

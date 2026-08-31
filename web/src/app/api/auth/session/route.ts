@@ -11,6 +11,9 @@ function sessionFailure(status: number, payload: SessionResponse) {
   if (status === 401 && payload.detail === "A recent sign-in is required") {
     return "Google needs a fresh sign-in. Choose your account again to continue.";
   }
+  if (status === 401 && payload.detail === "Could not create owner session") {
+    return "The server could not create a secure session. Please try signing in again.";
+  }
   if (status === 401) {
     return "Google could not verify this sign-in. Choose your account again to continue.";
   }

@@ -82,6 +82,28 @@ describe("owner session route", () => {
     });
   });
 
+  it("does not mislabel a server session-creation failure as a Google failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({ detail: "Could not create owner session" }, { status: 401 }),
+      ),
+    );
+    const response = await POST(
+      new NextRequest("http://localhost:3000/api/auth/session", {
+        method: "POST",
+        headers: {
+          origin: "http://localhost:3000",
+          authorization: "Bearer firebase-token",
+        },
+      }),
+    );
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: "The server could not create a secure session. Please try signing in again.",
+    });
+  });
+
   it("expires the route cookie on logout", async () => {
     const response = await DELETE(
       new NextRequest("http://localhost:3000/api/auth/session", { method: "DELETE" }),
